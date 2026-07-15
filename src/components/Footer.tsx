@@ -27,8 +27,8 @@ export function Footer() {
       <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-12 gap-12 md:gap-8">
         {/* Column 1: Logo & Info */}
         <div className="md:col-span-4 space-y-6 text-left">
-          <Link href="#home" className="flex items-center w-fit group">
-            <div className="relative w-36 h-9 transition-transform duration-300 group-hover:scale-105">
+          <Link href="#home" className="flex items-center gap-2.5 w-fit group">
+            <div className="relative w-9 h-9 transition-transform duration-300 group-hover:scale-105">
               <Image
                 src="/logo.png"
                 alt="Mervox Dynamics Logo"
@@ -36,6 +36,9 @@ export function Footer() {
                 className="object-contain object-left"
               />
             </div>
+            <span className="font-heading font-black text-foreground text-base tracking-wider uppercase">
+              Mervox Dynamics
+            </span>
           </Link>
           <p className="text-xs text-muted-foreground leading-relaxed max-w-sm">
             High-performance digital craftsmanship for forward-thinking brands. We build websites, store apps, and visuals that scale businesses.

@@ -3,6 +3,7 @@
 import { useTheme } from "next-themes";
 import { useEffect, useState } from "react";
 import { Sun, Moon } from "lucide-react";
+import { motion } from "framer-motion";
 
 export function ThemeToggle() {
   const { theme, setTheme, resolvedTheme } = useTheme();
@@ -13,7 +14,7 @@ export function ThemeToggle() {
   }, []);
 
   if (!mounted) {
-    return <div className="w-9 h-9 rounded-full bg-muted/20 animate-pulse" />;
+    return <div className="w-[64px] h-[30px] rounded-full bg-muted/20 animate-pulse" />;
   }
 
   const currentTheme = theme === "system" ? resolvedTheme : theme;
@@ -21,14 +22,29 @@ export function ThemeToggle() {
   return (
     <button
       onClick={() => setTheme(currentTheme === "dark" ? "light" : "dark")}
-      className="p-2 rounded-full border border-card-border bg-card/45 hover:bg-card/80 text-foreground hover:scale-105 active:scale-95 transition-all duration-300 backdrop-blur-md cursor-pointer focus:outline-none flex items-center justify-center"
+      className="w-[64px] h-[30px] rounded-full border border-card-border bg-card/45 backdrop-blur-md flex items-center justify-between p-[3px] cursor-pointer relative focus:outline-none select-none overflow-hidden hover:scale-105 active:scale-95 transition-transform duration-200"
       aria-label="Toggle theme"
     >
-      {currentTheme === "dark" ? (
-        <Sun className="w-[18px] h-[18px] text-yellow-400 transition-transform duration-300" />
-      ) : (
-        <Moon className="w-[18px] h-[18px] text-slate-700 transition-transform duration-300" />
-      )}
+      {/* Sliding Active Indicator */}
+      <motion.div
+        animate={{ x: currentTheme === "dark" ? 0 : 34 }}
+        transition={{ type: "spring", stiffness: 350, damping: 25 }}
+        className="w-6 h-6 rounded-full bg-foreground shadow-sm absolute"
+      />
+
+      {/* Moon Icon */}
+      <Moon
+        className={`z-10 w-[14px] h-[14px] pointer-events-none transition-colors duration-300 ml-1.5 ${
+          currentTheme === "dark" ? "text-background" : "text-muted-foreground"
+        }`}
+      />
+
+      {/* Sun Icon */}
+      <Sun
+        className={`z-10 w-[14px] h-[14px] pointer-events-none transition-colors duration-300 mr-1.5 ${
+          currentTheme === "light" ? "text-background" : "text-muted-foreground"
+        }`}
+      />
     </button>
   );
 }

@@ -29,22 +29,20 @@ export function Navbar() {
     { name: "Services", href: "#services" },
     { name: "About", href: "#about" },
     { name: "Portfolio", href: "#portfolio" },
-    { name: "Contact", href: "#contact" },
   ];
 
   return (
     <>
       <header
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
-          scrolled
-            ? "py-3 bg-background/85 backdrop-blur-md border-b border-card-border/50 shadow-sm"
-            : "py-6 bg-transparent"
-        }`}
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${scrolled
+          ? "py-3 bg-background/85 backdrop-blur-md border-b border-card-border/50 shadow-sm"
+          : "py-6 bg-transparent"
+          }`}
       >
         <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
           {/* Logo */}
-          <Link href="#home" className="flex items-center group">
-            <div className="relative w-36 h-9 transition-transform duration-300 group-hover:scale-105">
+          <Link href="#home" className="flex items-center gap-2.5 group">
+            <div className="relative w-9 h-9 transition-transform duration-300 group-hover:scale-105">
               <Image
                 src="/logo.png"
                 alt="Mervox Dynamics Logo"
@@ -53,6 +51,9 @@ export function Navbar() {
                 priority
               />
             </div>
+            <span className="font-heading font-black text-foreground text-base sm:text-lg tracking-wider uppercase">
+              Mervox Dynamics
+            </span>
           </Link>
 
           {/* Desktop Navigation */}
@@ -71,12 +72,6 @@ export function Navbar() {
           {/* Right Section */}
           <div className="hidden md:flex items-center gap-4">
             <ThemeToggle />
-            <Link
-              href="#contact"
-              className="px-5 py-2 text-sm font-medium text-white bg-accent hover:bg-accent-hover hover:scale-[1.03] active:scale-[0.97] transition-all duration-300 rounded-[18px] shadow-sm hover:shadow-md cursor-pointer"
-            >
-              Get Started
-            </Link>
           </div>
 
           {/* Mobile Menu Buttons */}
@@ -141,13 +136,6 @@ export function Navbar() {
                 transition={{ delay: 0.5 }}
                 className="flex flex-col gap-4"
               >
-                <Link
-                  href="#contact"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="w-full text-center py-3 font-medium text-white bg-accent hover:bg-accent-hover transition-colors rounded-[18px] block"
-                >
-                  Get Started
-                </Link>
                 <p className="text-xs text-center text-muted-foreground">
                   © 2026 Mervox Dynamics. All rights reserved.
                 </p>
