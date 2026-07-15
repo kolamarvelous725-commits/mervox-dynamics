@@ -1,0 +1,161 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import Image from "next/image";
+import Link from "next/link";
+import { ThemeToggle } from "./ThemeToggle";
+import { Menu, X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+
+export function Navbar() {
+  const [scrolled, setScrolled] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (window.scrollY > 20) {
+        setScrolled(true);
+      } else {
+        setScrolled(false);
+      }
+    };
+
+    window.addEventListener("scroll", handleScroll);
+    return () => window.removeEventListener("scroll", handleScroll);
+  }, []);
+
+  const navLinks = [
+    { name: "Home", href: "#home" },
+    { name: "Services", href: "#services" },
+    { name: "About", href: "#about" },
+    { name: "Portfolio", href: "#portfolio" },
+    { name: "Contact", href: "#contact" },
+  ];
+
+  return (
+    <>
+      <header
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ${
+          scrolled
+            ? "py-3 bg-background/85 backdrop-blur-md border-b border-card-border/50 shadow-sm"
+            : "py-6 bg-transparent"
+        }`}
+      >
+        <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
+          {/* Logo */}
+          <Link href="#home" className="flex items-center group">
+            <div className="relative w-36 h-9 transition-transform duration-300 group-hover:scale-105">
+              <Image
+                src="/logo.png"
+                alt="Mervox Dynamics Logo"
+                fill
+                className="object-contain object-left"
+                priority
+              />
+            </div>
+          </Link>
+
+          {/* Desktop Navigation */}
+          <nav className="hidden md:flex items-center gap-8">
+            {navLinks.map((link) => (
+              <Link
+                key={link.name}
+                href={link.href}
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors duration-300 relative py-2"
+              >
+                {link.name}
+              </Link>
+            ))}
+          </nav>
+
+          {/* Right Section */}
+          <div className="hidden md:flex items-center gap-4">
+            <ThemeToggle />
+            <Link
+              href="#contact"
+              className="px-5 py-2 text-sm font-medium text-white bg-accent hover:bg-accent-hover hover:scale-[1.03] active:scale-[0.97] transition-all duration-300 rounded-[18px] shadow-sm hover:shadow-md cursor-pointer"
+            >
+              Get Started
+            </Link>
+          </div>
+
+          {/* Mobile Menu Buttons */}
+          <div className="flex md:hidden items-center gap-3">
+            <ThemeToggle />
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="p-2 rounded-full border border-card-border/50 text-foreground hover:bg-muted/10 cursor-pointer"
+              aria-label="Toggle Menu"
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </button>
+          </div>
+        </div>
+      </header>
+
+      {/* Mobile Drawer */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <>
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setMobileMenuOpen(false)}
+              className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm md:hidden"
+            />
+
+            {/* Menu container */}
+            <motion.div
+              initial={{ x: "100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              className="fixed top-0 right-0 bottom-0 z-40 w-4/5 max-w-sm bg-background border-l border-card-border shadow-2xl p-8 flex flex-col justify-between md:hidden"
+            >
+              <div className="flex flex-col gap-8 mt-16">
+                <nav className="flex flex-col gap-6">
+                  {navLinks.map((link, idx) => (
+                    <motion.div
+                      key={link.name}
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      transition={{ delay: idx * 0.1 }}
+                    >
+                      <Link
+                        href={link.href}
+                        onClick={() => setMobileMenuOpen(false)}
+                        className="text-lg font-heading font-medium text-muted-foreground hover:text-foreground transition-colors py-2 block"
+                      >
+                        {link.name}
+                      </Link>
+                    </motion.div>
+                  ))}
+                </nav>
+              </div>
+
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.5 }}
+                className="flex flex-col gap-4"
+              >
+                <Link
+                  href="#contact"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="w-full text-center py-3 font-medium text-white bg-accent hover:bg-accent-hover transition-colors rounded-[18px] block"
+                >
+                  Get Started
+                </Link>
+                <p className="text-xs text-center text-muted-foreground">
+                  © 2026 Mervox Dynamics. All rights reserved.
+                </p>
+              </motion.div>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </>
+  );
+}
