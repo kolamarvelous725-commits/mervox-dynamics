@@ -2,6 +2,7 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
+import Image from "next/image";
 import { CheckCircle2, Phone, Play, Star } from "lucide-react";
 
 export function Hero() {
@@ -126,17 +127,17 @@ export function Hero() {
               className="flex items-center gap-3.5 py-3 border-t border-card-border/30 max-w-sm"
             >
               <div className="flex -space-x-2 select-none">
-                <div className="w-7 h-7 rounded-full border-2 border-background overflow-hidden bg-muted/10">
-                  <img src="/avatar1.png" alt="Client 1" className="w-full h-full object-cover" />
+                <div className="w-7 h-7 rounded-full border-2 border-background overflow-hidden bg-muted/10 relative">
+                  <Image src="/avatar1.png" alt="Client 1" fill sizes="28px" className="object-cover" />
                 </div>
-                <div className="w-7 h-7 rounded-full border-2 border-background overflow-hidden bg-muted/10">
-                  <img src="/avatar2.png" alt="Client 2" className="w-full h-full object-cover" />
+                <div className="w-7 h-7 rounded-full border-2 border-background overflow-hidden bg-muted/10 relative">
+                  <Image src="/avatar2.png" alt="Client 2" fill sizes="28px" className="object-cover" />
                 </div>
-                <div className="w-7 h-7 rounded-full border-2 border-background overflow-hidden bg-muted/10">
-                  <img src="/avatar3.png" alt="Client 3" className="w-full h-full object-cover" />
+                <div className="w-7 h-7 rounded-full border-2 border-background overflow-hidden bg-muted/10 relative">
+                  <Image src="/avatar3.png" alt="Client 3" fill sizes="28px" className="object-cover" />
                 </div>
-                <div className="w-7 h-7 rounded-full border-2 border-background overflow-hidden bg-muted/10">
-                  <img src="/avatar4.png" alt="Client 4" className="w-full h-full object-cover" />
+                <div className="w-7 h-7 rounded-full border-2 border-background overflow-hidden bg-muted/10 relative">
+                  <Image src="/avatar4.png" alt="Client 4" fill sizes="28px" className="object-cover" />
                 </div>
               </div>
 

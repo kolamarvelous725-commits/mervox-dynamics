@@ -1,10 +1,11 @@
 "use client";
 
+import { useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { Alex_Brush } from "next/font/google";
 
 const signatureFont = Alex_Brush({
@@ -33,9 +34,36 @@ import {
   CheckCircle,
   Eye,
   Rocket,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 
 export default function AboutPage() {
+  const slides = [
+    {
+      image: "/ceo-pics.jpeg",
+      quote: "My goal is simple: create digital solutions that help businesses grow, scale and thrive in a digital world.",
+    },
+    {
+      image: "/me1.png",
+      quote: "My vision is to: turn ideas into powerful digital experiences that connect brands with the people who matter most.",
+    },
+    {
+      image: "/me2.png",
+      quote: "My mission is to: help businesses build a strong digital presence through creativity, technology and strategies that deliver real results.",
+    },
+  ];
+
+  const [currentSlide, setCurrentSlide] = useState(0);
+
+  const nextSlide = () => {
+    setCurrentSlide((prev) => (prev + 1) % slides.length);
+  };
+
+  const prevSlide = () => {
+    setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length);
+  };
+
   const expertise = [
     {
       icon: MonitorSmartphone,
@@ -149,7 +177,7 @@ export default function AboutPage() {
       <main className="flex-1 bg-background">
         
         {/* SECTION 1 — ABOUT HERO */}
-        <section className="relative min-h-screen lg:h-[88vh] lg:max-h-[720px] flex flex-col justify-between pt-10 pb-2 overflow-hidden border-b border-card-border/50 bg-background">
+        <section className="relative min-h-screen lg:h-[88vh] lg:max-h-[720px] flex flex-col justify-between pt-20 lg:pt-10 pb-2 overflow-hidden border-b border-card-border/50 bg-background">
           <div className="max-w-7xl mx-auto px-6 w-full flex-1 flex flex-col justify-between relative z-10">
             
             {/* Main Grid Content */}
@@ -229,6 +257,7 @@ export default function AboutPage() {
                     alt="Marvelous Kola"
                     fill
                     className="object-contain object-bottom scale-110 md:scale-105 transition-transform duration-500 hover:scale-115"
+                    sizes="(max-width: 768px) 360px, (max-width: 1024px) 400px, 440px"
                     priority
                   />
                 </div>
@@ -346,10 +375,10 @@ export default function AboutPage() {
 
         {/* SECTION 2 — OUR STORY */}
         <section className="py-20 md:py-28 relative border-b border-card-border/50">
-          <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
+          <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
             
             {/* Story Text */}
-            <div className="lg:col-span-7 space-y-6 text-left">
+            <div className="lg:col-span-6 space-y-6 text-left">
               <span className="text-xs font-bold text-accent uppercase tracking-widest block">
                 OUR STORY
               </span>
@@ -380,23 +409,92 @@ export default function AboutPage() {
               </div>
             </div>
 
-            {/* Story Visual */}
-            <div className="lg:col-span-5 flex flex-col items-center">
-              <div className="relative w-full max-w-[440px] aspect-[3/4] rounded-2xl overflow-hidden shadow-2xl bg-card border border-card-border">
-                <Image
-                  src="/ceo-pics.jpeg"
-                  alt="Marvelous Kola Sitting"
-                  fill
-                  className="object-cover object-center scale-105 transition-transform duration-500 hover:scale-110"
-                />
+            {/* Story Visual - Image and Quote Slider */}
+            <div className="lg:col-span-6 flex flex-col items-center w-full">
+              <div className="flex flex-col lg:flex-row items-center gap-6 lg:gap-8 w-full justify-center">
                 
-                {/* Floating Quote Bubbles */}
-                <div className="absolute bottom-6 left-6 right-6 p-5 rounded-2xl bg-background/90 dark:bg-background/95 backdrop-blur border border-card-border/50 shadow-xl flex items-start gap-3.5">
-                  <span className="text-3xl text-accent font-serif leading-none mt-1">“</span>
-                  <p className="text-[11px] sm:text-xs text-foreground font-medium leading-relaxed">
-                    My goal is simple: create digital solutions that help businesses grow, scale and thrive in a digital world.
-                  </p>
+                {/* Image Container with Slider Controls */}
+                <div className="relative w-full max-w-[320px] sm:max-w-[360px] lg:max-w-[260px] xl:max-w-[280px] aspect-[3/4] rounded-2xl overflow-hidden shadow-2xl bg-card border border-card-border shrink-0 select-none">
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={currentSlide}
+                      initial={{ opacity: 0, x: 20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -20 }}
+                      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                      drag="x"
+                      dragConstraints={{ left: 0, right: 0 }}
+                      dragElastic={0.2}
+                      onDragEnd={(_event, info) => {
+                        const swipeThreshold = 50;
+                        if (info.offset.x > swipeThreshold) {
+                          prevSlide();
+                        } else if (info.offset.x < -swipeThreshold) {
+                          nextSlide();
+                        }
+                      }}
+                      className="absolute inset-0 w-full h-full cursor-grab active:cursor-grabbing"
+                    >
+                      <Image
+                        src={slides[currentSlide].image}
+                        alt={`Slide ${currentSlide + 1}`}
+                        fill
+                        className="object-cover object-center pointer-events-none"
+                        sizes="(max-width: 768px) 360px, (max-width: 1024px) 260px, 280px"
+                      />
+                    </motion.div>
+                  </AnimatePresence>
+
+                  {/* Navigation Arrows */}
+                  <button
+                    onClick={prevSlide}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-background/80 dark:bg-background/60 backdrop-blur-md border border-card-border/50 flex items-center justify-center text-foreground hover:bg-background dark:hover:bg-background/80 transition-all hover:scale-105 cursor-pointer"
+                    aria-label="Previous Slide"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={nextSlide}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 z-20 w-8 h-8 rounded-full bg-background/80 dark:bg-background/60 backdrop-blur-md border border-card-border/50 flex items-center justify-center text-foreground hover:bg-background dark:hover:bg-background/80 transition-all hover:scale-105 cursor-pointer"
+                    aria-label="Next Slide"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+
+                  {/* Dot Indicators */}
+                  <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 flex gap-1.5 bg-background/40 dark:bg-background/20 backdrop-blur-md px-2.5 py-1.5 rounded-full border border-card-border/30">
+                    {slides.map((_, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setCurrentSlide(idx)}
+                        className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
+                          currentSlide === idx ? "bg-accent w-4" : "bg-foreground/30 w-1.5 hover:bg-foreground/50"
+                        }`}
+                        aria-label={`Go to slide ${idx + 1}`}
+                      />
+                    ))}
+                  </div>
                 </div>
+
+                {/* Quote Container (presented elegantly beside or below depending on screen size) */}
+                <div className="w-full max-w-[320px] sm:max-w-[360px] lg:max-w-none lg:flex-1 min-h-[110px] flex flex-col justify-center">
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={currentSlide}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: -10 }}
+                      transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+                      className="p-6 rounded-2xl bg-card/45 dark:bg-card/25 backdrop-blur-sm border border-card-border/50 shadow-xl flex items-start gap-3.5 text-left"
+                    >
+                      <span className="text-3xl text-accent font-serif leading-none mt-1 shrink-0">“</span>
+                      <p className="text-[11px] sm:text-xs text-foreground font-medium leading-relaxed">
+                        {slides[currentSlide].quote}
+                      </p>
+                    </motion.div>
+                  </AnimatePresence>
+                </div>
+
               </div>
             </div>
 
@@ -653,6 +751,7 @@ export default function AboutPage() {
                   alt="Marvelous Kola Portrait"
                   fill
                   className="object-cover object-center scale-105 transition-transform duration-500 hover:scale-110"
+                  sizes="(max-width: 768px) 360px, (max-width: 1024px) 400px, 440px"
                 />
               </div>
             </div>

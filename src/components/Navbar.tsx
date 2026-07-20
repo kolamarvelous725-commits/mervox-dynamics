@@ -29,7 +29,7 @@ export function Navbar() {
   const navLinks = [
     { name: "Home", href: "/" },
     { name: "About", href: "/about" },
-    { name: "Services", href: "/#services" },
+    { name: "Services", href: "/services" },
     { name: "Portfolio", href: "/#portfolio" },
   ];
 
@@ -54,6 +54,7 @@ export function Navbar() {
                 src="/logo.png"
                 alt="Mervox Dynamics Logo"
                 fill
+                sizes="36px"
                 className="object-contain object-left"
                 priority
               />

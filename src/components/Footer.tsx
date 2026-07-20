@@ -33,6 +33,7 @@ export function Footer() {
                 src="/logo.png"
                 alt="Mervox Dynamics Logo"
                 fill
+                sizes="36px"
                 className="object-contain object-left"
               />
             </div>
