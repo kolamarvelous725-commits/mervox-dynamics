@@ -1,7 +1,8 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { Shield, Sparkles, Award } from "lucide-react";
+import { Shield, Sparkles, Award, ArrowRight } from "lucide-react";
+import Link from "next/link";
 
 export function About() {
   const values = [
@@ -38,9 +39,16 @@ export function About() {
               <h3 className="text-3xl sm:text-4xl font-heading font-extrabold tracking-tight text-foreground leading-[1.25]">
                 Introducing Mervox Dynamics
               </h3>
-              <p className="mt-4 text-base text-muted-foreground leading-relaxed max-w-xl">
+              <p className="mt-4 text-base text-muted-foreground leading-relaxed max-w-xl mb-6">
                 We are a creative digital studio helping businesses establish and grow a powerful, scalable online presence. Over the years, we have worked with organizations of all sizes to design and develop products that convert.
               </p>
+              <Link
+                href="/about"
+                className="inline-flex items-center gap-2 px-6 py-3 bg-[#0a192f] dark:bg-[#1e3a8a] hover:bg-[#0c1e3b] dark:hover:bg-[#1d4ed8] text-white text-xs font-semibold rounded-[12px] shadow-md hover:shadow-lg transition-all duration-300 hover:-translate-y-[1px]"
+              >
+                <span>Read More About Us</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
             </div>
 
             {/* Micro Stats Grid */}

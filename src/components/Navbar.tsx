@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { ThemeToggle } from "./ThemeToggle";
 import { Menu, X } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -10,6 +11,7 @@ import { motion, AnimatePresence } from "framer-motion";
 export function Navbar() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const pathname = usePathname();
 
   useEffect(() => {
     const handleScroll = () => {
@@ -25,11 +27,16 @@ export function Navbar() {
   }, []);
 
   const navLinks = [
-    { name: "Home", href: "#home" },
-    { name: "Services", href: "#services" },
-    { name: "About", href: "#about" },
-    { name: "Portfolio", href: "#portfolio" },
+    { name: "Home", href: "/" },
+    { name: "About", href: "/about" },
+    { name: "Services", href: "/#services" },
+    { name: "Portfolio", href: "/#portfolio" },
   ];
+
+  const isActive = (href: string) => {
+    if (href === "/") return pathname === "/";
+    return pathname === href;
+  };
 
   return (
     <>
@@ -41,7 +48,7 @@ export function Navbar() {
       >
         <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
           {/* Logo */}
-          <Link href="#home" className="flex items-center gap-2.5 group">
+          <Link href="/" className="flex items-center gap-2.5 group">
             <div className="relative w-9 h-9 transition-transform duration-300 group-hover:scale-105">
               <Image
                 src="/logo.png"
@@ -62,7 +69,11 @@ export function Navbar() {
               <Link
                 key={link.name}
                 href={link.href}
-                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors duration-300 relative py-2"
+                className={`text-sm font-medium transition-colors duration-300 relative py-2 ${
+                  isActive(link.href)
+                    ? "text-accent font-semibold"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
               >
                 {link.name}
               </Link>
@@ -121,7 +132,11 @@ export function Navbar() {
                       <Link
                         href={link.href}
                         onClick={() => setMobileMenuOpen(false)}
-                        className="text-lg font-heading font-medium text-muted-foreground hover:text-foreground transition-colors py-2 block"
+                        className={`text-lg font-heading font-medium transition-colors py-2 block ${
+                          isActive(link.href)
+                            ? "text-accent font-semibold"
+                            : "text-muted-foreground hover:text-foreground"
+                        }`}
                       >
                         {link.name}
                       </Link>

@@ -8,18 +8,18 @@ export function Footer() {
   const currentYear = new Date().getFullYear();
 
   const quickLinks = [
-    { name: "Home", href: "#home" },
-    { name: "Services", href: "#services" },
-    { name: "About", href: "#about" },
-    { name: "Portfolio", href: "#portfolio" },
-    { name: "Contact", href: "#contact" },
+    { name: "Home", href: "/" },
+    { name: "About", href: "/about" },
+    { name: "Services", href: "/#services" },
+    { name: "Portfolio", href: "/#portfolio" },
+    { name: "Contact", href: "/#contact" },
   ];
 
   const services = [
-    { name: "Web Design", href: "#services" },
-    { name: "Web Development", href: "#services" },
-    { name: "Store Creation", href: "#services" },
-    { name: "Brand Identity", href: "#services" },
+    { name: "Web Design", href: "/#services" },
+    { name: "Web Development", href: "/#services" },
+    { name: "Store Creation", href: "/#services" },
+    { name: "Brand Identity", href: "/#services" },
   ];
 
   return (
@@ -27,7 +27,7 @@ export function Footer() {
       <div className="max-w-7xl mx-auto px-6 grid grid-cols-1 md:grid-cols-12 gap-12 md:gap-8">
         {/* Column 1: Logo & Info */}
         <div className="md:col-span-4 space-y-6 text-left">
-          <Link href="#home" className="flex items-center gap-2.5 w-fit group">
+          <Link href="/" className="flex items-center gap-2.5 w-fit group">
             <div className="relative w-9 h-9 transition-transform duration-300 group-hover:scale-105">
               <Image
                 src="/logo.png"
