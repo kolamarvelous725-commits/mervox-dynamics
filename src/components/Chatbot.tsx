@@ -236,7 +236,7 @@ export function Chatbot() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 50, scale: 0.95 }}
             transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-            className="fixed bottom-4 left-4 right-4 sm:bottom-20 sm:right-8 z-40 w-[calc(100%-2rem)] sm:w-[380px] h-[calc(100vh-5rem)] sm:h-[calc(100vh-9rem)] max-h-[500px] rounded-[24px] bg-card border border-card-border/60 shadow-[0_12px_40px_rgba(0,0,0,0.15)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.4)] flex flex-col overflow-hidden"
+            className="fixed bottom-20 right-4 left-auto z-40 w-[320px] max-w-[calc(100vw-2rem)] h-[400px] max-h-[60vh] sm:w-[380px] sm:h-[calc(100vh-9rem)] sm:max-h-[500px] sm:bottom-20 sm:right-8 rounded-[24px] bg-card border border-card-border/60 shadow-[0_12px_40px_rgba(0,0,0,0.15)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.4)] flex flex-col overflow-hidden"
           >
             {/* Header */}
             <div className="bg-[#0055ff] text-white px-5 py-4 flex items-center justify-between shadow-sm">
@@ -298,7 +298,7 @@ export function Chatbot() {
                     className={`max-w-[85%] px-4 py-3 rounded-2xl whitespace-pre-line text-sm leading-relaxed ${
                       message.role === "user"
                         ? "bg-[#0055ff] text-white rounded-tr-sm shadow-sm"
-                        : "bg-slate-100 dark:bg-slate-800/70 text-slate-850 dark:text-slate-200 rounded-tl-sm border border-card-border/30 shadow-xs"
+                        : "bg-muted text-foreground rounded-tl-sm border border-card-border/50 shadow-xs"
                     }`}
                   >
                     {message.content}
@@ -349,7 +349,7 @@ export function Chatbot() {
 
               {/* Loader/Typing indicator */}
               {isLoading && (
-                <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800/70 border border-card-border/30 px-4 py-3 rounded-2xl rounded-tl-sm w-fit max-w-[85%] shadow-xs">
+                <div className="flex items-center gap-2 bg-muted border border-card-border/50 px-4 py-3 rounded-2xl rounded-tl-sm w-fit max-w-[85%] shadow-xs">
                   <div className="flex gap-1.5 py-1">
                     <span className="w-1.5 h-1.5 bg-slate-400 dark:bg-slate-500 rounded-full animate-bounce delay-100" />
                     <span className="w-1.5 h-1.5 bg-slate-400 dark:bg-slate-500 rounded-full animate-bounce delay-200" />
@@ -369,7 +369,7 @@ export function Chatbot() {
                       <button
                         key={q}
                         onClick={() => handleSendMessage(q)}
-                        className="text-left text-xs font-semibold px-4 py-2.5 rounded-xl border border-card-border bg-card hover:bg-slate-50 dark:hover:bg-slate-850 hover:border-[#0055ff]/35 dark:hover:border-blue-500/35 text-slate-800 dark:text-slate-200 transition-all duration-200 cursor-pointer shadow-xs"
+                        className="text-left text-xs font-semibold px-4 py-2.5 rounded-xl border border-card-border bg-card hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-[#0055ff]/35 dark:hover:border-blue-500/35 text-foreground transition-all duration-200 cursor-pointer shadow-xs"
                       >
                         {q}
                       </button>
