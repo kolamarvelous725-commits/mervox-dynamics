@@ -222,7 +222,7 @@ export default function PortfolioPage() {
                     >
                       {/* Image or Placeholder Column */}
                       <div className={`lg:col-span-6 ${isEven ? "lg:order-1" : "lg:order-2"}`}>
-                        <div className="relative w-full aspect-[16/10] rounded-[24px] border border-card-border/60 bg-card shadow-sm hover:shadow-lg transition-all duration-500 overflow-hidden flex flex-col group p-3 pb-0 bg-slate-100/70 dark:bg-slate-900/30">
+                        <div className="relative w-full aspect-[16/10] rounded-[24px] border border-card-border/60 bg-white dark:bg-black shadow-sm hover:shadow-lg transition-all duration-500 overflow-hidden flex flex-col group p-3 pb-0">
                           
                           {/* Browser mockup bar */}
                           <div className="flex items-center gap-2 mb-2 px-1 shrink-0 select-none">
@@ -231,13 +231,13 @@ export default function PortfolioPage() {
                               <span className="w-2 h-2 rounded-full bg-yellow-400/80 dark:bg-yellow-500/60" />
                               <span className="w-2 h-2 rounded-full bg-green-400/80 dark:bg-green-500/60" />
                             </div>
-                            <div className="flex-1 max-w-[200px] mx-auto py-0.5 px-2 rounded-md bg-white/70 dark:bg-slate-800/40 border border-slate-200/20 dark:border-slate-700/20 text-[9px] text-muted-foreground/80 truncate text-center font-medium">
+                            <div className="flex-1 max-w-[200px] mx-auto py-0.5 px-2 rounded-md bg-slate-50 dark:bg-slate-900 border border-slate-200/40 dark:border-slate-800/50 text-[9px] text-muted-foreground/80 truncate text-center font-medium">
                               {project.link.replace("https://", "").replace("www.", "").split("/")[0]}
                             </div>
                           </div>
 
                           {/* Preview container */}
-                          <div className="relative flex-1 w-full rounded-t-xl overflow-hidden border border-slate-200/40 dark:border-slate-800/60 bg-white dark:bg-slate-950 flex items-center justify-center">
+                          <div className="relative flex-1 w-full rounded-t-xl overflow-hidden border border-slate-200/40 dark:border-slate-800/60 bg-white dark:bg-black flex items-center justify-center">
                             {USE_FINAL_IMAGES ? (
                               <Image
                                 src={project.image}
@@ -248,7 +248,7 @@ export default function PortfolioPage() {
                               />
                             ) : (
                               /* Clean, premium typographic placeholder */
-                              <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-gradient-to-br from-slate-50 to-slate-100/50 dark:from-slate-950 dark:to-slate-900/60 select-none">
+                              <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-slate-50 dark:bg-black select-none">
                                 <div className="w-12 h-12 rounded-2xl bg-white dark:bg-slate-900 shadow-sm border border-slate-200/50 dark:border-slate-800/80 flex items-center justify-center mb-3">
                                   <ProjectIcon className="w-5 h-5 text-[#0055ff] dark:text-blue-400" />
                                 </div>
@@ -277,14 +277,14 @@ export default function PortfolioPage() {
                         </h3>
 
                         {/* Description */}
-                        <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed mb-6">
+                        <p className="text-xs sm:text-sm text-foreground/80 dark:text-slate-200 leading-relaxed mb-6">
                           {project.description}
                         </p>
 
                         {/* Highlights list */}
                         <div className="space-y-2.5 mb-8">
                           {project.highlights.map((h, i) => (
-                            <div key={i} className="flex items-start gap-2.5 text-xs text-foreground/90">
+                            <div key={i} className="flex items-start gap-2.5 text-xs text-foreground/90 dark:text-slate-200">
                               <span className="w-1.5 h-1.5 rounded-full bg-[#0055ff] dark:bg-blue-500 mt-1.5 shrink-0" />
                               <span>{h}</span>
                             </div>
@@ -296,7 +296,7 @@ export default function PortfolioPage() {
                           {project.tech.map((t) => (
                             <span
                               key={t}
-                              className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground bg-slate-100/80 dark:bg-slate-900/50 border border-card-border/40 px-2.5 py-1 rounded-md"
+                              className="text-[9px] font-bold uppercase tracking-wider text-foreground/80 dark:text-slate-200 bg-slate-50 dark:bg-slate-900/60 border border-card-border px-2.5 py-1 rounded-md"
                             >
                               {t}
                             </span>
