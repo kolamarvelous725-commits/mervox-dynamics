@@ -394,7 +394,7 @@ export function Chatbot() {
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 placeholder="Ask Mervox AI a question..."
-                className="flex-1 px-4 py-2.5 rounded-xl border border-card-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-[#0055ff]/40 text-left transition-colors"
+                className="flex-1 px-4 py-2.5 rounded-xl border border-card-border bg-background text-base sm:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-[#0055ff]/40 text-left transition-colors"
                 disabled={isLoading}
               />
               <button
