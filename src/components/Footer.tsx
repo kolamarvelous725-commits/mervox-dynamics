@@ -11,7 +11,7 @@ export function Footer() {
     { name: "Home", href: "/" },
     { name: "About", href: "/about" },
     { name: "Services", href: "/#services" },
-    { name: "Portfolio", href: "/#portfolio" },
+    { name: "Portfolio", href: "/portfolio" },
     { name: "Contact", href: "/#contact" },
   ];
 
@@ -28,24 +28,24 @@ export function Footer() {
         {/* Column 1: Logo & Info */}
         <div className="md:col-span-4 space-y-6 text-left">
           <Link href="/" className="flex items-center gap-2.5 w-fit group">
-            <div className="relative w-9 h-9 transition-transform duration-300 group-hover:scale-105">
+            <div className="relative w-12 h-12 transition-transform duration-300 group-hover:scale-105">
               <Image
                 src="/logo.png"
-                alt="Mervox Dynamics Logo"
+                alt="Mervox Dynamic Logo"
                 fill
-                sizes="36px"
+                sizes="48px"
                 className="object-contain object-left"
               />
             </div>
             <span className="font-heading font-black text-foreground text-base tracking-wider uppercase">
-              Mervox Dynamics
+              Mervox Dynamic
             </span>
           </Link>
           <p className="text-xs text-muted-foreground leading-relaxed max-w-sm">
             High-performance digital craftsmanship for forward-thinking brands. We build websites, store apps, and visuals that scale businesses.
           </p>
           <p className="text-[11px] text-muted-foreground">
-            © {currentYear} Mervox Dynamics. All rights reserved.
+            © {currentYear} Mervox Dynamic. All rights reserved.
           </p>
         </div>
 

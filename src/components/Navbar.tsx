@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ThemeToggle } from "./ThemeToggle";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Home, Briefcase, User, LayoutGrid, Phone } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export function Navbar() {
@@ -27,10 +27,10 @@ export function Navbar() {
   }, []);
 
   const navLinks = [
-    { name: "Home", href: "/" },
-    { name: "About", href: "/about" },
-    { name: "Services", href: "/services" },
-    { name: "Portfolio", href: "/#portfolio" },
+    { name: "Home", href: "/", icon: Home },
+    { name: "Services", href: "/services", icon: Briefcase },
+    { name: "About", href: "/about", icon: User },
+    { name: "Portfolio", href: "/portfolio", icon: LayoutGrid },
   ];
 
   const isActive = (href: string) => {
@@ -49,18 +49,18 @@ export function Navbar() {
         <div className="max-w-7xl mx-auto px-6 flex items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2.5 group">
-            <div className="relative w-9 h-9 transition-transform duration-300 group-hover:scale-105">
+            <div className="relative w-12 h-12 transition-transform duration-300 group-hover:scale-105">
               <Image
                 src="/logo.png"
-                alt="Mervox Dynamics Logo"
+                alt="Mervox Dynamic Logo"
                 fill
-                sizes="36px"
+                sizes="48px"
                 className="object-contain object-left"
                 priority
               />
             </div>
             <span className="font-heading font-black text-foreground text-base sm:text-lg tracking-wider uppercase">
-              Mervox Dynamics
+              Mervox Dynamic
             </span>
           </Link>
 
@@ -115,46 +115,58 @@ export function Navbar() {
 
             {/* Menu container */}
             <motion.div
-              initial={{ x: "100%" }}
-              animate={{ x: 0 }}
-              exit={{ x: "100%" }}
+              initial={{ y: "100%", opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: "100%", opacity: 0 }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
-              className="fixed top-0 right-0 bottom-0 z-40 w-4/5 max-w-sm bg-background border-l border-card-border shadow-2xl p-8 flex flex-col justify-between md:hidden"
+              className="fixed bottom-4 left-4 right-4 z-40 max-w-sm mx-auto bg-card border border-card-border/60 shadow-2xl p-6 pb-6 rounded-[32px] md:hidden flex flex-col"
             >
-              <div className="flex flex-col gap-8 mt-16">
-                <nav className="flex flex-col gap-6">
-                  {navLinks.map((link, idx) => (
+              {/* Grab Handle */}
+              <div className="w-12 h-1 bg-muted-foreground/20 rounded-full mx-auto mb-6" />
+
+              {/* Navigation Links */}
+              <nav className="flex flex-col gap-1 mb-6">
+                {navLinks.map((link, idx) => {
+                  const Icon = link.icon;
+                  const active = isActive(link.href);
+                  return (
                     <motion.div
                       key={link.name}
-                      initial={{ opacity: 0, x: 20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: idx * 0.1 }}
+                      initial={{ opacity: 0, y: 15 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.05 }}
                     >
                       <Link
                         href={link.href}
                         onClick={() => setMobileMenuOpen(false)}
-                        className={`text-lg font-heading font-medium transition-colors py-2 block ${
-                          isActive(link.href)
-                            ? "text-accent font-semibold"
+                        className={`flex items-center gap-4 px-4 py-3 rounded-2xl transition-all duration-200 ${
+                          active
+                            ? "text-[#0055ff] dark:text-blue-400 font-semibold"
                             : "text-muted-foreground hover:text-foreground"
                         }`}
                       >
-                        {link.name}
+                        <Icon className={`w-5.5 h-5.5 ${active ? "text-[#0055ff] dark:text-blue-400" : "text-muted-foreground/80"}`} />
+                        <span className="text-base font-medium">{link.name}</span>
                       </Link>
                     </motion.div>
-                  ))}
-                </nav>
-              </div>
+                  );
+                })}
+              </nav>
 
+              {/* Book Call Button */}
               <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.5 }}
-                className="flex flex-col gap-4"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: navLinks.length * 0.05 }}
               >
-                <p className="text-xs text-center text-muted-foreground">
-                  © 2026 Mervox Dynamics. All rights reserved.
-                </p>
+                <Link
+                  href="#contact"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="w-full flex items-center justify-center gap-2.5 py-4 bg-[#0055ff] hover:bg-[#0044dd] text-white font-semibold rounded-[20px] shadow-[0_4px_20px_rgba(0,85,255,0.25)] hover:shadow-[0_6px_25px_rgba(0,85,255,0.4)] active:scale-[0.98] transition-all duration-300 cursor-pointer"
+                >
+                  <span>Book A Free Call</span>
+                  <Phone className="w-4 h-4 shrink-0 transition-transform duration-300" />
+                </Link>
               </motion.div>
             </motion.div>
           </>

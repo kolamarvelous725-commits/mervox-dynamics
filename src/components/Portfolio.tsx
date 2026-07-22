@@ -1,37 +1,31 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { ArrowUpRight, Globe, Layers, Sparkles } from "lucide-react";
-import Link from "next/link";
+import { ArrowUpRight } from "lucide-react";
+import Image from "next/image";
 
 export function Portfolio() {
   const projects = [
     {
-      title: "Apex SaaS Platform",
-      category: "Web Development / UI UX",
-      description: "A high-performance SaaS dashboard featuring real-time collaborative workflows and minimal interfaces.",
-      gradient: "from-blue-600/20 via-indigo-600/10 to-transparent",
-      accentColor: "text-blue-500",
-      tag: "SaaS App",
-      icon: Globe,
+      title: "Next.js Website Development",
+      category: "Web Design & Development",
+      description: "A modern website project built with Next.js, focused on creating a professional, responsive, and high-performing digital experience.",
+      image: "/port1.png",
+      link: "https://amphora-it.com/",
     },
     {
-      title: "Nova Brand Identity",
-      category: "Brand Design / Strategy",
-      description: "Visual identity system, corporate guidelines, and assets crafted for an AI-native infrastructure startup.",
-      gradient: "from-purple-600/20 via-pink-600/10 to-transparent",
-      accentColor: "text-purple-500",
-      tag: "Branding",
-      icon: Sparkles,
+      title: "Etsy Shop Creation & Product Design",
+      category: "E-commerce & Product Design",
+      description: "An Etsy shop creation and product design project focused on building an attractive storefront and presenting digital products in a professional and engaging way.",
+      image: "/port2.png",
+      link: "https://www.etsy.com/shop/DreamGirlPlan?ref=shop-header-name&listing_id=4389994843&from_page=listing",
     },
     {
-      title: "Velo E-commerce",
-      category: "Store Creation / Headless",
-      description: "A headless commerce storefront built on Shopify and Next.js, achieving sub-second load times.",
-      gradient: "from-emerald-600/20 via-teal-600/10 to-transparent",
-      accentColor: "text-emerald-500",
-      tag: "E-Commerce",
-      icon: Layers,
+      title: "Shopify Website Design",
+      category: "E-commerce & Shopify",
+      description: "A Shopify e-commerce website design project focused on creating a premium, visually engaging online shopping experience with strong branding and user-friendly navigation.",
+      image: "/port3.png",
+      link: "https://www.rouje.com/",
     },
   ];
 
@@ -50,14 +44,13 @@ export function Portfolio() {
             <div className="h-1 w-10 bg-accent/20 rounded-full mt-4" />
           </div>
           <p className="text-sm text-muted-foreground max-w-md md:text-right">
-            We partner with ambitious startups and enterprises to build premium software products that unlock compounding growth.
+            We partner with ambitious brands to build premium digital products and storefronts that scale operations and accelerate growth.
           </p>
         </div>
 
         {/* Project Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
           {projects.map((project, idx) => {
-            const ProjectIcon = project.icon;
             return (
               <motion.div
                 key={project.title}
@@ -68,26 +61,32 @@ export function Portfolio() {
                 whileHover={{ y: -6 }}
                 className="group rounded-[18px] border border-card-border bg-card/45 hover:bg-card hover:border-accent/15 transition-all duration-500 overflow-hidden flex flex-col h-full shadow-sm hover:shadow-lg"
               >
-                {/* Visual Cover (Abstract Gradient/Illustration) */}
-                <div className={`relative w-full aspect-[16/10] bg-gradient-to-br ${project.gradient} border-b border-card-border/60 flex items-center justify-center p-8 overflow-hidden`}>
-                  {/* Glowing ambient background element */}
-                  <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-accent/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700" />
+                {/* Visual Cover (Browser Mockup Style) */}
+                <div className="relative w-full aspect-[16/10] bg-white dark:bg-black p-3 pb-0 border-b border-card-border/60 flex flex-col overflow-hidden">
+                  {/* Browser Bar */}
+                  <div className="flex items-center gap-2 mb-2 px-1">
+                    {/* Window Controls */}
+                    <div className="flex gap-1">
+                      <span className="w-2 h-2 rounded-full bg-red-400/85 dark:bg-red-500/60" />
+                      <span className="w-2 h-2 rounded-full bg-yellow-400/85 dark:bg-yellow-500/60" />
+                      <span className="w-2 h-2 rounded-full bg-green-400/85 dark:bg-green-500/60" />
+                    </div>
+                    {/* URL bar */}
+                    <div className="flex-1 max-w-[180px] mx-auto py-0.5 px-2 rounded-md bg-slate-100 dark:bg-slate-900 border border-slate-200/40 dark:border-slate-800/50 text-[9px] text-muted-foreground/80 truncate text-center select-none">
+                      {project.link.replace("https://", "").replace("www.", "").split("/")[0]}
+                    </div>
+                  </div>
                   
-                  {/* Floating abstract decorative box */}
-                  <div className="w-full h-full rounded-2xl border border-card-border/80 bg-card/60 backdrop-blur-md shadow-inner flex flex-col justify-between p-5 relative z-10 transition-transform duration-500 group-hover:scale-[1.02]">
-                    <div className="flex items-center justify-between">
-                      <div className="w-8 h-8 rounded-lg bg-background/50 border border-card-border/50 flex items-center justify-center">
-                        <ProjectIcon className={`w-4 h-4 ${project.accentColor}`} />
-                      </div>
-                      <span className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground bg-muted/65 px-2.5 py-1 rounded-full border border-card-border/40">
-                        {project.tag}
-                      </span>
-                    </div>
-
-                    <div className="space-y-1 text-left">
-                      <span className="text-[10px] text-muted-foreground font-semibold">Active Case Study</span>
-                      <p className="text-xs font-bold text-foreground">Interactive Demo Dashboard</p>
-                    </div>
+                  {/* Screenshot Container */}
+                  <div className="relative flex-1 w-full rounded-t-xl overflow-hidden border border-slate-200/50 dark:border-slate-800/80 bg-white dark:bg-slate-950">
+                    <Image
+                      src={project.image}
+                      alt={project.title}
+                      fill
+                      sizes="(max-w-768px) 100vw, (max-w-1024px) 50vw, 33vw"
+                      className="object-cover object-top transition-transform duration-500 group-hover:scale-105"
+                      priority={idx === 0}
+                    />
                   </div>
                 </div>
 
@@ -103,13 +102,15 @@ export function Portfolio() {
                     {project.description}
                   </p>
 
-                  <Link 
-                    href="#contact" 
-                    className="inline-flex items-center gap-1.5 text-xs font-bold text-foreground hover:text-accent group/btn transition-colors"
+                  <a
+                    href={project.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 px-4.5 py-2.5 bg-[#0055ff] hover:bg-[#0044dd] text-white font-bold text-xs rounded-xl shadow-[0_2px_8px_rgba(0,85,255,0.15)] hover:shadow-[0_4px_12px_rgba(0,85,255,0.25)] transition-all duration-300 cursor-pointer"
                   >
-                    Discuss This Project 
-                    <ArrowUpRight className="w-3.5 h-3.5 group-hover/btn:translate-x-0.5 group-hover/btn:-translate-y-0.5 transition-transform" />
-                  </Link>
+                    <span>View Live Project</span>
+                    <ArrowUpRight className="w-3.5 h-3.5 shrink-0" />
+                  </a>
                 </div>
               </motion.div>
             );
