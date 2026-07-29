@@ -44,7 +44,7 @@ export function Portfolio() {
             <div className="h-1 w-10 bg-accent/20 rounded-full mt-4" />
           </div>
           <p className="text-sm text-muted-foreground max-w-md md:text-right">
-            We partner with ambitious brands to build premium digital products and storefronts that scale operations and accelerate growth.
+            We partner with ambitious brands to build premium digital products and storefronts that scale operations and accelerate growth. This are our recent projects.
           </p>
         </div>
 
@@ -76,7 +76,7 @@ export function Portfolio() {
                       {project.link.replace("https://", "").replace("www.", "").split("/")[0]}
                     </div>
                   </div>
-                  
+
                   {/* Screenshot Container */}
                   <div className="relative flex-1 w-full rounded-t-xl overflow-hidden border border-slate-200/50 dark:border-slate-800/80 bg-white dark:bg-slate-950">
                     <Image

@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Sora, Inter, Playfair_Display } from "next/font/google";
 import { ThemeProvider } from "@/components/ThemeProvider";
-import { Chatbot } from "@/components/Chatbot";
 import "./globals.css";
 
 const sora = Sora({
@@ -53,7 +52,6 @@ export default function RootLayout({
       <body className="antialiased min-h-screen flex flex-col">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange={false}>
           {children}
-          <Chatbot />
         </ThemeProvider>
       </body>
     </html>

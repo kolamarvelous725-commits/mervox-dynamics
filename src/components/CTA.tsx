@@ -32,7 +32,7 @@ export function CTA() {
           <div className="flex flex-col sm:flex-row gap-4 relative z-10 w-full sm:w-auto">
             <Link
               href="#contact"
-              className="group flex items-center justify-center gap-2 px-7 py-3.5 font-semibold text-accent bg-white hover:bg-slate-50 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 rounded-[18px] shadow-md cursor-pointer"
+              className="group flex items-center justify-center gap-2 px-7 py-3.5 font-semibold text-accent bg-white hover:bg-white hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 rounded-[18px] shadow-md cursor-pointer"
             >
               Start Your Project
               <ArrowRight className="w-4 h-4 text-accent group-hover:translate-x-1 transition-transform" />

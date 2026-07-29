@@ -10,7 +10,7 @@ import { ArrowUpRight, MonitorSmartphone, Code, ShoppingCart, Paintbrush, Calend
 
 // Developer Toggle: Set to true to display actual screenshots (/port1.png, /port2.png, /port3.png)
 // Set to false to display the clean browser mockup placeholders
-const USE_FINAL_IMAGES = false;
+const USE_FINAL_IMAGES = true;
 
 export default function PortfolioPage() {
   const [selectedCategory, setSelectedCategory] = useState("All Projects");
@@ -107,78 +107,107 @@ export default function PortfolioPage() {
           </div>
 
           <div className="max-w-7xl mx-auto px-6 w-full relative z-10 text-left">
-            <motion.div
-              variants={containerVariants}
-              initial="hidden"
-              animate="visible"
-              className="max-w-3xl"
-            >
-              {/* Eyebrow Label */}
-              <motion.div
-                variants={itemVariants}
-                className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-card-border bg-card/45 backdrop-blur-md w-fit mb-4"
-              >
-                <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
-                <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
-                  Our Work
-                </span>
-              </motion.div>
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+              
+              {/* Left Column (Text & Trust Indicator) */}
+              <div className="lg:col-span-7">
+                <motion.div
+                  variants={containerVariants}
+                  initial="hidden"
+                  animate="visible"
+                  className="max-w-3xl"
+                >
+                  {/* Eyebrow Label */}
+                  <motion.div
+                    variants={itemVariants}
+                    className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full border border-card-border bg-card/45 backdrop-blur-md w-fit mb-4"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-accent animate-pulse" />
+                    <span className="text-[10px] font-bold tracking-wider text-muted-foreground uppercase">
+                      Our Work
+                    </span>
+                  </motion.div>
 
-              {/* Headline */}
-              <motion.h1
-                variants={itemVariants}
-                className="text-4xl sm:text-5xl lg:text-6xl font-heading font-extrabold tracking-tight text-foreground leading-[1.1] mb-5"
-              >
-                Our{" "}
-                <span className="text-accent relative inline-block">
-                  Portfolio
-                  <span className="absolute bottom-1.5 left-0 w-full h-[3px] bg-accent/20 rounded-full" />
-                </span>
-              </motion.h1>
+                  {/* Headline */}
+                  <motion.h1
+                    variants={itemVariants}
+                    className="text-4xl sm:text-5xl lg:text-6xl font-heading font-extrabold tracking-tight text-foreground leading-[1.1] mb-5"
+                  >
+                    Our{" "}
+                    <span className="text-accent relative inline-block">
+                      Portfolio
+                      <span className="absolute bottom-1.5 left-0 w-full h-[3px] bg-accent/20 rounded-full" />
+                    </span>
+                  </motion.h1>
 
-              {/* Subtitle */}
-              <motion.p
-                variants={itemVariants}
-                className="text-sm sm:text-base text-muted-foreground leading-relaxed max-w-xl"
-              >
-                Real projects. Real results. Built with creativity, strategy, and precision. We partner with ambitious businesses to engineer high-conversion digital experiences.
-              </motion.p>
+                  {/* Subtitle */}
+                  <motion.p
+                    variants={itemVariants}
+                    className="text-sm sm:text-base text-muted-foreground leading-relaxed max-w-xl"
+                  >
+                    Real projects. Real results. Built with creativity, strategy, and precision. We partner with ambitious businesses to engineer high-conversion digital experiences.
+                  </motion.p>
 
-              {/* Trust Indicator */}
-              <motion.div
-                variants={itemVariants}
-                className="flex items-center gap-3.5 mt-8 pt-6 border-t border-card-border/30 max-w-sm"
-              >
-                <div className="flex -space-x-2 select-none">
-                  <div className="w-7 h-7 rounded-full border-2 border-background overflow-hidden bg-muted/10 relative">
-                    <Image src="/avatar1.png" alt="Client 1" fill sizes="28px" className="object-cover" />
-                  </div>
-                  <div className="w-7 h-7 rounded-full border-2 border-background overflow-hidden bg-muted/10 relative">
-                    <Image src="/avatar2.png" alt="Client 2" fill sizes="28px" className="object-cover" />
-                  </div>
-                  <div className="w-7 h-7 rounded-full border-2 border-background overflow-hidden bg-muted/10 relative">
-                    <Image src="/avatar3.png" alt="Client 3" fill sizes="28px" className="object-cover" />
-                  </div>
-                  <div className="w-7 h-7 rounded-full border-2 border-background overflow-hidden bg-muted/10 relative">
-                    <Image src="/avatar4.png" alt="Client 4" fill sizes="28px" className="object-cover" />
-                  </div>
-                </div>
+                  {/* Trust Indicator */}
+                  <motion.div
+                    variants={itemVariants}
+                    className="flex items-center gap-3.5 mt-8 pt-6 border-t border-card-border/30 max-w-sm"
+                  >
+                    <div className="flex -space-x-2 select-none">
+                      <div className="w-7 h-7 rounded-full border-2 border-background overflow-hidden bg-muted/10 relative">
+                        <Image src="/avatar1.png" alt="Client 1" fill sizes="28px" className="object-cover" />
+                      </div>
+                      <div className="w-7 h-7 rounded-full border-2 border-background overflow-hidden bg-muted/10 relative">
+                        <Image src="/avatar2.png" alt="Client 2" fill sizes="28px" className="object-cover" />
+                      </div>
+                      <div className="w-7 h-7 rounded-full border-2 border-background overflow-hidden bg-muted/10 relative">
+                        <Image src="/avatar3.png" alt="Client 3" fill sizes="28px" className="object-cover" />
+                      </div>
+                      <div className="w-7 h-7 rounded-full border-2 border-background overflow-hidden bg-muted/10 relative">
+                        <Image src="/avatar4.png" alt="Client 4" fill sizes="28px" className="object-cover" />
+                      </div>
+                    </div>
 
-                <div className="flex flex-col items-start gap-0.5">
-                  <div className="flex items-center gap-0.5">
-                    {[...Array(5)].map((_, i) => (
-                      <Star
-                        key={i}
-                        className="w-3 h-3 fill-[#0055ff] text-[#0055ff] dark:fill-[#3b82f6] dark:text-[#3b82f6]"
-                      />
-                    ))}
-                  </div>
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">
-                    Trusted by 100+ Brands & Businesses
-                  </span>
-                </div>
-              </motion.div>
-            </motion.div>
+                    <div className="flex flex-col items-start gap-0.5">
+                      <div className="flex items-center gap-0.5">
+                        {[...Array(5)].map((_, i) => (
+                          <Star
+                            key={i}
+                            className="w-3 h-3 fill-[#0055ff] text-[#0055ff] dark:fill-[#3b82f6] dark:text-[#3b82f6]"
+                          />
+                        ))}
+                      </div>
+                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wide">
+                        Trusted by 100+ Brands & Businesses
+                      </span>
+                    </div>
+                  </motion.div>
+                </motion.div>
+              </div>
+
+              {/* Right Column (Showcase Illustration Image) */}
+              <div className="lg:col-span-5 flex justify-center w-full">
+                <motion.div
+                  initial={{ opacity: 0, x: 20, scale: 0.95 }}
+                  animate={{ opacity: 1, x: 0, scale: 1 }}
+                  transition={{ duration: 0.8, delay: 0.25, ease: [0.16, 1, 0.3, 1] }}
+                  className="relative w-full aspect-[3/2] max-w-[480px] lg:max-w-none transition-transform duration-500 hover:scale-[1.02]"
+                >
+                  {/* Subtle glowing element behind the illustration */}
+                  <div className="absolute inset-0 bg-accent/5 dark:bg-accent/15 blur-[60px] rounded-full pointer-events-none scale-90" />
+                  
+                  <Image
+                    src="/I1.png"
+                    alt="Mervox Dynamic Portfolio Showcases"
+                    fill
+                    sizes="(max-w-768px) 100vw, (max-w-1024px) 50vw, 480px"
+                    className="object-contain relative z-10"
+                    priority
+                  />
+                </motion.div>
+              </div>
+
+            </div>
           </div>
         </section>
 
@@ -195,7 +224,7 @@ export default function PortfolioPage() {
                   className={`px-5 py-2.5 rounded-xl text-xs font-bold transition-all duration-300 cursor-pointer ${
                     selectedCategory === cat
                       ? "bg-[#0055ff] text-white shadow-md shadow-blue-500/15"
-                      : "border border-card-border hover:border-slate-350 dark:hover:border-slate-700 bg-card hover:bg-slate-50 dark:hover:bg-slate-900 text-slate-700 dark:text-slate-300"
+                      : "border border-card-border hover:border-slate-350 dark:hover:border-slate-700 bg-card hover:bg-white dark:hover:bg-slate-900 text-slate-700 dark:text-slate-300"
                   }`}
                 >
                   {cat}

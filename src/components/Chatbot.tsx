@@ -279,7 +279,7 @@ export function Chatbot() {
                   </button>
                   <button
                     onClick={() => setShowHandoffBanner(false)}
-                    className="px-2.5 py-1.5 border border-card-border hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-350 font-bold rounded-lg cursor-pointer transition-colors"
+                    className="px-2.5 py-1.5 border border-card-border hover:bg-white dark:hover:bg-slate-800 text-slate-700 dark:text-slate-350 font-bold rounded-lg cursor-pointer transition-colors"
                   >
                     Continue
                   </button>
@@ -337,7 +337,7 @@ export function Chatbot() {
                             e.stopPropagation();
                             handleSelectHandoff(false);
                           }}
-                          className="flex-1 flex items-center justify-center px-4 py-2.5 border border-slate-300 dark:border-slate-700 bg-transparent hover:bg-slate-200/50 dark:hover:bg-slate-700/50 text-slate-800 dark:text-slate-200 font-semibold text-xs rounded-xl transition-all duration-200 cursor-pointer text-center"
+                          className="flex-1 flex items-center justify-center px-4 py-2.5 border border-slate-300 dark:border-slate-700 bg-transparent hover:bg-white/50 dark:hover:bg-slate-700/50 text-slate-800 dark:text-slate-200 font-semibold text-xs rounded-xl transition-all duration-200 cursor-pointer text-center"
                         >
                           No, continue chatting
                         </button>
@@ -369,7 +369,7 @@ export function Chatbot() {
                       <button
                         key={q}
                         onClick={() => handleSendMessage(q)}
-                        className="text-left text-xs font-semibold px-4 py-2.5 rounded-xl border border-card-border bg-card hover:bg-slate-50 dark:hover:bg-slate-800 hover:border-[#0055ff]/35 dark:hover:border-blue-500/35 text-foreground transition-all duration-200 cursor-pointer shadow-xs"
+                        className="text-left text-xs font-semibold px-4 py-2.5 rounded-xl border border-card-border bg-card hover:bg-white dark:hover:bg-slate-800 hover:border-[#0055ff]/35 dark:hover:border-blue-500/35 text-foreground transition-all duration-200 cursor-pointer shadow-xs"
                       >
                         {q}
                       </button>

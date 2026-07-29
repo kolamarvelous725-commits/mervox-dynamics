@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ThemeToggle } from "./ThemeToggle";
-import { Menu, X, Home, Briefcase, User, LayoutGrid, Phone } from "lucide-react";
+import { Menu, X, Home, Briefcase, User, LayoutGrid, Phone, GraduationCap } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export function Navbar() {
@@ -31,6 +31,8 @@ export function Navbar() {
     { name: "Services", href: "/services", icon: Briefcase },
     { name: "About", href: "/about", icon: User },
     { name: "Portfolio", href: "/portfolio", icon: LayoutGrid },
+    { name: "Academy", href: "/academy", icon: GraduationCap },
+    { name: "Contact", href: "/#contact", icon: Phone },
   ];
 
   const isActive = (href: string) => {
