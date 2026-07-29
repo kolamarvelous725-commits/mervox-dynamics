@@ -49,7 +49,7 @@ export default function PortfolioPage() {
         "Sleek and responsive digital craftsmanship",
         "Speed optimized for sub-second load times",
       ],
-      image: "/port1.png",
+      image: "/port1.webp",
       link: "https://amphora-it.com/",
       tech: ["Next.js", "TypeScript", "Tailwind CSS", "Framer Motion"],
       icon: Code,
@@ -65,7 +65,7 @@ export default function PortfolioPage() {
         "Strategic SEO tags and catalog organization",
         "Clean digital product templates and previews",
       ],
-      image: "/port2.png",
+      image: "/port2.webp",
       link: "https://www.etsy.com/shop/DreamGirlPlan?ref=shop-header-name&listing_id=4389994843&from_page=listing",
       tech: ["Store Setup", "Product Design", "E-commerce SEO", "Digital Assets"],
       icon: Paintbrush,
@@ -81,7 +81,7 @@ export default function PortfolioPage() {
         "Premium font hierarchy and brand palette layout",
         "Conversion rate optimization (CRO) audit assets",
       ],
-      image: "/port3.png",
+      image: "/port3.webp",
       link: "https://www.rouje.com/",
       tech: ["Shopify Liquid", "UI/UX Design", "Brand Identity", "Store Customization"],
       icon: ShoppingCart,
@@ -197,10 +197,10 @@ export default function PortfolioPage() {
                   <div className="absolute inset-0 bg-accent/5 dark:bg-accent/15 blur-[60px] rounded-full pointer-events-none scale-90" />
                   
                   <Image
-                    src="/I1.png"
+                    src="/I1.webp"
                     alt="Mervox Dynamic Portfolio Showcases"
                     fill
-                    sizes="(max-w-768px) 100vw, (max-w-1024px) 50vw, 480px"
+                    sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 480px"
                     className="object-contain relative z-10"
                     priority
                   />
@@ -272,7 +272,7 @@ export default function PortfolioPage() {
                                 src={project.image}
                                 alt={project.title}
                                 fill
-                                sizes="(max-w-768px) 100vw, 50vw"
+                                sizes="(max-width: 768px) 100vw, 50vw"
                                 className="object-cover object-top transition-transform duration-500 group-hover:scale-[1.03]"
                               />
                             ) : (

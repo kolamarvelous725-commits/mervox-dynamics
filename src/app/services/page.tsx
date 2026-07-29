@@ -278,7 +278,7 @@ export default function ServicesPage() {
                   <div className="absolute w-[80%] h-[80%] rounded-full bg-gradient-to-tr from-accent/20 to-indigo-500/10 blur-[50px] dark:blur-[70px] -z-10" />
                   
                   <Image
-                    src="/laptop.png"
+                    src="/laptop.webp"
                     alt="Services Hero Laptop"
                     fill
                     sizes="(max-width: 768px) 320px, 400px"

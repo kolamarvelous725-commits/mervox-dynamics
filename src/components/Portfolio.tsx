@@ -10,21 +10,21 @@ export function Portfolio() {
       title: "Next.js Website Development",
       category: "Web Design & Development",
       description: "A modern website project built with Next.js, focused on creating a professional, responsive, and high-performing digital experience.",
-      image: "/port1.png",
+      image: "/port1.webp",
       link: "https://amphora-it.com/",
     },
     {
       title: "Etsy Shop Creation & Product Design",
       category: "E-commerce & Product Design",
       description: "An Etsy shop creation and product design project focused on building an attractive storefront and presenting digital products in a professional and engaging way.",
-      image: "/port2.png",
+      image: "/port2.webp",
       link: "https://www.etsy.com/shop/DreamGirlPlan?ref=shop-header-name&listing_id=4389994843&from_page=listing",
     },
     {
       title: "Shopify Website Design",
       category: "E-commerce & Shopify",
       description: "A Shopify e-commerce website design project focused on creating a premium, visually engaging online shopping experience with strong branding and user-friendly navigation.",
-      image: "/port3.png",
+      image: "/port3.webp",
       link: "https://www.rouje.com/",
     },
   ];
@@ -83,9 +83,8 @@ export function Portfolio() {
                       src={project.image}
                       alt={project.title}
                       fill
-                      sizes="(max-w-768px) 100vw, (max-w-1024px) 50vw, 33vw"
+                      sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 33vw"
                       className="object-cover object-top transition-transform duration-500 group-hover:scale-105"
-                      priority={idx === 0}
                     />
                   </div>
                 </div>

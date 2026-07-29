@@ -41,15 +41,15 @@ import {
 export default function AboutPage() {
   const slides = [
     {
-      image: "/ceo-pics.jpeg",
+      image: "/ceo-pics.webp",
       quote: "My goal is simple: create digital solutions that help businesses grow, scale and thrive in a digital world.",
     },
     {
-      image: "/me1.png",
+      image: "/me1.webp",
       quote: "My vision is to: turn ideas into powerful digital experiences that connect brands with the people who matter most.",
     },
     {
-      image: "/me2.png",
+      image: "/me2.webp",
       quote: "My mission is to: help businesses build a strong digital presence through creativity, technology and strategies that deliver real results.",
     },
   ];
@@ -253,7 +253,7 @@ export default function AboutPage() {
                 {/* Main Image - Large Cutout silhouette */}
                 <div className="relative w-full max-w-[360px] sm:max-w-[400px] lg:max-w-[440px] h-full">
                   <Image
-                    src="/new-marvelous-image.png"
+                    src="/new-marvelous-image.webp"
                     alt="Marvelous Kola"
                     fill
                     className="object-contain object-bottom scale-110 md:scale-105 transition-transform duration-500 hover:scale-115"
@@ -747,7 +747,7 @@ export default function AboutPage() {
             <div className="lg:col-span-5 flex flex-col items-center">
               <div className="relative w-full max-w-[440px] aspect-[3/4] rounded-2xl overflow-hidden shadow-2xl bg-card border border-card-border">
                 <Image
-                  src="/ceo-pics.jpeg"
+                  src="/ceo-pics.webp"
                   alt="Marvelous Kola Portrait"
                   fill
                   className="object-cover object-center scale-105 transition-transform duration-500 hover:scale-110"

@@ -90,7 +90,7 @@ export default function AcademyPage() {
       desc: "Master technical analysis, risk management, trading psychology, and live market strategies through our partnership with JPForex (HabbyForex Student)",
       features: ["Live Market Analysis", "Trading Psychology", "1-on-1 Mentoring", "JPForex Backing"],
       color: "text-emerald-600 bg-emerald-500/10 border-emerald-500/20",
-      image: "/course-forex-v3.avif",
+      image: "/course-forex-v3.webp",
     },
     {
       icon: Video,
@@ -99,7 +99,7 @@ export default function AcademyPage() {
       desc: "Master high-yield channel creation, algorithmic SEO growth, thumbnails design, audience analytics, and multi-tier revenue monetization.",
       features: ["Algorithm SEO Hacks", "Channel Automation", "Thumbnails & Editing", "Sponsorship Guides"],
       color: "text-red-600 bg-red-500/10 border-red-500/20",
-      image: "/course-youtube-v3.avif",
+      image: "/course-youtube-v3.webp",
     },
     {
       icon: Cpu,
@@ -108,7 +108,7 @@ export default function AcademyPage() {
       desc: "Harness cutting-edge generative AI, ChatGPT prompt engineering, no-code automation funnels, and enterprise workflows to multiply business productivity.",
       features: ["Prompt Engineering", "Zapier/Make Automation", "No-code SaaS Building", "AI Business Integration"],
       color: "text-purple-600 bg-purple-500/10 border-purple-500/20",
-      image: "/course-ai-v3.avif",
+      image: "/course-ai-v3.webp",
     },
     {
       icon: Code2,
@@ -117,7 +117,7 @@ export default function AcademyPage() {
       desc: "Master coding including Web Design, UI/UX, Frontend & Backend code, Mobile Apps development, and Vercel cloud deployment. Prepares you for freelancing and remote jobs.",
       features: ["React/Next.js/Node.js", "UI/UX Figma Design", "Mobile Apps (React Native)", "Database & Deployment"],
       color: "text-blue-600 bg-blue-500/10 border-blue-500/20",
-      image: "/course-webdev-v3.avif",
+      image: "/course-webdev-v3.webp",
     },
   ];
 
@@ -232,11 +232,10 @@ export default function AcademyPage() {
                   <div className="relative w-full h-full border border-card-border bg-card rounded-3xl p-1.5 overflow-hidden shadow-md flex items-center justify-center">
                     <div className="relative w-full h-full rounded-2xl overflow-hidden">
                       <Image
-                        src="/academy-hero-v3.png"
+                        src="/academy-hero-v3.webp"
                         alt="Mervox Academy Learning Platform"
                         fill
-                        unoptimized
-                        sizes="(max-w-768px) 100vw, (max-w-1024px) 50vw, 540px"
+                        sizes="(max-width: 768px) 100vw, (max-width: 1024px) 50vw, 540px"
                         className="object-cover transition-transform duration-500 hover:scale-105"
                         priority
                       />
@@ -363,8 +362,7 @@ export default function AcademyPage() {
                           src={course.image}
                           alt={course.title}
                           fill
-                          unoptimized
-                          sizes="(max-w-768px) 100vw, 360px"
+                          sizes="(max-width: 768px) 100vw, 360px"
                           className="object-cover transition-transform duration-500 group-hover:scale-105"
                         />
                       </div>
