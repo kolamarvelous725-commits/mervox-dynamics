@@ -42,6 +42,8 @@ export const metadata: Metadata = {
   }
 };
 
+import { AcademyAuthProvider } from "@/context/AcademyAuthContext";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -51,7 +53,9 @@ export default function RootLayout({
     <html lang="en" className={`${sora.variable} ${inter.variable} ${playfair.variable}`} suppressHydrationWarning>
       <body className="antialiased min-h-screen flex flex-col">
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange={false}>
-          {children}
+          <AcademyAuthProvider>
+            {children}
+          </AcademyAuthProvider>
         </ThemeProvider>
       </body>
     </html>

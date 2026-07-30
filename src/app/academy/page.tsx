@@ -201,7 +201,7 @@ export default function AcademyPage() {
                     className="flex flex-col sm:flex-row gap-4 pt-4 w-full sm:w-auto"
                   >
                     <Link
-                      href="#courses"
+                      href="/academy/dashboard"
                       className="group flex items-center justify-center gap-3 px-8 py-4 font-bold text-white bg-[#0a192f] dark:bg-[#1e3a8a] hover:bg-[#0c1e3b] dark:hover:bg-[#1d4ed8] rounded-xl shadow-sm transition-all duration-300 hover:-translate-y-[2px]"
                     >
                       <span>Explore Courses</span>
@@ -209,7 +209,7 @@ export default function AcademyPage() {
                     </Link>
 
                     <Link
-                      href="/#contact"
+                      href="/academy/signup"
                       className="group flex items-center justify-center gap-3 px-8 py-4 font-bold text-[#0055ff] dark:text-blue-400 border border-blue-500/20 hover:border-blue-500/40 bg-card hover:bg-white dark:hover:bg-slate-900 rounded-xl shadow-xs transition-all duration-300 hover:-translate-y-[2px]"
                     >
                       <span>Join Academy</span>
@@ -400,7 +400,7 @@ export default function AcademyPage() {
 
                     <div className="pt-8">
                       <Link
-                        href="/#contact"
+                        href="/academy/signup"
                         className="inline-flex items-center gap-2 text-xs font-bold text-[#0055ff] dark:text-blue-400 hover:gap-3 transition-all duration-200"
                       >
                         <span>Enroll in Program</span>
@@ -468,7 +468,7 @@ export default function AcademyPage() {
 
               <div className="relative z-10 w-full sm:w-auto">
                 <Link
-                  href="/#contact"
+                  href="/academy/signup"
                   className="group flex items-center justify-center gap-3 px-10 py-4 font-bold text-slate-900 bg-white hover:bg-white hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 rounded-xl shadow-md cursor-pointer"
                 >
                   <span>Join Mervox Academy</span>

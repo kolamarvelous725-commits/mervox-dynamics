@@ -1,0 +1,50 @@
+"use client";
+
+import { useAcademyAuth } from "@/context/AcademyAuthContext";
+import { Sidebar } from "@/components/academy/Sidebar";
+import { TopBar } from "@/components/academy/TopBar";
+import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+
+export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+  const { student, loading } = useAcademyAuth();
+  const router = useRouter();
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  useEffect(() => {
+    if (!loading && !student) {
+      router.push("/academy/login");
+    }
+  }, [student, loading, router]);
+
+  if (loading || !student) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-slate-50 dark:bg-[#0f0f11]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 border-4 border-[#0055ff] border-t-transparent rounded-full animate-spin" />
+          <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">Loading student portal...</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-screen overflow-hidden bg-slate-50 dark:bg-[#0f0f11] text-slate-800 dark:text-slate-100">
+      {/* Sidebar navigation */}
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+
+      {/* Main dashboard content panel */}
+      <div className="flex flex-col flex-1 overflow-hidden">
+        {/* Top header navigation */}
+        <TopBar onMenuClick={() => setSidebarOpen(true)} />
+
+        {/* Dynamic page container */}
+        <main className="flex-1 overflow-y-auto p-6">
+          <div className="max-w-7xl mx-auto w-full space-y-6">
+            {children}
+          </div>
+        </main>
+      </div>
+    </div>
+  );
+}
