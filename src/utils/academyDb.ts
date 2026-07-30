@@ -2,6 +2,20 @@ import { UserCourseProgress, QuizAttempt, RecentActivity, Notification } from "@
 
 const getStorageKey = (key: string, userId: string) => `mervox_academy_${key}_${userId}`;
 
+const syncToCloud = async (users: any[]) => {
+  try {
+    await fetch("https://kvdb.io/mervox_academy_shared_db_v2/users", {
+      method: "PUT",
+      body: JSON.stringify(users),
+      headers: {
+        "Content-Type": "application/json"
+      }
+    });
+  } catch (err) {
+    // Fail silently in offline/firewalled networks
+  }
+};
+
 export const AcademyDB = {
   // Course progress functions
   getProgress(userId: string): UserCourseProgress[] {
@@ -13,6 +27,7 @@ export const AcademyDB = {
   saveProgress(userId: string, progress: UserCourseProgress[]) {
     if (typeof window === "undefined") return;
     localStorage.setItem(getStorageKey("progress", userId), JSON.stringify(progress));
+    this.syncUserData(userId);
   },
 
   enroll(userId: string, courseId: string, courseTitle: string): UserCourseProgress {
@@ -94,6 +109,7 @@ export const AcademyDB = {
   saveQuizzes(userId: string, attempts: QuizAttempt[]) {
     if (typeof window === "undefined") return;
     localStorage.setItem(getStorageKey("quizzes", userId), JSON.stringify(attempts));
+    this.syncUserData(userId);
   },
 
   saveQuizAttempt(userId: string, courseId: string, courseTitle: string, score: number, passed: boolean): QuizAttempt {
@@ -147,6 +163,7 @@ export const AcademyDB = {
       if (!certificates.includes(courseId)) {
         certificates.push(courseId);
         localStorage.setItem(getStorageKey("certificates", userId), JSON.stringify(certificates));
+        this.syncUserData(userId);
         
         // Log activity
         this.logActivity(userId, "certificate", `Earned Certificate in ${courseTitle}`);
@@ -183,6 +200,7 @@ export const AcademyDB = {
     // Limit to latest 20 activities
     if (activities.length > 20) activities.pop();
     localStorage.setItem(getStorageKey("activity", userId), JSON.stringify(activities));
+    this.syncUserData(userId);
   },
 
   // Notifications manager
@@ -204,6 +222,7 @@ export const AcademyDB = {
     notifications.unshift(newNotif);
     if (notifications.length > 30) notifications.pop();
     localStorage.setItem(getStorageKey("notifications", userId), JSON.stringify(notifications));
+    this.syncUserData(userId);
   },
 
   markNotificationsRead(userId: string) {
@@ -211,6 +230,7 @@ export const AcademyDB = {
     const notifications = this.getNotifications(userId);
     notifications.forEach((n) => (n.unread = false));
     localStorage.setItem(getStorageKey("notifications", userId), JSON.stringify(notifications));
+    this.syncUserData(userId);
   },
 
   // Announcements manager
@@ -218,6 +238,78 @@ export const AcademyDB = {
     if (typeof window === "undefined") return [];
     const data = localStorage.getItem("mervox_academy_announcements");
     return data ? JSON.parse(data) : [];
+  },
+
+  // Cross-device sync functions
+  syncUserData(userId: string) {
+    if (typeof window === "undefined" || !userId) return;
+
+    const progress = this.getProgress(userId);
+    const quizzes = this.getQuizzes(userId);
+    const certificates = this.getCertificates(userId);
+    const activity = this.getActivities(userId);
+    const notifications = this.getNotifications(userId);
+
+    const usersJson = localStorage.getItem("mervox_academy_users");
+    if (usersJson) {
+      try {
+        const users = JSON.parse(usersJson);
+        const updated = users.map((u: any) => {
+          if (u.id === userId) {
+            return {
+              ...u,
+              progress,
+              quizzes,
+              certificates,
+              activity,
+              notifications,
+            };
+          }
+          return u;
+        });
+
+        localStorage.setItem("mervox_academy_users", JSON.stringify(updated));
+        syncToCloud(updated);
+      } catch (err) {
+        console.error("Failed to sync user data in DB", err);
+      }
+    }
+  },
+
+  async syncFromCloud(): Promise<any[] | null> {
+    if (typeof window === "undefined") return null;
+    try {
+      const res = await fetch("https://kvdb.io/mervox_academy_shared_db_v2/users");
+      if (res.ok) {
+        const cloudUsers = await res.json();
+        if (Array.isArray(cloudUsers)) {
+          const localJson = localStorage.getItem("mervox_academy_users");
+          const localUsers = localJson ? JSON.parse(localJson) : [];
+          
+          const mergedMap = new Map();
+          localUsers.forEach((u: any) => mergedMap.set(u.id, u));
+          cloudUsers.forEach((u: any) => {
+            const existing = mergedMap.get(u.id);
+            if (!existing) {
+              mergedMap.set(u.id, u);
+            } else {
+              const localLessons = existing.progress?.reduce((acc: number, p: any) => acc + (p.lessonsCompleted || 0), 0) || 0;
+              const cloudLessons = u.progress?.reduce((acc: number, p: any) => acc + (p.lessonsCompleted || 0), 0) || 0;
+              if (cloudLessons >= localLessons) {
+                mergedMap.set(u.id, u);
+              }
+            }
+          });
+          
+          const mergedUsers = Array.from(mergedMap.values());
+          localStorage.setItem("mervox_academy_users", JSON.stringify(mergedUsers));
+          return mergedUsers;
+        }
+      }
+    } catch (err) {
+      console.warn("Cross-device sync offline. Falling back to local storage.", err);
+    }
+    return null;
   },
 };
 export default AcademyDB;

@@ -196,6 +196,14 @@ export function TopBar({ onMenuClick }: TopBarProps) {
                 <span className="text-[9px] text-slate-400 block mt-0.5 truncate">{student?.email}</span>
               </div>
               <button
+                onClick={handleLogout}
+                className="flex items-center gap-2.5 w-full px-4 py-2 text-xs text-red-650 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 transition-all cursor-pointer text-left font-semibold"
+              >
+                <LogOut className="w-4 h-4 text-red-400" />
+                <span>Logout</span>
+              </button>
+              <div className="border-t border-card-border/40 my-1.5" />
+              <button
                 onClick={() => {
                   setShowProfileDropdown(false);
                   router.push("/academy/dashboard/profile");
@@ -214,14 +222,6 @@ export function TopBar({ onMenuClick }: TopBarProps) {
               >
                 <Settings className="w-4 h-4 text-slate-400" />
                 <span>Settings</span>
-              </button>
-              <div className="border-t border-card-border/40 my-1.5" />
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-2.5 w-full px-4 py-2 text-xs text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/20 transition-all cursor-pointer text-left font-semibold"
-              >
-                <LogOut className="w-4 h-4 text-red-400" />
-                <span>Logout</span>
               </button>
             </div>
           )}

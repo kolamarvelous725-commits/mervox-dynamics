@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { Student } from "@/types/academy";
+import { AcademyDB } from "@/utils/academyDb";
 
 interface AcademyAuthContextType {
   student: Student | null;
@@ -31,16 +32,37 @@ export function AcademyAuthProvider({ children }: { children: React.ReactNode })
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // Hydrate state from localStorage
-    const storedUser = localStorage.getItem("mervox_academy_current_user");
-    if (storedUser) {
-      try {
-        setStudent(JSON.parse(storedUser));
-      } catch (err) {
-        console.error("Failed to parse current student", err);
+    const hydrateAndSync = async () => {
+      // Fetch latest registered users database from cloud
+      await AcademyDB.syncFromCloud();
+
+      const storedUser = localStorage.getItem("mervox_academy_current_user");
+      if (storedUser) {
+        try {
+          const current = JSON.parse(storedUser);
+          setStudent(current);
+
+          // Update local device keys from the synced users record
+          const usersJson = localStorage.getItem("mervox_academy_users");
+          if (usersJson) {
+            const users = JSON.parse(usersJson);
+            const matched = users.find((u: any) => u.id === current.id);
+            if (matched) {
+              if (matched.progress) localStorage.setItem(`mervox_academy_progress_${matched.id}`, JSON.stringify(matched.progress));
+              if (matched.quizzes) localStorage.setItem(`mervox_academy_quizzes_${matched.id}`, JSON.stringify(matched.quizzes));
+              if (matched.certificates) localStorage.setItem(`mervox_academy_certificates_${matched.id}`, JSON.stringify(matched.certificates));
+              if (matched.activity) localStorage.setItem(`mervox_academy_activity_${matched.id}`, JSON.stringify(matched.activity));
+              if (matched.notifications) localStorage.setItem(`mervox_academy_notifications_${matched.id}`, JSON.stringify(matched.notifications));
+            }
+          }
+        } catch (err) {
+          console.error("Failed to parse current student", err);
+        }
       }
-    }
-    setLoading(false);
+      setLoading(false);
+    };
+
+    hydrateAndSync();
   }, []);
 
   const signup = async (userData: Omit<Student, "id" | "memberSince" | "avatarUrl"> & { password: string }) => {
@@ -68,6 +90,9 @@ export function AcademyAuthProvider({ children }: { children: React.ReactNode })
     // Store in users database with hashed password
     users.push({ ...newStudent, password: hashPassword(userData.password) });
     localStorage.setItem("mervox_academy_users", JSON.stringify(users));
+    
+    // Sync newly created user record to cloud database
+    AcademyDB.syncUserData(newStudent.id);
 
     // Log user in
     setStudent(newStudent);
@@ -75,6 +100,9 @@ export function AcademyAuthProvider({ children }: { children: React.ReactNode })
   };
 
   const login = async (email: string, password: string): Promise<boolean> => {
+    // Pull newest account credentials from other devices before evaluating login details
+    await AcademyDB.syncFromCloud();
+
     const usersJson = localStorage.getItem("mervox_academy_users");
     const users = usersJson ? JSON.parse(usersJson) : [];
 
@@ -86,6 +114,13 @@ export function AcademyAuthProvider({ children }: { children: React.ReactNode })
     );
 
     if (matchedUser) {
+      // Hydrate local device database keys from cloud data model
+      if (matchedUser.progress) localStorage.setItem(`mervox_academy_progress_${matchedUser.id}`, JSON.stringify(matchedUser.progress));
+      if (matchedUser.quizzes) localStorage.setItem(`mervox_academy_quizzes_${matchedUser.id}`, JSON.stringify(matchedUser.quizzes));
+      if (matchedUser.certificates) localStorage.setItem(`mervox_academy_certificates_${matchedUser.id}`, JSON.stringify(matchedUser.certificates));
+      if (matchedUser.activity) localStorage.setItem(`mervox_academy_activity_${matchedUser.id}`, JSON.stringify(matchedUser.activity));
+      if (matchedUser.notifications) localStorage.setItem(`mervox_academy_notifications_${matchedUser.id}`, JSON.stringify(matchedUser.notifications));
+
       const studentData: Student = {
         id: matchedUser.id,
         firstName: matchedUser.firstName,
@@ -150,6 +185,9 @@ export function AcademyAuthProvider({ children }: { children: React.ReactNode })
     
     setStudent(newStudentSession);
     localStorage.setItem("mervox_academy_current_user", JSON.stringify(newStudentSession));
+
+    // Sync profile changes to cloud database
+    AcademyDB.syncUserData(student.id);
   };
 
   const changePassword = async (oldPw: string, newPw: string): Promise<boolean> => {
@@ -166,6 +204,7 @@ export function AcademyAuthProvider({ children }: { children: React.ReactNode })
     if (userIndex !== -1) {
       users[userIndex].password = hashPassword(newPw);
       localStorage.setItem("mervox_academy_users", JSON.stringify(users));
+      AcademyDB.syncUserData(student.id);
       return true;
     }
 
