@@ -5,6 +5,7 @@ import { AcademyDB } from "@/utils/academyDb";
 import { Course, UserCourseProgress, QuizAttempt } from "@/types/academy";
 import { useState, useEffect } from "react";
 import Image from "next/image";
+import { supabase } from "@/utils/supabaseClient";
 import {
   BookOpen,
   CheckCircle2,
@@ -40,34 +41,134 @@ export default function CoursesPage() {
 
   const quizQuestions = AcademyDB.getQuizQuestions();
 
-  // Load database values
-  useEffect(() => {
-    if (userId) {
-      setStudentProgress(AcademyDB.getProgress(userId));
-      setStudentQuizzes(AcademyDB.getQuizzes(userId));
-      setStudentCertificates(AcademyDB.getCertificates(userId));
-      setCourses(AcademyDB.getCourses().filter((c) => c.published));
+  const refreshData = async () => {
+    if (!userId) return;
+    try {
+      const { data: progress } = await supabase
+        .from("progress")
+        .select("*")
+        .eq("user_id", userId);
+
+      const { data: quizzes } = await supabase
+        .from("quizzes")
+        .select("*")
+        .eq("user_id", userId);
+
+      const { data: certificates } = await supabase
+        .from("certificates")
+        .select("*")
+        .eq("user_id", userId);
+
+      const { data: courseData } = await supabase
+        .from("courses")
+        .select("*")
+        .eq("published", true);
+
+      if (progress) {
+        setStudentProgress(
+          progress.map((p: any) => ({
+            courseId: p.course_id,
+            progress: p.progress_percent,
+            lessonsCompleted: p.lessons_completed?.completed_lessons?.length || 0,
+            status: p.status || "In Progress",
+            completedLessons: p.lessons_completed?.completed_lessons || [],
+            totalLessons: 20,
+            studyMinutes: (p.lessons_completed?.completed_lessons?.length || 0) * 25,
+          }))
+        );
+      }
+
+      if (quizzes) {
+        setStudentQuizzes(
+          quizzes.map((q: any) => ({
+            id: q.id,
+            courseId: q.course_id,
+            score: q.score,
+            passed: q.passed,
+            attempts: 1,
+            date: "Evaluated",
+          }))
+        );
+      }
+
+      if (certificates) {
+        setStudentCertificates(certificates.map((c: any) => c.course_id));
+      }
+
+      if (courseData) {
+        setCourses(courseData);
+      }
+    } catch (err) {
+      console.error("Failed to load student courses database state:", err);
     }
+  };
+
+  useEffect(() => {
+    refreshData();
   }, [userId]);
 
-  const refreshData = () => {
-    setStudentProgress(AcademyDB.getProgress(userId));
-    setStudentQuizzes(AcademyDB.getQuizzes(userId));
-    setStudentCertificates(AcademyDB.getCertificates(userId));
-    setCourses(AcademyDB.getCourses().filter((c) => c.published));
+  const handleEnroll = async (courseId: string, courseTitle: string) => {
+    try {
+      await supabase.from("enrollments").insert({
+        user_id: userId,
+        course_id: courseId,
+        status: "In Progress",
+      });
+
+      await supabase.from("progress").insert({
+        user_id: userId,
+        course_id: courseId,
+        progress_percent: 0,
+        status: "In Progress",
+        lessons_completed: {
+          completed_lessons: [],
+        },
+      });
+
+      refreshData();
+    } catch (err) {
+      console.error("Failed to enroll course:", err);
+    }
   };
 
-  const handleEnroll = (courseId: string, courseTitle: string) => {
-    AcademyDB.enroll(userId, courseId, courseTitle);
-    refreshData();
+  const handleLessonToggle = async (courseId: string, courseTitle: string, lessonIndex: number, lessonTitle: string) => {
+    try {
+      const { data: currentProg } = await supabase
+        .from("progress")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("course_id", courseId)
+        .single();
+
+      if (currentProg) {
+        const completed = currentProg.lessons_completed?.completed_lessons || [];
+        let nextCompleted = [...completed];
+        if (nextCompleted.includes(lessonTitle)) {
+          nextCompleted = nextCompleted.filter((l) => l !== lessonTitle);
+        } else {
+          nextCompleted.push(lessonTitle);
+        }
+
+        const nextPercent = Math.round((nextCompleted.length / 20) * 100);
+        await supabase
+          .from("progress")
+          .update({
+            progress_percent: nextPercent,
+            lessons_completed: {
+              ...currentProg.lessons_completed,
+              completed_lessons: nextCompleted,
+            },
+          })
+          .eq("id", currentProg.id);
+
+        refreshData();
+      }
+    } catch (err) {
+      console.error("Failed to toggle lesson:", err);
+    }
   };
 
-  const handleLessonToggle = (courseId: string, courseTitle: string, lessonIndex: number, lessonTitle: string) => {
-    AcademyDB.completeLesson(userId, courseId, courseTitle, lessonIndex, lessonTitle);
-    refreshData();
-  };
-
-  const handleQuizSubmit = (courseId: string, courseTitle: string) => {
+  const handleQuizSubmit = async (courseId: string, courseTitle: string) => {
     const questions = quizQuestions[courseId] || [];
     let correctCount = 0;
     
@@ -80,10 +181,32 @@ export default function CoursesPage() {
     });
 
     const passed = questions.length > 0 && correctCount === questions.length;
-    
-    AcademyDB.saveQuizAttempt(userId, courseId, courseTitle, correctCount, passed);
-    setQuizResult({ score: correctCount, passed });
-    refreshData();
+    const dateStr = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+
+    try {
+      await supabase.from("quizzes").upsert({
+        user_id: userId,
+        course_id: courseId,
+        score: correctCount,
+        passed,
+      });
+
+      if (passed) {
+        const certId = "cert-" + Math.random().toString(36).substring(2, 9);
+        await supabase.from("certificates").insert({
+          id: certId,
+          user_id: userId,
+          course_id: courseId,
+          course_title: courseTitle,
+          issue_date: dateStr,
+        });
+      }
+
+      setQuizResult({ score: correctCount, passed });
+      refreshData();
+    } catch (err) {
+      console.error("Failed to submit quiz:", err);
+    }
   };
 
   const startQuiz = (courseId: string) => {

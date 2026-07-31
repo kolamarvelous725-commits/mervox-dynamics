@@ -1,8 +1,8 @@
 "use client";
 
-import { AcademyDB } from "@/utils/academyDb";
 import { useState, useEffect } from "react";
 import { Plus, Trash2, Edit2, Save, Calendar, Clock, Link as LinkIcon, User, X, Film, Video } from "lucide-react";
+import { supabase } from "@/utils/supabaseClient";
 
 interface LiveClass {
   id: string;
@@ -32,67 +32,125 @@ export default function AdminLiveClassesPage() {
   const [link, setLink] = useState("");
   const [courseId, setCourseId] = useState("");
 
-  const loadData = () => {
-    setClasses(AcademyDB.getLiveClasses());
-    setCourses(AcademyDB.getCourses());
+  const loadData = async () => {
+    try {
+      const { data: classData, error: classError } = await supabase
+        .from("live_classes")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (classError) {
+        console.error("Failed to query live classes:", classError);
+      } else if (classData) {
+        setClasses(
+          classData.map((lc: any) => ({
+            id: lc.id,
+            courseId: lc.course_id || lc.courseId || "forex-trading",
+            title: lc.title,
+            description: lc.description || "",
+            instructor: lc.instructor,
+            date: lc.date,
+            time: lc.time,
+            link: lc.link,
+          }))
+        );
+      }
+
+      const { data: courseData } = await supabase.from("courses").select("*");
+      if (courseData) {
+        setCourses(courseData);
+      }
+    } catch (err) {
+      console.error("Exception loading live classes:", err);
+    }
   };
 
   useEffect(() => {
     loadData();
   }, []);
 
-  const handleCreate = (e: React.FormEvent) => {
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !instructor.trim() || !date.trim()) return;
 
-    const newClass: LiveClass = {
-      id: "live-" + Math.random().toString(36).substring(2, 9),
-      courseId: courseId || "forex-trading",
-      title: title.trim(),
-      description: desc.trim(),
-      instructor: instructor.trim(),
-      date: date.trim(),
-      time: time.trim() || "17:00 BST",
-      link: link.trim() || "https://zoom.us/j/mock",
-    };
+    const newId = "live-" + Math.random().toString(36).substring(2, 9);
+    try {
+      const { error } = await supabase.from("live_classes").insert({
+        id: newId,
+        course_id: courseId || "forex-trading",
+        title: title.trim(),
+        description: desc.trim(),
+        instructor: instructor.trim(),
+        date: date.trim(),
+        time: time.trim() || "17:00 BST",
+        link: link.trim() || "https://zoom.us/j/mock",
+      });
 
-    const updated = [...classes, newClass];
-    AcademyDB.saveLiveClasses(updated);
-    setClasses(updated);
-
-    // Reset and close
-    setTitle("");
-    setDesc("");
-    setInstructor("");
-    setDate("");
-    setTime("");
-    setLink("");
-    setIsCreating(false);
+      if (error) {
+        alert(`Failed to create live class: ${error.message}`);
+      } else {
+        loadData();
+        // Reset and close
+        setTitle("");
+        setDesc("");
+        setInstructor("");
+        setDate("");
+        setTime("");
+        setLink("");
+        setIsCreating(false);
+      }
+    } catch (err) {
+      console.error("Exception creating live class:", err);
+    }
   };
 
-  const handleUpdate = () => {
+  const handleUpdate = async () => {
     if (!selectedClass) return;
 
-    const updated = classes.map((c) => {
-      if (c.id === selectedClass.id) {
-        return selectedClass;
-      }
-      return c;
-    });
+    try {
+      const { error } = await supabase
+        .from("live_classes")
+        .update({
+          course_id: selectedClass.courseId,
+          title: selectedClass.title.trim(),
+          description: selectedClass.description.trim(),
+          instructor: selectedClass.instructor.trim(),
+          date: selectedClass.date.trim(),
+          time: selectedClass.time.trim(),
+          link: selectedClass.link.trim(),
+        })
+        .eq("id", selectedClass.id);
 
-    AcademyDB.saveLiveClasses(updated);
-    setClasses(updated);
-    alert("Live class details updated and broadcasted to students.");
+      if (error) {
+        alert(`Failed to update live class: ${error.message}`);
+      } else {
+        loadData();
+        alert("Live class details updated and broadcasted to students.");
+      }
+    } catch (err) {
+      console.error("Exception updating live class:", err);
+    }
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     const confirmAct = confirm("Are you sure you want to cancel this scheduled live class session?");
     if (confirmAct) {
-      const updated = classes.filter((c) => c.id !== id);
-      AcademyDB.saveLiveClasses(updated);
-      setClasses(updated);
-      if (selectedClass?.id === id) {
-        setSelectedClass(null);
+      try {
+        const { error } = await supabase
+          .from("live_classes")
+          .delete()
+          .eq("id", id);
+
+        if (error) {
+          alert(`Failed to delete live class: ${error.message}`);
+        } else {
+          loadData();
+          if (selectedClass?.id === id) {
+            setSelectedClass(null);
+          }
+        }
+      } catch (err) {
+        console.error("Exception deleting live class:", err);
       }
     }
   };

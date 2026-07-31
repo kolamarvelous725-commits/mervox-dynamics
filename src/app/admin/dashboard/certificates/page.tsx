@@ -1,8 +1,8 @@
 "use client";
 
-import { AcademyDB } from "@/utils/academyDb";
 import { useState, useEffect } from "react";
 import { Award, Trash2, RotateCcw, Plus, Calendar, User, BookOpen, X, ShieldAlert, CheckCircle } from "lucide-react";
+import { supabase } from "@/utils/supabaseClient";
 
 interface CertificateItem {
   studentId: string;
@@ -22,41 +22,122 @@ export default function AdminCertificatesPage() {
   const [selectedStudentId, setSelectedStudentId] = useState("");
   const [selectedCourseId, setSelectedCourseId] = useState("");
 
-  const loadData = () => {
-    setCerts(AcademyDB.getAllCertificates());
-    setStudents(AcademyDB.getStudents());
-    setCourses(AcademyDB.getCourses());
+  const loadData = async () => {
+    try {
+      // 1. Fetch student profiles (filter out admin)
+      const { data: studentProfiles } = await supabase
+        .from("profiles")
+        .select("id, full_name, email, role");
+
+      if (studentProfiles) {
+        const studentList = studentProfiles.filter((s: any) => s.email !== "marvelousotugalu012@gmail.com");
+        setStudents(studentList);
+
+        // 2. Fetch certificates list
+        const { data: certData } = await supabase.from("certificates").select("*");
+        if (certData) {
+          setCerts(
+            certData.map((c: any) => {
+              const studentObj = studentProfiles.find((s: any) => s.id === c.user_id);
+              return {
+                studentId: c.user_id,
+                studentName: studentObj?.full_name || "Anonymous Student",
+                studentEmail: studentObj?.email || "",
+                courseId: c.course_id,
+                dateIssued: c.issue_date,
+              };
+            })
+          );
+        }
+      }
+
+      // 3. Fetch courses
+      const { data: courseData } = await supabase.from("courses").select("*");
+      if (courseData) {
+        setCourses(courseData);
+      }
+    } catch (err) {
+      console.error("Failed to load certificates:", err);
+    }
   };
 
   useEffect(() => {
     loadData();
   }, []);
 
-  const handleRevoke = (studentId: string, courseId: string, name: string) => {
+  const handleRevoke = async (studentId: string, courseId: string, name: string) => {
     const confirmAct = confirm(`Are you sure you want to REVOKE the certificate for student "${name}"?\nThis removes download permissions on their profile.`);
     if (confirmAct) {
-      AcademyDB.revokeCertificate(studentId, courseId);
-      loadData();
+      try {
+        const { error } = await supabase
+          .from("certificates")
+          .delete()
+          .eq("user_id", studentId)
+          .eq("course_id", courseId);
+
+        if (error) {
+          alert(`Failed to revoke certificate: ${error.message}`);
+        } else {
+          loadData();
+        }
+      } catch (err) {
+        console.error("Exception revoking certificate:", err);
+      }
     }
   };
 
-  const handleRegenerate = (studentId: string, courseId: string, name: string) => {
+  const handleRegenerate = async (studentId: string, courseId: string, name: string) => {
     const confirmAct = confirm(`Regenerate and sign certificate credentials for student "${name}"?`);
     if (confirmAct) {
-      AcademyDB.regenerateCertificate(studentId, courseId);
-      loadData();
-      alert("Certificate regenerated successfully!");
+      const dateStr = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+      try {
+        const { error } = await supabase
+          .from("certificates")
+          .update({
+            issue_date: dateStr,
+          })
+          .eq("user_id", studentId)
+          .eq("course_id", courseId);
+
+        if (error) {
+          alert(`Failed to regenerate certificate: ${error.message}`);
+        } else {
+          loadData();
+          alert("Certificate regenerated successfully!");
+        }
+      } catch (err) {
+        console.error("Exception regenerating certificate:", err);
+      }
     }
   };
 
-  const handleManualIssue = (e: React.FormEvent) => {
+  const handleManualIssue = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedStudentId || !selectedCourseId) return;
 
-    AcademyDB.regenerateCertificate(selectedStudentId, selectedCourseId);
-    loadData();
-    setIsIssuing(false);
-    alert("Certificate manually issued and pushed to student profile.");
+    const courseObj = courses.find((c) => c.id === selectedCourseId);
+    const dateStr = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+    const newId = "cert-" + Math.random().toString(36).substring(2, 9);
+
+    try {
+      const { error } = await supabase.from("certificates").upsert({
+        id: newId,
+        user_id: selectedStudentId,
+        course_id: selectedCourseId,
+        course_title: courseObj ? courseObj.title : "Academy Program",
+        issue_date: dateStr,
+      });
+
+      if (error) {
+        alert(`Failed to issue manual certificate: ${error.message}`);
+      } else {
+        loadData();
+        setIsIssuing(false);
+        alert("Certificate manually issued and pushed to student profile.");
+      }
+    } catch (err) {
+      console.error("Exception issuing manual certificate:", err);
+    }
   };
 
   const getCourseTitle = (id: string) => {

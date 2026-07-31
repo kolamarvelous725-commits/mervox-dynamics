@@ -1,8 +1,8 @@
 "use client";
 
-import { AcademyDB } from "@/utils/academyDb";
 import { useState, useEffect } from "react";
 import { Search, UserX, Trash2, ShieldAlert, Award, FileText, CheckCircle, Clock, BookOpen, X, Info } from "lucide-react";
+import { supabase } from "@/utils/supabaseClient";
 
 export default function AdminStudentsPage() {
   const [students, setStudents] = useState<any[]>([]);
@@ -10,35 +10,94 @@ export default function AdminStudentsPage() {
   const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
   const [courses, setCourses] = useState<any[]>([]);
 
-  // Load students list
-  const loadData = () => {
-    setStudents(AcademyDB.getStudents());
-    setCourses(AcademyDB.getCourses());
+  // Load students list from Supabase
+  const loadData = async () => {
+    try {
+      const { data: studentList, error: studentError } = await supabase
+        .from("profiles")
+        .select("*");
+
+      if (studentError) {
+        console.error("Failed to query profiles:", studentError);
+      } else if (studentList) {
+        const list = studentList
+          .filter((s: any) => s.email !== "marvelousotugalu012@gmail.com")
+          .map((s: any) => {
+            const splitName = (s.full_name || "Student").split(" ");
+            const firstName = splitName[0] || "Student";
+            const lastName = splitName.slice(1).join(" ") || "";
+            return {
+              id: s.id,
+              firstName,
+              lastName,
+              fullName: s.full_name || "Student",
+              email: s.email,
+              phone: s.phone || "N/A",
+              country: s.country || "N/A",
+              created_at: s.created_at,
+              suspended: s.suspended || false,
+              role: s.role,
+            };
+          });
+        setStudents(list);
+      }
+
+      const { data: courseList } = await supabase.from("courses").select("*");
+      if (courseList) {
+        setCourses(courseList);
+      }
+    } catch (err) {
+      console.error("Exception loading student management roster:", err);
+    }
   };
 
   useEffect(() => {
     loadData();
   }, []);
 
-  const handleToggleSuspend = (id: string, currentlySuspended: boolean) => {
+  const handleToggleSuspend = async (id: string, currentlySuspended: boolean) => {
     const actStr = currentlySuspended ? "unsuspend" : "suspend";
     const confirmAct = confirm(`Are you sure you want to ${actStr} this student account?`);
     if (confirmAct) {
-      AcademyDB.suspendStudent(id, !currentlySuspended);
-      loadData();
-      if (selectedStudent && selectedStudent.id === id) {
-        setSelectedStudent((prev: any) => ({ ...prev, suspended: !currentlySuspended }));
+      try {
+        const { error } = await supabase
+          .from("profiles")
+          .update({ suspended: !currentlySuspended })
+          .eq("id", id);
+
+        if (error) {
+          alert(`Failed to toggle suspension: ${error.message}`);
+        } else {
+          loadData();
+          if (selectedStudent && selectedStudent.id === id) {
+            setSelectedStudent((prev: any) => ({ ...prev, suspended: !currentlySuspended }));
+          }
+        }
+      } catch (err) {
+        console.error("Exception toggling student suspension:", err);
       }
     }
   };
 
-  const handleDeleteStudent = (id: string, name: string) => {
+  const handleDeleteStudent = async (id: string, name: string) => {
     const confirmAct = confirm(`WARNING: Are you sure you want to permanently DELETE student "${name}"?\nThis action cannot be undone.`);
     if (confirmAct) {
-      AcademyDB.deleteStudent(id);
-      loadData();
-      if (selectedStudent && selectedStudent.id === id) {
-        setSelectedStudent(null);
+      try {
+        const { error } = await supabase
+          .from("profiles")
+          .delete()
+          .eq("id", id);
+
+        if (error) {
+          alert(`Failed to delete student profile: ${error.message}`);
+        } else {
+          loadData();
+          if (selectedStudent && selectedStudent.id === id) {
+            setSelectedStudent(null);
+          }
+        }
+      } catch (err) {
+        console.error("Exception deleting student profile:", err);
       }
     }
   };

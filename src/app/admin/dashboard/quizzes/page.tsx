@@ -1,8 +1,9 @@
 "use client";
 
-import { AcademyDB } from "@/utils/academyDb";
 import { useState, useEffect } from "react";
 import { Plus, Trash2, Edit2, CheckSquare, Save, User, Award, CheckCircle, AlertCircle, X, HelpCircle, GraduationCap } from "lucide-react";
+import { supabase } from "@/utils/supabaseClient";
+import { AcademyDB } from "@/utils/academyDb";
 
 interface QuizQuestion {
   q: string;
@@ -32,11 +33,19 @@ export default function AdminQuizzesPage() {
   const [options, setOptions] = useState<string[]>(["", "", ""]);
   const [correctAnswerIndex, setCorrectAnswerIndex] = useState(0);
 
-  const loadData = () => {
-    const cList = AcademyDB.getCourses();
-    setCourses(cList);
-    if (cList.length > 0 && !selectedCourseId) {
-      setSelectedCourseId(cList[0].id);
+  const loadData = async () => {
+    try {
+      const { data, error } = await supabase.from("courses").select("*");
+      if (error) {
+        console.error("Failed to load courses for quizzes:", error);
+      } else if (data) {
+        setCourses(data);
+        if (data.length > 0 && !selectedCourseId) {
+          setSelectedCourseId(data[0].id);
+        }
+      }
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -53,24 +62,37 @@ export default function AdminQuizzesPage() {
     const courseQuestions = allQuizQuestions[selectedCourseId] || [];
     setQuestions(courseQuestions);
 
-    // Load student attempts for this course
-    const students = AcademyDB.getStudents();
-    const courseAttempts: StudentAttempt[] = [];
-    students.forEach((student: any) => {
-      const studentQuizzes = student.quizzes || [];
-      const match = studentQuizzes.find((q: any) => q.courseId === selectedCourseId);
-      if (match) {
-        courseAttempts.push({
-          studentName: `${student.firstName} ${student.lastName}`,
-          studentEmail: student.email,
-          score: match.score,
-          passed: match.passed,
-          attempts: match.attempts,
-          date: match.date,
-        });
+    // Load student attempts for this course from Supabase
+    const loadAttempts = async () => {
+      try {
+        const { data: profiles } = await supabase
+          .from("profiles")
+          .select("id, full_name, email");
+
+        const { data: quizzes } = await supabase
+          .from("quizzes")
+          .select("*")
+          .eq("course_id", selectedCourseId);
+
+        if (profiles && quizzes) {
+          const mappedAttempts = quizzes.map((q: any) => {
+            const student = profiles.find((p) => p.id === q.user_id);
+            return {
+              studentName: student?.full_name || "Anonymous Student",
+              studentEmail: student?.email || "",
+              score: q.score,
+              passed: q.passed,
+              attempts: 1,
+              date: "Evaluated",
+            };
+          });
+          setAttempts(mappedAttempts);
+        }
+      } catch (err) {
+        console.error("Failed to load quiz attempts:", err);
       }
-    });
-    setAttempts(courseAttempts);
+    };
+    loadAttempts();
   }, [selectedCourseId, courses]);
 
   const handleOpenCreateQuestion = () => {

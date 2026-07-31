@@ -5,6 +5,7 @@ import { AcademyDB } from "@/utils/academyDb";
 import { useState, useEffect } from "react";
 import { FileText, Calendar, Upload, CheckCircle2, ChevronRight, BookOpen, AlertCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/utils/supabaseClient";
 
 interface Assignment {
   id: string;
@@ -24,75 +25,125 @@ export default function AssignmentsPage() {
 
   const [coursesEnrolled, setCoursesEnrolled] = useState(0);
   const [assignments, setAssignments] = useState<Assignment[]>([]);
-
-  // Simulated assignments template list
-  const templates: Omit<Assignment, "status">[] = [
-    {
-      id: "asg-forex",
-      courseId: "forex-trading",
-      courseTitle: "Forex Trading Masterclass",
-      title: "Support & Resistance Area Marking Practice",
-      dueDate: "August 10, 2026",
-    },
-    {
-      id: "asg-ai",
-      courseId: "ai-automation",
-      courseTitle: "AI & Business Automation",
-      title: "ChatGPT Lead-Gen Workflow Make.com Setup Blueprint",
-      dueDate: "August 15, 2026",
-    },
-    {
-      id: "asg-web",
-      courseId: "web-dev",
-      courseTitle: "Web & Software Development",
-      title: "React Modular Dashboard Layout Build",
-      dueDate: "August 20, 2026",
-    },
-  ];
+  const [progressRows, setProgressRows] = useState<any[]>([]);
 
   useEffect(() => {
     if (userId) {
-      const progress = AcademyDB.getProgress(userId);
-      setCoursesEnrolled(progress.length);
+      const loadAssignments = async () => {
+        try {
+          // 1. Fetch student's progress rows
+          const { data: userProgress } = await supabase
+            .from("progress")
+            .select("*")
+            .eq("user_id", userId);
 
-      // Load or initialize assignments list
-      const savedKey = `mervox_academy_assignments_${userId}`;
-      const savedData = localStorage.getItem(savedKey);
-      if (savedData) {
-        setAssignments(JSON.parse(savedData));
-      } else {
-        // Filter templates by enrolled courseIds
-        const activeIds = progress.map((p) => p.courseId);
-        const filtered = templates
-          .filter((t) => activeIds.includes(t.courseId))
-          .map((t) => ({ ...t, status: "Pending" as const }));
-        
-        localStorage.setItem(savedKey, JSON.stringify(filtered));
-        setAssignments(filtered);
-      }
+          const progress = userProgress || [];
+          setProgressRows(progress);
+          setCoursesEnrolled(progress.length);
+
+          const enrolledCourseIds = progress.map((p: any) => p.course_id);
+
+          // 2. Fetch all assignments
+          const { data: allAsgs } = await supabase
+            .from("assignments")
+            .select("*");
+
+          if (allAsgs) {
+            // Filter assignments matching enrolled course IDs
+            const filteredAsgs = allAsgs.filter((a: any) => enrolledCourseIds.includes(a.course_id));
+
+            // Map and attach submissions from lessons_completed JSON
+            const mapped = filteredAsgs.map((a: any) => {
+              const courseProg = progress.find((p: any) => p.course_id === a.course_id);
+              const submissionObj = courseProg?.lessons_completed?.assignments?.find((sub: any) => sub.id === a.id);
+
+              return {
+                id: a.id,
+                courseId: a.course_id,
+                courseTitle: a.course_title,
+                title: a.title,
+                dueDate: a.due_date,
+                status: (submissionObj?.status || "Pending") as "Pending" | "Submitted" | "Graded",
+                grade: submissionObj?.grade || "",
+                feedback: submissionObj?.feedback || "",
+              };
+            });
+
+            setAssignments(mapped);
+          }
+        } catch (err) {
+          console.error("Failed to load assignments:", err);
+        }
+      };
+
+      loadAssignments();
     }
   }, [userId]);
 
-  const handleUpload = (id: string, title: string, courseTitle: string) => {
-    // Simulated upload file picker
+  const handleUpload = async (id: string, title: string, courseTitle: string) => {
     const confirmUpload = confirm(`Simulate file checkpoint upload for:\n"${title}"?\n\nClick OK to confirm submission.`);
     if (confirmUpload) {
-      const savedKey = `mervox_academy_assignments_${userId}`;
-      const updated = assignments.map((asg) => {
-        if (asg.id === id) {
-          return { ...asg, status: "Submitted" as const };
+      try {
+        const asgItem = assignments.find((a) => a.id === id);
+        if (!asgItem) return;
+
+        const matchingProg = progressRows.find((p) => p.course_id === asgItem.courseId);
+        if (!matchingProg) return;
+
+        const currentLessonsCompleted = matchingProg.lessons_completed || {};
+        const currentAsgs = currentLessonsCompleted.assignments || [];
+
+        const updatedAsgs = [
+          ...currentAsgs.filter((a: any) => a.id !== id),
+          {
+            id,
+            status: "Submitted",
+            fileName: `${title.replace(/\s+/g, "_")}.pdf`,
+            dateSubmitted: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
+            grade: "",
+            feedback: "",
+          },
+        ];
+
+        const updatedLessonsCompleted = {
+          ...currentLessonsCompleted,
+          assignments: updatedAsgs,
+        };
+
+        const { error } = await supabase
+          .from("progress")
+          .update({
+            lessons_completed: updatedLessonsCompleted,
+          })
+          .eq("id", matchingProg.id);
+
+        if (error) {
+          alert(`Failed to submit assignment: ${error.message}`);
+        } else {
+          // Trigger reload
+          setProgressRows((prev) =>
+            prev.map((p) => {
+              if (p.id === matchingProg.id) {
+                return { ...p, lessons_completed: updatedLessonsCompleted };
+              }
+              return p;
+            })
+          );
+
+          setAssignments((prev) =>
+            prev.map((a) => {
+              if (a.id === id) {
+                return { ...a, status: "Submitted" };
+              }
+              return a;
+            })
+          );
+
+          alert("Submission successful! Mentor feedback will render here upon evaluation.");
         }
-        return asg;
-      });
-
-      localStorage.setItem(savedKey, JSON.stringify(updated));
-      setAssignments(updated);
-
-      // Log activity
-      AcademyDB.logActivity(userId, "lesson", `Submitted Assignment: ${title}`);
-      // Notify
-      AcademyDB.addNotification(userId, `Assignment successfully submitted for review: ${courseTitle}.`);
-      alert("Submission successful! Mentor feedback will render here upon evaluation.");
+      } catch (err) {
+        console.error("Exception submitting assignment:", err);
+      }
     }
   };
 

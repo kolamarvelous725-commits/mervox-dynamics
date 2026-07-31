@@ -1,9 +1,9 @@
 "use client";
 
-import { AcademyDB } from "@/utils/academyDb";
 import { useState, useEffect } from "react";
 import { Plus, Trash2, Edit2, Play, FileText, Upload, Save, ArrowRight, Eye, EyeOff, X, HelpCircle, Layers } from "lucide-react";
 import Image from "next/image";
+import { supabase } from "@/utils/supabaseClient";
 
 interface Course {
   id: string;
@@ -32,62 +32,118 @@ export default function AdminCoursesPage() {
   const [uploadedVideo, setUploadedVideo] = useState("");
   const [uploadedPdf, setUploadedPdf] = useState("");
 
-  const loadData = () => {
-    setCourses(AcademyDB.getCourses());
+  const loadData = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("courses")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Failed to query courses:", error);
+      } else if (data) {
+        setCourses(
+          data.map((c: any) => ({
+            id: c.id,
+            title: c.title,
+            description: c.description || "",
+            thumbnail: c.thumbnail || "/course-forex-v3.webp",
+            lessons: c.lessons || [],
+            published: c.published,
+            videos: c.videos || [],
+            pdfs: c.pdfs || [],
+          }))
+        );
+      }
+    } catch (err) {
+      console.error("Exception loading courses:", err);
+    }
   };
 
   useEffect(() => {
     loadData();
   }, []);
 
-  const handleCreateCourse = (e: React.FormEvent) => {
+  const handleCreateCourse = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newTitle.trim()) return;
 
-    const newCourse: Course = {
-      id: newTitle.toLowerCase().replace(/\s+/g, "-"),
-      title: newTitle.trim(),
-      description: newDesc.trim(),
-      thumbnail: newThumb,
-      lessons: ["Lesson 1: Introduction to Program Foundations"],
-      published: false,
-      videos: [],
-      pdfs: [],
-    };
+    const newId = newTitle.toLowerCase().replace(/\s+/g, "-");
+    try {
+      const { error } = await supabase.from("courses").insert({
+        id: newId,
+        title: newTitle.trim(),
+        description: newDesc.trim(),
+        thumbnail: newThumb,
+        lessons: ["Lesson 1: Introduction to Program Foundations"],
+        published: false,
+        total_lessons: 1,
+        videos: [],
+        pdfs: [],
+      });
 
-    const updated = [...courses, newCourse];
-    AcademyDB.saveCourses(updated);
-    loadData();
-
-    // Reset fields
-    setNewTitle("");
-    setNewDesc("");
-    setIsCreating(false);
+      if (error) {
+        alert(`Failed to create course: ${error.message}`);
+      } else {
+        loadData();
+        // Reset fields
+        setNewTitle("");
+        setNewDesc("");
+        setIsCreating(false);
+      }
+    } catch (err) {
+      console.error("Exception creating course:", err);
+    }
   };
 
-  const handleUpdateCourse = () => {
+  const handleUpdateCourse = async () => {
     if (!selectedCourse) return;
 
-    const updated = courses.map((c) => {
-      if (c.id === selectedCourse.id) {
-        return selectedCourse;
-      }
-      return c;
-    });
+    try {
+      const { error } = await supabase
+        .from("courses")
+        .update({
+          title: selectedCourse.title.trim(),
+          description: selectedCourse.description.trim(),
+          thumbnail: selectedCourse.thumbnail,
+          lessons: selectedCourse.lessons,
+          published: selectedCourse.published,
+          total_lessons: selectedCourse.lessons?.length || 0,
+          videos: selectedCourse.videos || [],
+          pdfs: selectedCourse.pdfs || [],
+        })
+        .eq("id", selectedCourse.id);
 
-    AcademyDB.saveCourses(updated);
-    setCourses(updated);
-    alert("Course updates saved and synced successfully!");
+      if (error) {
+        alert(`Failed to save course updates: ${error.message}`);
+      } else {
+        loadData();
+        alert("Course updates saved and synced successfully!");
+      }
+    } catch (err) {
+      console.error("Exception updating course:", err);
+    }
   };
 
-  const handleDeleteCourse = (id: string, name: string) => {
+  const handleDeleteCourse = async (id: string, name: string) => {
     const confirmAct = confirm(`WARNING: Are you sure you want to permanently DELETE course "${name}"?\nAll student enrollments progress will be affected.`);
     if (confirmAct) {
-      const updated = courses.filter((c) => c.id !== id);
-      AcademyDB.saveCourses(updated);
-      setCourses(updated);
-      if (selectedCourse?.id === id) {
-        setSelectedCourse(null);
+      try {
+        const { error } = await supabase
+          .from("courses")
+          .delete()
+          .eq("id", id);
+
+        if (error) {
+          alert(`Failed to delete course: ${error.message}`);
+        } else {
+          loadData();
+          if (selectedCourse?.id === id) {
+            setSelectedCourse(null);
+          }
+        }
+      } catch (err) {
+        console.error("Exception deleting course:", err);
       }
     }
   };

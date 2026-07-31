@@ -1,8 +1,8 @@
 "use client";
 
-import { AcademyDB } from "@/utils/academyDb";
 import { useState, useEffect } from "react";
 import { UserCheck, BookOpen, Clock, Calendar, Search } from "lucide-react";
+import { supabase } from "@/utils/supabaseClient";
 
 interface EnrollmentItem {
   studentName: string;
@@ -19,27 +19,43 @@ export default function AdminEnrollmentsPage() {
   const [courses, setCourses] = useState<any[]>([]);
 
   useEffect(() => {
-    const students = AcademyDB.getStudents();
-    const courseList = AcademyDB.getCourses();
-    setCourses(courseList);
+    const loadEnrollments = async () => {
+      try {
+        const { data: enrollData } = await supabase
+          .from("enrollments")
+          .select("*, profiles(full_name, email)");
 
-    const list: EnrollmentItem[] = [];
-    students.forEach((student: any) => {
-      const progress = student.progress || [];
-      progress.forEach((p: any) => {
-        const course = courseList.find((c) => c.id === p.courseId);
-        list.push({
-          studentName: `${student.firstName} ${student.lastName}`,
-          studentEmail: student.email,
-          courseTitle: course ? course.title : p.courseId,
-          progress: p.progress,
-          status: p.status,
-          studyMinutes: p.studyMinutes || 0,
-        });
-      });
-    });
+        const { data: progressData } = await supabase
+          .from("progress")
+          .select("*");
 
-    setEnrollments(list);
+        const { data: courseData } = await supabase
+          .from("courses")
+          .select("*");
+
+        if (enrollData && progressData && courseData) {
+          setCourses(courseData);
+          const list: EnrollmentItem[] = enrollData.map((e: any) => {
+            const courseObj = courseData.find((c) => c.id === e.course_id);
+            const progObj = progressData.find((p) => p.user_id === e.user_id && p.course_id === e.course_id);
+
+            return {
+              studentName: e.profiles?.full_name || "Anonymous Student",
+              studentEmail: e.profiles?.email || "",
+              courseTitle: courseObj ? courseObj.title : e.course_id,
+              progress: progObj ? progObj.progress_percent : 0,
+              status: e.status || "In Progress",
+              studyMinutes: progObj?.lessons_completed?.study_minutes || 0,
+            };
+          });
+          setEnrollments(list);
+        }
+      } catch (err) {
+        console.error("Failed to load enrollments from Supabase:", err);
+      }
+    };
+
+    loadEnrollments();
   }, []);
 
   const filteredEnrollments = enrollments.filter(

@@ -1,8 +1,8 @@
 "use client";
 
-import { AcademyDB } from "@/utils/academyDb";
 import { useState, useEffect } from "react";
 import { Plus, Trash2, FileText, Send, Save, CheckCircle, Clock, Calendar, User, BookOpen, AlertCircle, X, CheckSquare } from "lucide-react";
+import { supabase } from "@/utils/supabaseClient";
 
 interface AssignmentTask {
   id: string;
@@ -24,6 +24,7 @@ interface Submission {
   status: "Pending" | "Graded";
   grade: string;
   feedback: string;
+  progressRowId: string;
 }
 
 export default function AdminAssignmentsPage() {
@@ -46,86 +47,184 @@ export default function AdminAssignmentsPage() {
   const [gradeInput, setGradeInput] = useState("");
   const [feedbackInput, setFeedbackInput] = useState("");
 
-  const loadData = () => {
-    setTasks(AcademyDB.getAssignments());
-    setSubmissions(AcademyDB.getSubmissions());
-    setCourses(AcademyDB.getCourses());
+  const loadData = async () => {
+    try {
+      // 1. Fetch assignment tasks from Supabase
+      const { data: taskData, error: taskError } = await supabase
+        .from("assignments")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (taskError) {
+        console.error("Failed to load tasks:", taskError);
+      } else if (taskData) {
+        setTasks(
+          taskData.map((t: any) => ({
+            id: t.id,
+            courseId: t.course_id,
+            courseTitle: t.course_title,
+            title: t.title,
+            dueDate: t.due_date,
+          }))
+        );
+      }
+
+      // 2. Fetch student names map
+      const { data: studentProfiles } = await supabase
+        .from("profiles")
+        .select("id, full_name");
+      const nameMap = new Map(studentProfiles?.map((s) => [s.id, s.full_name]) || []);
+
+      // 3. Fetch submissions from progress table
+      const { data: progressRows, error: progressError } = await supabase
+        .from("progress")
+        .select("id, user_id, course_id, lessons_completed");
+
+      if (progressError) {
+        console.error("Failed to load student progress for assignments:", progressError);
+      } else if (progressRows) {
+        const subsList: Submission[] = [];
+        progressRows.forEach((p: any) => {
+          const assignmentsList = p.lessons_completed?.assignments || [];
+          assignmentsList.forEach((sub: any) => {
+            subsList.push({
+              id: `${p.id}_${sub.id}`,
+              studentId: p.user_id,
+              studentName: nameMap.get(p.user_id) || "Anonymous Student",
+              assignmentId: sub.id,
+              courseTitle: p.course_id === "forex-trading" ? "Forex Trading Masterclass" : p.course_id === "ai-automation" ? "AI & Business Automation" : "Academy Course",
+              assignmentTitle: sub.fileName || "Project Checkpoint",
+              fileName: sub.fileName || "Project.pdf",
+              dateSubmitted: sub.dateSubmitted || "Today",
+              status: sub.status || "Pending",
+              grade: sub.grade || "",
+              feedback: sub.feedback || "",
+              progressRowId: p.id,
+            });
+          });
+        });
+        setSubmissions(subsList);
+      }
+
+      // 4. Fetch courses
+      const { data: courseData } = await supabase.from("courses").select("*");
+      if (courseData) {
+        setCourses(courseData);
+      }
+    } catch (err) {
+      console.error("Exception loading assignments admin data:", err);
+    }
   };
 
   useEffect(() => {
     loadData();
   }, []);
 
-  const handleCreateTask = (e: React.FormEvent) => {
+  const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !dueDate.trim()) return;
 
     const courseObj = courses.find((c) => c.id === courseId) || courses[0];
-    const newTask: AssignmentTask = {
-      id: "asg-" + Math.random().toString(36).substring(2, 9),
-      courseId: courseId || courses[0]?.id || "forex-trading",
-      courseTitle: courseObj ? courseObj.title : "Academy Course",
-      title: title.trim(),
-      dueDate: dueDate.trim(),
-    };
+    const newId = "asg-" + Math.random().toString(36).substring(2, 9);
 
-    const updated = [...tasks, newTask];
-    AcademyDB.saveAssignments(updated);
-    setTasks(updated);
-
-    // Reset student assignment instances as well!
-    const students = AcademyDB.getStudents();
-    students.forEach((student) => {
-      const studentAsgKey = `mervox_academy_assignments_${student.id}`;
-      const existingStr = localStorage.getItem(studentAsgKey);
-      const studentAsgs = existingStr ? JSON.parse(existingStr) : [];
-      studentAsgs.push({
-        id: newTask.id,
-        courseId: newTask.courseId,
-        courseTitle: newTask.courseTitle,
-        title: newTask.title,
-        dueDate: newTask.dueDate,
-        status: "Pending",
-        grade: "",
-        feedback: "",
+    try {
+      const { error } = await supabase.from("assignments").insert({
+        id: newId,
+        course_id: courseId || courses[0]?.id || "forex-trading",
+        course_title: courseObj ? courseObj.title : "Academy Course",
+        title: title.trim(),
+        due_date: dueDate.trim(),
       });
-      localStorage.setItem(studentAsgKey, JSON.stringify(studentAsgs));
-      AcademyDB.syncUserData(student.id);
-    });
 
-    // Reset and close
-    setTitle("");
-    setDueDate("");
-    setIsCreating(false);
-    alert("New assignment task broadcasted to all course enrollees!");
-  };
-
-  const handleDeleteTask = (id: string) => {
-    const confirmAct = confirm("Are you sure you want to delete this assignment task description?");
-    if (confirmAct) {
-      const updated = tasks.filter((t) => t.id !== id);
-      AcademyDB.saveAssignments(updated);
-      setTasks(updated);
+      if (error) {
+        alert(`Failed to create assignment: ${error.message}`);
+      } else {
+        loadData();
+        // Reset and close
+        setTitle("");
+        setDueDate("");
+        setIsCreating(false);
+        alert("New assignment task broadcasted to all course enrollees!");
+      }
+    } catch (err) {
+      console.error("Exception creating assignment:", err);
     }
   };
 
-  const handleGradeSubmit = (e: React.FormEvent) => {
+  const handleDeleteTask = async (id: string) => {
+    const confirmAct = confirm("Are you sure you want to delete this assignment task description?");
+    if (confirmAct) {
+      try {
+        const { error } = await supabase
+          .from("assignments")
+          .delete()
+          .eq("id", id);
+
+        if (error) {
+          alert(`Failed to delete assignment: ${error.message}`);
+        } else {
+          loadData();
+        }
+      } catch (err) {
+        console.error("Exception deleting assignment task:", err);
+      }
+    }
+  };
+
+  const handleGradeSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedSubmission || !gradeInput.trim()) return;
 
-    AcademyDB.gradeSubmission(selectedSubmission.id, gradeInput.trim(), feedbackInput.trim());
-    
-    // Refresh
-    const freshSubs = AcademyDB.getSubmissions();
-    setSubmissions(freshSubs);
-    
-    const updatedSub = freshSubs.find((s) => s.id === selectedSubmission.id) || null;
-    setSelectedSubmission(updatedSub);
+    const progressRowId = selectedSubmission.progressRowId;
 
-    // Reset inputs
-    setGradeInput("");
-    setFeedbackInput("");
-    alert("Grade and feedback saved! Student has been notified.");
+    try {
+      const { data: progRow } = await supabase
+        .from("progress")
+        .select("*")
+        .eq("id", progressRowId)
+        .single();
+
+      if (progRow) {
+        const currentLessonsCompleted = progRow.lessons_completed || {};
+        const currentAsgs = currentLessonsCompleted.assignments || [];
+
+        const updatedAsgs = currentAsgs.map((a: any) => {
+          if (a.id === selectedSubmission.assignmentId) {
+            return {
+              ...a,
+              status: "Graded",
+              grade: gradeInput.trim(),
+              feedback: feedbackInput.trim(),
+            };
+          }
+          return a;
+        });
+
+        const updatedLessonsCompleted = {
+          ...currentLessonsCompleted,
+          assignments: updatedAsgs,
+        };
+
+        const { error } = await supabase
+          .from("progress")
+          .update({
+            lessons_completed: updatedLessonsCompleted,
+          })
+          .eq("id", progressRowId);
+
+        if (error) {
+          alert(`Failed to save grade: ${error.message}`);
+        } else {
+          loadData();
+          setGradeInput("");
+          setFeedbackInput("");
+          setSelectedSubmission(null);
+          alert("Grade and feedback saved! Student has been notified.");
+        }
+      }
+    } catch (err) {
+      console.error("Exception grading submission:", err);
+    }
   };
 
   return (

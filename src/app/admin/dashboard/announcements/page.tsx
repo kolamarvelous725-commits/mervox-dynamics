@@ -1,8 +1,8 @@
 "use client";
 
-import { AcademyDB } from "@/utils/academyDb";
 import { useState, useEffect } from "react";
 import { Plus, Trash2, Edit2, Megaphone, Save, Calendar, Tag, X, Info } from "lucide-react";
+import { supabase } from "@/utils/supabaseClient";
 
 interface Announcement {
   id: string;
@@ -24,60 +24,109 @@ export default function AdminAnnouncementsPage() {
   const [content, setContent] = useState("");
   const [tag, setTag] = useState<"academic" | "event" | "alert">("academic");
 
-  const loadData = () => {
-    setAnnouncements(AcademyDB.getAnnouncements());
+  const loadData = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("announcements")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Failed to load announcements:", error);
+      } else if (data) {
+        setAnnouncements(
+          data.map((ann: any) => ({
+            id: ann.id,
+            title: ann.title,
+            content: ann.content,
+            date: ann.date,
+            tag: (ann.category || "academic") as "academic" | "event" | "alert",
+          }))
+        );
+      }
+    } catch (err) {
+      console.error("Exception loading announcements:", err);
+    }
   };
 
   useEffect(() => {
     loadData();
   }, []);
 
-  const handleCreate = (e: React.FormEvent) => {
+  const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !content.trim()) return;
 
-    const newAnn: Announcement = {
-      id: "ann-" + Math.random().toString(36).substring(2, 9),
-      title: title.trim(),
-      content: content.trim(),
-      date: new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
-      tag,
-    };
+    const newId = "ann-" + Math.random().toString(36).substring(2, 9);
+    const dateStr = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
-    const updated = [newAnn, ...announcements];
-    AcademyDB.saveAnnouncements(updated);
-    setAnnouncements(updated);
+    try {
+      const { error } = await supabase.from("announcements").insert({
+        id: newId,
+        title: title.trim(),
+        content: content.trim(),
+        category: tag,
+        date: dateStr,
+      });
 
-    // Reset and close
-    setTitle("");
-    setContent("");
-    setTag("academic");
-    setIsCreating(false);
+      if (error) {
+        alert(`Failed to broadcast announcement: ${error.message}`);
+      } else {
+        loadData();
+        // Reset and close
+        setTitle("");
+        setContent("");
+        setTag("academic");
+        setIsCreating(false);
+      }
+    } catch (err) {
+      console.error("Exception creating announcement:", err);
+    }
   };
 
-  const handleUpdate = () => {
+  const handleUpdate = async () => {
     if (!selectedAnnouncement) return;
 
-    const updated = announcements.map((a) => {
-      if (a.id === selectedAnnouncement.id) {
-        return selectedAnnouncement;
-      }
-      return a;
-    });
+    try {
+      const { error } = await supabase
+        .from("announcements")
+        .update({
+          title: selectedAnnouncement.title.trim(),
+          content: selectedAnnouncement.content.trim(),
+          category: selectedAnnouncement.tag,
+        })
+        .eq("id", selectedAnnouncement.id);
 
-    AcademyDB.saveAnnouncements(updated);
-    setAnnouncements(updated);
-    alert("Announcement updated successfully!");
+      if (error) {
+        alert(`Failed to update announcement: ${error.message}`);
+      } else {
+        loadData();
+        alert("Announcement updated successfully!");
+      }
+    } catch (err) {
+      console.error("Exception updating announcement:", err);
+    }
   };
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     const confirmAct = confirm("Are you sure you want to permanently delete this broadcast announcement?");
     if (confirmAct) {
-      const updated = announcements.filter((a) => a.id !== id);
-      AcademyDB.saveAnnouncements(updated);
-      setAnnouncements(updated);
-      if (selectedAnnouncement?.id === id) {
-        setSelectedAnnouncement(null);
+      try {
+        const { error } = await supabase
+          .from("announcements")
+          .delete()
+          .eq("id", id);
+
+        if (error) {
+          alert(`Failed to delete announcement: ${error.message}`);
+        } else {
+          loadData();
+          if (selectedAnnouncement?.id === id) {
+            setSelectedAnnouncement(null);
+          }
+        }
+      } catch (err) {
+        console.error("Exception deleting announcement:", err);
       }
     }
   };
