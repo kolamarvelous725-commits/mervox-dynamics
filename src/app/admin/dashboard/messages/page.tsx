@@ -1,8 +1,8 @@
 "use client";
 
-import { AcademyDB } from "@/utils/academyDb";
 import { useState, useEffect } from "react";
 import { Send, MessageSquare, Shield, User, CornerDownLeft, Sparkles, Inbox, RefreshCw } from "lucide-react";
+import { supabase } from "@/utils/supabaseClient";
 
 interface Message {
   id: string;
@@ -25,36 +25,105 @@ export default function AdminMessagesPage() {
   const [selectedThreadIndex, setSelectedThreadIndex] = useState<number | null>(null);
   const [replyText, setReplyText] = useState("");
 
-  const loadData = () => {
-    const rawThreads = AcademyDB.getAllMessageThreads();
-    setThreads(rawThreads);
-    if (rawThreads.length > 0 && selectedThreadIndex === null) {
-      setSelectedThreadIndex(0);
+  const loadData = async () => {
+    try {
+      // 1. Fetch profiles to map user_id -> full_name
+      const { data: students } = await supabase
+        .from("profiles")
+        .select("id, full_name")
+        .eq("role", "student");
+      const nameMap = new Map(students?.map((s) => [s.id, s.full_name]) || []);
+
+      // 2. Fetch all messages ordered by time
+      const { data: allMsgs } = await supabase
+        .from("messages")
+        .select("*")
+        .order("created_at", { ascending: true });
+
+      // 3. Group messages into support threads
+      const threadsMap = new Map<string, MessageThread>();
+      allMsgs?.forEach((m: any) => {
+        const key = `${m.user_id}_${m.channel_id}`;
+        const studentName = nameMap.get(m.user_id) || "Anonymous Student";
+        if (!threadsMap.has(key)) {
+          threadsMap.set(key, {
+            studentId: m.user_id,
+            studentName,
+            channelId: m.channel_id,
+            lastMessage: "",
+            lastMessageTime: "",
+            messages: [],
+          });
+        }
+        const t = threadsMap.get(key)!;
+        t.messages.push({
+          id: m.id,
+          sender: m.sender as "student" | "mentor",
+          text: m.text,
+          time: m.time,
+        });
+        t.lastMessage = m.text;
+        t.lastMessageTime = m.time;
+      });
+
+      const sortedThreads = Array.from(threadsMap.values());
+      setThreads(sortedThreads);
+      if (sortedThreads.length > 0 && selectedThreadIndex === null) {
+        setSelectedThreadIndex(0);
+      }
+    } catch (err) {
+      console.error("Failed to load message threads:", err);
     }
   };
 
   useEffect(() => {
     loadData();
-    
-    // Auto refresh every 5 seconds to mock new student messages popping up
-    const interval = setInterval(() => {
-      const activeIdx = selectedThreadIndex;
-      const rawThreads = AcademyDB.getAllMessageThreads();
-      setThreads(rawThreads);
-    }, 5000);
 
-    return () => clearInterval(interval);
+    // Setup real-time listener for incoming messages
+    const channel = supabase
+      .channel("admin-chat-listener")
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "messages" },
+        (payload) => {
+          loadData();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [selectedThreadIndex]);
 
-  const handleSendReply = (e: React.FormEvent) => {
+  const handleSendReply = async (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedThreadIndex === null || !replyText.trim()) return;
 
     const thread = threads[selectedThreadIndex];
-    AcademyDB.sendAdminReply(thread.studentId, thread.channelId, replyText.trim());
-
+    const msgText = replyText.trim();
     setReplyText("");
-    loadData();
+
+    const timestamp = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+
+    try {
+      const { error } = await supabase.from("messages").insert({
+        user_id: thread.studentId,
+        channel_id: thread.channelId,
+        text: msgText,
+        sender: "mentor",
+        time: timestamp,
+      });
+
+      if (error) {
+        console.error("Failed to send admin reply:", error);
+        alert(`Failed to send message: ${error.message}`);
+      } else {
+        loadData();
+      }
+    } catch (err) {
+      console.error("Exception sending reply:", err);
+    }
   };
 
   const getChannelName = (id: string) => {

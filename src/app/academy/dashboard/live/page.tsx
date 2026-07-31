@@ -13,15 +13,8 @@ export default function LiveClassesPage() {
   const router = useRouter();
 
   const [coursesEnrolled, setCoursesEnrolled] = useState(0);
-  const [liveSessions, setLiveSessions] = useState<any[]>([]);
-
-  useEffect(() => {
-    if (userId) {
-      const progress = AcademyDB.getProgress(userId);
-      setCoursesEnrolled(progress.length);
-      setLiveSessions(AcademyDB.getLiveClasses());
-    }
-  }, [userId]);
+  const [upcomingClasses, setUpcomingClasses] = useState<any[]>([]);
+  const [pastRecordings, setPastRecordings] = useState<any[]>([]);
 
   const getThumbnailForCourse = (courseId: string) => {
     if (courseId === "forex-trading") return "/course-forex-v3.webp";
@@ -30,29 +23,62 @@ export default function LiveClassesPage() {
     return "/course-youtube-v3.webp";
   };
 
-  const pastRecordings = [
-    {
-      id: "rec-1",
-      title: "Forex Indicators & Support-Resistance Setup",
-      duration: "1h 45m",
-      date: "July 25, 2026",
-      thumbnail: "/course-forex-v3.webp",
-    },
-    {
-      id: "rec-2",
-      title: "ChatGPT Lead Gen Automation workflow setup",
-      duration: "1h 20m",
-      date: "July 26, 2026",
-      thumbnail: "/course-ai-v3.webp",
-    },
-    {
-      id: "rec-3",
-      title: "Modular Landing layouts & routing practices",
-      duration: "1h 55m",
-      date: "July 28, 2026",
-      thumbnail: "/course-webdev-v3.webp",
-    },
-  ];
+  useEffect(() => {
+    if (userId) {
+      const progress = AcademyDB.getProgress(userId);
+      setCoursesEnrolled(progress.length);
+      
+      const allSessions = AcademyDB.getLiveClasses();
+      const now = new Date();
+      
+      const upcoming: any[] = [];
+      const past: any[] = [];
+      
+      allSessions.forEach((s: any) => {
+        let isPast = false;
+        try {
+          const cleanDateStr = s.date.replace(/BST|EST|GMT/i, "").trim();
+          const sessionDate = new Date(cleanDateStr);
+          if (sessionDate < now) {
+            isPast = true;
+          }
+        } catch {
+          // default false
+        }
+
+        const item = {
+          id: s.id,
+          title: s.title,
+          courseId: s.course_id || s.courseId,
+          instructor: s.instructor,
+          date: s.date,
+          time: s.time,
+          link: s.link,
+          thumbnail: getThumbnailForCourse(s.course_id || s.courseId),
+          duration: "1h 30m"
+        };
+
+        if (isPast) {
+          past.push(item);
+        } else {
+          upcoming.push(item);
+        }
+      });
+
+      setUpcomingClasses(upcoming);
+      setPastRecordings(past.length > 0 ? past : allSessions.map(s => ({
+        id: s.id,
+        title: s.title,
+        courseId: s.course_id || s.courseId,
+        instructor: s.instructor,
+        date: s.date,
+        time: s.time,
+        link: s.link,
+        thumbnail: getThumbnailForCourse(s.course_id || s.courseId),
+        duration: "1h 30m"
+      })));
+    }
+  }, [userId]);
 
   const handleJoinClass = (title: string) => {
     alert(`Launching live mentoring session stream:\n"${title}"\n\nConnecting to Zoom portal...`);
@@ -102,46 +128,52 @@ export default function LiveClassesPage() {
             </h3>
 
             <div className="space-y-4">
-              {liveSessions.map((session) => (
-                <div
-                  key={session.id}
-                  className="p-5 rounded-2xl border border-card-border bg-white dark:bg-[#18181c] flex flex-col md:flex-row items-start md:items-center gap-5 shadow-xs transition-all hover:border-slate-350 dark:hover:border-slate-800"
-                >
-                  <div className="relative w-full md:w-36 aspect-video rounded-xl overflow-hidden shrink-0 border border-card-border/40 bg-slate-100 dark:bg-slate-900">
-                    <Image src={session.thumbnail || getThumbnailForCourse(session.courseId)} alt={session.title} fill className="object-cover" />
-                  </div>
-                  
-                  <div className="space-y-2 flex-grow">
-                    <div className="flex gap-2 items-center">
-                      <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-red-100 text-red-700 dark:bg-red-955/20 dark:text-red-400 animate-pulse">
-                        {session.status || "Upcoming"}
-                      </span>
-                      <span className="text-[10px] text-slate-400 font-semibold">{session.instructor}</span>
-                    </div>
-                    <h4 className="text-sm font-heading font-black text-slate-800 dark:text-white leading-snug">
-                      {session.title}
-                    </h4>
-                    <div className="flex flex-wrap gap-4 text-[10px] text-slate-450 dark:text-slate-450 font-bold uppercase tracking-wide">
-                      <span className="flex items-center gap-1">
-                        <Calendar className="w-3.5 h-3.5 text-slate-400" />
-                        {session.date}
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3.5 h-3.5 text-slate-400" />
-                        {session.time}
-                      </span>
-                    </div>
-                  </div>
-                  
-                  <button
-                    onClick={() => handleJoinClass(session.title)}
-                    className="w-full md:w-auto px-5 py-2.5 flex items-center justify-center gap-1.5 text-xs font-bold text-white bg-red-500 hover:bg-red-600 rounded-xl transition-all cursor-pointer shadow-xs shrink-0 self-stretch md:self-auto"
-                  >
-                    <span>Join Session</span>
-                    <ExternalLink className="w-4 h-4" />
-                  </button>
+              {upcomingClasses.length === 0 ? (
+                <div className="p-6 text-center border border-card-border/60 bg-white dark:bg-[#18181c] rounded-2xl text-xs text-slate-500 font-semibold select-none">
+                  No upcoming mentoring streams scheduled.
                 </div>
-              ))}
+              ) : (
+                upcomingClasses.map((session) => (
+                  <div
+                    key={session.id}
+                    className="p-5 rounded-2xl border border-card-border bg-white dark:bg-[#18181c] flex flex-col md:flex-row items-start md:items-center gap-5 shadow-xs transition-all hover:border-slate-350 dark:hover:border-slate-800"
+                  >
+                    <div className="relative w-full md:w-36 aspect-video rounded-xl overflow-hidden shrink-0 border border-card-border/40 bg-slate-100 dark:bg-slate-900">
+                      <Image src={session.thumbnail} alt={session.title} fill className="object-cover" />
+                    </div>
+                    
+                    <div className="space-y-2 flex-grow">
+                      <div className="flex gap-2 items-center">
+                        <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-red-100 text-red-700 dark:bg-red-955/20 dark:text-red-400 animate-pulse">
+                          Upcoming
+                        </span>
+                        <span className="text-[10px] text-slate-400 font-semibold">{session.instructor}</span>
+                      </div>
+                      <h4 className="text-sm font-heading font-black text-slate-800 dark:text-white leading-snug">
+                        {session.title}
+                      </h4>
+                      <div className="flex flex-wrap gap-4 text-[10px] text-slate-450 dark:text-slate-450 font-bold uppercase tracking-wide">
+                        <span className="flex items-center gap-1">
+                          <Calendar className="w-3.5 h-3.5 text-slate-400" />
+                          {session.date}
+                        </span>
+                        <span className="flex items-center gap-1">
+                          <Clock className="w-3.5 h-3.5 text-slate-400" />
+                          {session.time}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    <button
+                      onClick={() => handleJoinClass(session.title)}
+                      className="w-full md:w-auto px-5 py-2.5 flex items-center justify-center gap-1.5 text-xs font-bold text-white bg-red-500 hover:bg-red-600 rounded-xl transition-all cursor-pointer shadow-xs shrink-0 self-stretch md:self-auto"
+                    >
+                      <span>Join Session</span>
+                      <ExternalLink className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 
@@ -152,32 +184,38 @@ export default function LiveClassesPage() {
             </h3>
 
             <div className="space-y-4">
-              {pastRecordings.map((rec) => (
-                <div
-                  key={rec.id}
-                  className="rounded-2xl border border-card-border bg-white dark:bg-[#18181c] overflow-hidden flex flex-col shadow-xs"
-                >
-                  <div className="relative w-full aspect-video bg-slate-100 dark:bg-slate-900 border-b border-card-border/40 overflow-hidden flex items-center justify-center group">
-                    <Image src={rec.thumbnail} alt={rec.title} fill className="object-cover" />
-                    <button
-                      onClick={() => handleJoinClass(rec.title)}
-                      className="absolute w-12 h-12 rounded-full bg-white/90 text-blue-600 flex items-center justify-center shadow-lg transition-transform group-hover:scale-105 active:scale-95 cursor-pointer border-none"
-                    >
-                      <Play className="w-5 h-5 fill-blue-600 text-blue-600 translate-x-0.5" />
-                    </button>
-                    <span className="absolute bottom-2.5 right-2.5 px-2 py-0.5 rounded-md text-[9px] font-bold bg-slate-900/80 text-white">
-                      {rec.duration}
-                    </span>
-                  </div>
-
-                  <div className="p-4 space-y-2">
-                    <h4 className="text-xs font-bold text-slate-800 dark:text-white leading-snug line-clamp-2">
-                      {rec.title}
-                    </h4>
-                    <span className="text-[9px] text-slate-400 font-semibold block">{rec.date}</span>
-                  </div>
+              {pastRecordings.length === 0 ? (
+                <div className="p-6 text-center border border-card-border/60 bg-white dark:bg-[#18181c] rounded-2xl text-xs text-slate-500 font-semibold select-none">
+                  No past recordings available.
                 </div>
-              ))}
+              ) : (
+                pastRecordings.map((rec) => (
+                  <div
+                    key={rec.id}
+                    className="rounded-2xl border border-card-border bg-white dark:bg-[#18181c] overflow-hidden flex flex-col shadow-xs"
+                  >
+                    <div className="relative w-full aspect-video bg-slate-100 dark:bg-slate-900 border-b border-card-border/40 overflow-hidden flex items-center justify-center group">
+                      <Image src={rec.thumbnail} alt={rec.title} fill className="object-cover" />
+                      <button
+                        onClick={() => handleJoinClass(rec.title)}
+                        className="absolute w-12 h-12 rounded-full bg-white/90 text-blue-600 flex items-center justify-center shadow-lg transition-transform group-hover:scale-105 active:scale-95 cursor-pointer border-none"
+                      >
+                        <Play className="w-5 h-5 fill-blue-600 text-blue-600 translate-x-0.5" />
+                      </button>
+                      <span className="absolute bottom-2.5 right-2.5 px-2 py-0.5 rounded-md text-[9px] font-bold bg-slate-900/80 text-white">
+                        {rec.duration}
+                      </span>
+                    </div>
+
+                    <div className="p-4 space-y-2">
+                      <h4 className="text-xs font-bold text-slate-800 dark:text-white leading-snug line-clamp-2">
+                        {rec.title}
+                      </h4>
+                      <span className="text-[9px] text-slate-400 font-semibold block">{rec.date}</span>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 

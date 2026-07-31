@@ -6,6 +6,7 @@ import { useState, useEffect, useRef } from "react";
 import { Send, User, ShieldAlert, Sparkles, MessageCircle, AlertCircle, BookOpen } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
+import { supabase } from "@/utils/supabaseClient";
 
 interface ChatMessage {
   id: string;
@@ -43,7 +44,7 @@ export default function MessagesPage() {
       avatarInitials: "JP",
       avatarBg: "bg-blue-100 text-[#0055ff] dark:bg-blue-950/30 dark:text-blue-400",
       courseId: "forex-trading",
-      autoResponse: "Hey there! I am currently analyzing the EUR/USD market setups. I've received your query and will check your chart markups shortly. Remember: watch leverage!",
+      autoResponse: "Hey there! I am currently analyzing the EUR/USD market setups. I've received your query and will check your chart markups shortly.",
     },
     {
       id: "ai-support",
@@ -64,34 +65,74 @@ export default function MessagesPage() {
     },
   ];
 
-  const defaultMessages: Record<string, ChatMessage[]> = {
-    "forex-mentor": [
-      { id: "m1", sender: "mentor", text: "Welcome to the Forex direct mentoring channel! How are your price action practice charts coming along?", time: "10:30 AM" },
-    ],
-    "ai-support": [
-      { id: "m2", sender: "mentor", text: "Hi! You can share your Make.com workflow JSON schemas or Ask prompt questions here directly.", time: "09:15 AM" },
-    ],
-    "helpdesk": [
-      { id: "m3", sender: "mentor", text: "Hello! How can the support desk help you today? Ask us about billing, download access, or live dates.", time: "Yesterday" },
-    ],
-  };
-
   // Check enrollment, load messages
   useEffect(() => {
     if (userId) {
       const progress = AcademyDB.getProgress(userId);
       setCoursesEnrolled(progress.length);
 
-      // Load thread messages
-      const savedKey = `mervox_academy_msg_${userId}_${activeChannelId}`;
-      const saved = localStorage.getItem(savedKey);
-      if (saved) {
-        setMessages(JSON.parse(saved));
-      } else {
-        const initial = defaultMessages[activeChannelId] || [];
-        localStorage.setItem(savedKey, JSON.stringify(initial));
-        setMessages(initial);
-      }
+      // Load thread messages from Supabase
+      const fetchMessages = async () => {
+        try {
+          const { data, error } = await supabase
+            .from("messages")
+            .select("*")
+            .eq("user_id", userId)
+            .eq("channel_id", activeChannelId)
+            .order("created_at", { ascending: true });
+
+          if (error) {
+            console.error("Failed to query Supabase messages:", error);
+          } else if (data) {
+            setMessages(
+              data.map((m: any) => ({
+                id: m.id,
+                sender: m.sender as "student" | "mentor",
+                text: m.text,
+                time: m.time,
+              }))
+            );
+          }
+        } catch (err) {
+          console.error("Exception loading messages:", err);
+        }
+      };
+
+      fetchMessages();
+
+      // Realtime subscription for incoming replies
+      const channel = supabase
+        .channel(`messages-room-${userId}-${activeChannelId}`)
+        .on(
+          "postgres_changes",
+          {
+            event: "INSERT",
+            schema: "public",
+            table: "messages",
+            filter: `user_id=eq.${userId}`,
+          },
+          (payload) => {
+            if (payload.new.channel_id === activeChannelId) {
+              setMessages((prev) => {
+                if (prev.some((m) => m.id === payload.new.id)) return prev;
+                return [
+                  ...prev,
+                  {
+                    id: payload.new.id,
+                    sender: payload.new.sender as "student" | "mentor",
+                    text: payload.new.text,
+                    time: payload.new.time,
+                  },
+                ];
+              });
+            }
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [userId, activeChannelId]);
 
@@ -100,44 +141,43 @@ export default function MessagesPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!typedMessage.trim()) return;
 
     const msgText = typedMessage.trim();
     setTypedMessage("");
 
-    const savedKey = `mervox_academy_msg_${userId}_${activeChannelId}`;
     const timestamp = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 
-    const newMsg: ChatMessage = {
-      id: Math.random().toString(36).substring(2, 9),
-      sender: "student" as const,
-      text: msgText,
-      time: timestamp,
-    };
+    // Optimistic update
+    const tempId = Math.random().toString(36).substring(2, 9);
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: tempId,
+        sender: "student",
+        text: msgText,
+        time: timestamp,
+      },
+    ]);
 
-    const updated = [...messages, newMsg];
-    localStorage.setItem(savedKey, JSON.stringify(updated));
-    setMessages(updated);
+    try {
+      const { error } = await supabase.from("messages").insert({
+        user_id: userId,
+        channel_id: activeChannelId,
+        text: msgText,
+        sender: "student",
+        time: timestamp,
+      });
 
-    // Trigger auto response delay
-    setTimeout(() => {
-      const currentChannel = channels.find((c) => c.id === activeChannelId);
-      const replyMsg: ChatMessage = {
-        id: Math.random().toString(36).substring(2, 9),
-        sender: "mentor" as const,
-        text: currentChannel?.autoResponse || "Thank you for reaching out. We will get back to you shortly.",
-        time: new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
-      };
-
-      const updatedWithReply = [...updated, replyMsg];
-      localStorage.setItem(savedKey, JSON.stringify(updatedWithReply));
-      setMessages(updatedWithReply);
-
-      // Log notification
-      AcademyDB.addNotification(userId, `New message reply from ${currentChannel?.name || "Mentor"}.`);
-    }, 1500);
+      if (error) {
+        console.error("Failed to insert message into Supabase:", error);
+        alert(`Failed to send message: ${error.message}`);
+      }
+    } catch (err) {
+      console.error("Exception sending message:", err);
+    }
   };
 
   const activeChannel = channels.find((c) => c.id === activeChannelId);

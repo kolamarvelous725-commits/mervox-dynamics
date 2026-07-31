@@ -5,6 +5,7 @@ import { AcademyDB } from "@/utils/academyDb";
 import { useState, useEffect } from "react";
 import { CreditCard, Download, Plus, DollarSign, Calendar, BookOpen, CheckCircle, AlertCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/utils/supabaseClient";
 
 interface Invoice {
   id: string;
@@ -29,32 +30,43 @@ export default function WalletPage() {
       const progress = AcademyDB.getProgress(userId);
       setCoursesEnrolled(progress.length);
 
-      // Generate invoice list based on active course enrollments
-      const list = progress.map((p, idx) => {
-        let amount = "$199.00";
-        if (p.courseId === "forex-trading") amount = "$299.00";
-        if (p.courseId === "ai-automation") amount = "$249.00";
+      const fetchPayments = async () => {
+        try {
+          const { data, error } = await supabase
+            .from("payments")
+            .select("*")
+            .eq("user_id", userId)
+            .order("created_at", { ascending: false });
 
-        return {
-          id: `inv-${1000 + idx}`,
-          courseTitle: p.courseId === "forex-trading" 
-            ? "Forex Trading Masterclass Access" 
-            : p.courseId === "ai-automation" 
-              ? "AI & Business Automation Access" 
-              : p.courseId === "web-dev" 
-                ? "Web & Software Development Access" 
-                : "YouTube Algorithm Access",
-          amount,
-          status: "Paid" as const,
-          date: new Date(Date.now() - idx * 24 * 60 * 60 * 1000 * 5).toLocaleDateString("en-US", {
-            month: "short",
-            day: "numeric",
-            year: "numeric",
-          }),
-        };
-      });
+          if (error) {
+            console.error("Failed to query payments:", error);
+          } else if (data) {
+            const list = data.map((p: any, idx: number) => {
+              let courseTitle = "Academy Course Fee";
+              if (p.amount === 299) courseTitle = "Forex Trading Masterclass Access";
+              else if (p.amount === 249) courseTitle = "AI & Business Automation Access";
+              else if (p.amount === 199) courseTitle = "Web & Software Development Access";
 
-      setInvoices(list);
+              return {
+                id: p.transaction_id || `inv-${p.id.slice(0, 8)}`,
+                courseTitle,
+                amount: `$${p.amount}.00`,
+                status: p.status as "Paid" | "Pending",
+                date: new Date(p.created_at).toLocaleDateString("en-US", {
+                  month: "short",
+                  day: "numeric",
+                  year: "numeric",
+                }),
+              };
+            });
+            setInvoices(list);
+          }
+        } catch (err) {
+          console.error("Exception loading payments:", err);
+        }
+      };
+
+      fetchPayments();
     }
   }, [userId]);
 

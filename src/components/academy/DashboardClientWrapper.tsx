@@ -6,6 +6,7 @@ import { TopBar } from "@/components/academy/TopBar";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AcademyDB } from "@/utils/academyDb";
+import { supabase } from "@/utils/supabaseClient";
 
 export default function DashboardClientWrapper({ children }: { children: React.ReactNode }) {
   const { student, loading } = useAcademyAuth();
@@ -17,7 +18,7 @@ export default function DashboardClientWrapper({ children }: { children: React.R
     if (!loading && !student) {
       router.push("/academy/login");
     } else if (student) {
-      // Sync latest curriculum changes from Supabase in the background
+      // 1. Initial background sync
       const runSync = async () => {
         try {
           await AcademyDB.syncFromCloud();
@@ -27,6 +28,34 @@ export default function DashboardClientWrapper({ children }: { children: React.R
         }
       };
       runSync();
+
+      // 2. Setup Realtime subscriptions to refresh layout on database updates
+      const tablesToListen = ["announcements", "live_classes", "courses", "assignments", "progress", "payments", "certificates"];
+      const channels = tablesToListen.map((table) => {
+        return supabase
+          .channel(`public:${table}-changes`)
+          .on(
+            "postgres_changes",
+            { event: "*", schema: "public", table: table },
+            async (payload) => {
+              console.log(`Realtime change in public.${table}:`, payload);
+              try {
+                await AcademyDB.syncFromCloud();
+                setSyncKey((prev) => prev + 1);
+              } catch (e) {
+                console.error(`Failed to refresh on ${table} change:`, e);
+              }
+            }
+          )
+          .subscribe();
+      });
+
+      // Cleanup subscriptions on unmount
+      return () => {
+        channels.forEach((channel) => {
+          supabase.removeChannel(channel);
+        });
+      };
     }
   }, [student, loading, router]);
 

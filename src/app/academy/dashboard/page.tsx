@@ -49,23 +49,13 @@ export default function DashboardPage() {
     }
   }, [userId]);
 
-  // Simulated live classes
-  const liveClasses = [
-    {
-      id: "live-1",
-      title: "Live Forex Market Review",
-      instructor: "JPForex Mentor",
-      date: "July 31, 2026",
-      time: "16:00 BST",
-    },
-    {
-      id: "live-2",
-      title: "ChatGPT Prompts Deep Dive",
-      instructor: "AI Specialist",
-      date: "August 2, 2026",
-      time: "18:00 BST",
-    },
-  ];
+  const [liveClasses, setLiveClasses] = useState<any[]>([]);
+
+  useEffect(() => {
+    if (userId) {
+      setLiveClasses(AcademyDB.getLiveClasses().slice(0, 2));
+    }
+  }, [userId, courses]);
 
   // Dynamic statistics calculations
   const coursesEnrolled = studentProgress.length;
