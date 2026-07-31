@@ -17,6 +17,21 @@ interface AcademyAuthContextType {
 
 const AcademyAuthContext = createContext<AcademyAuthContextType | undefined>(undefined);
 
+const getNamesAndDate = (profile: any) => {
+  const parts = (profile.full_name || "").trim().split(/\s+/);
+  const firstName = parts[0] || "";
+  const lastName = parts.slice(1).join(" ") || "";
+  
+  let memberSince = "Joined";
+  if (profile.created_at) {
+    try {
+      memberSince = new Date(profile.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+    } catch {}
+  }
+  
+  return { firstName, lastName, memberSince };
+};
+
 export function AcademyAuthProvider({ children }: { children: React.ReactNode }) {
   const [student, setStudent] = useState<Student | null>(null);
   const [loading, setLoading] = useState(true);
@@ -28,11 +43,39 @@ export function AcademyAuthProvider({ children }: { children: React.ReactNode })
         const { data: { session } } = await supabase.auth.getSession();
         
         if (session?.user) {
-          const { data: profile } = await supabase
+          let { data: profile } = await supabase
             .from("profiles")
             .select("*")
             .eq("id", session.user.id)
             .single();
+
+          if (!profile) {
+            // Auto-create missing profile
+            const email = session.user.email || "";
+            const role = email === "marvelousotugalu012@gmail.com" ? "admin" : "student";
+            const meta = session.user.user_metadata || {};
+            const fullName = meta.fullName || `${meta.firstName || ""} ${meta.lastName || ""}`.trim() || email.split("@")[0];
+            const phone = meta.phone || "";
+            const country = meta.country || "";
+
+            const { data: newProfile } = await supabase
+              .from("profiles")
+              .insert({
+                id: session.user.id,
+                full_name: fullName,
+                email: email,
+                role: role,
+                phone: phone,
+                country: country,
+                avatar_url: "",
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              })
+              .select()
+              .single();
+
+            profile = newProfile;
+          }
 
           if (profile) {
             if (profile.suspended) {
@@ -41,14 +84,15 @@ export function AcademyAuthProvider({ children }: { children: React.ReactNode })
               await supabase.auth.signOut();
               alert("Your account has been suspended by the administrator.");
             } else {
+              const { firstName, lastName, memberSince } = getNamesAndDate(profile);
               const studentData: Student = {
                 id: profile.id,
-                firstName: profile.first_name,
-                lastName: profile.last_name,
+                firstName,
+                lastName,
                 email: profile.email,
                 phone: profile.phone || "",
                 country: profile.country || "",
-                memberSince: profile.member_since,
+                memberSince,
                 avatarUrl: profile.avatar_url || "",
                 bio: profile.bio || "",
                 occupation: profile.occupation || "",
@@ -58,16 +102,10 @@ export function AcademyAuthProvider({ children }: { children: React.ReactNode })
               setStudent(studentData);
               localStorage.setItem("mervox_academy_current_user", JSON.stringify(studentData));
             }
-          } else {
-            setStudent(null);
-            localStorage.removeItem("mervox_academy_current_user");
           }
-        } else {
-          setStudent(null);
-          localStorage.removeItem("mervox_academy_current_user");
         }
       } catch (err) {
-        console.error("Error checking session:", err);
+        console.error(err);
       } finally {
         setLoading(false);
       }
@@ -75,18 +113,45 @@ export function AcademyAuthProvider({ children }: { children: React.ReactNode })
 
     checkSession();
 
-    // Listen for auth state changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === "SIGNED_OUT") {
         setStudent(null);
         localStorage.removeItem("mervox_academy_current_user");
       } else if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
         if (session?.user) {
-          const { data: profile } = await supabase
+          let { data: profile } = await supabase
             .from("profiles")
             .select("*")
             .eq("id", session.user.id)
             .single();
+
+          if (!profile) {
+            // Auto-create missing profile
+            const email = session.user.email || "";
+            const role = email === "marvelousotugalu012@gmail.com" ? "admin" : "student";
+            const meta = session.user.user_metadata || {};
+            const fullName = meta.fullName || `${meta.firstName || ""} ${meta.lastName || ""}`.trim() || email.split("@")[0];
+            const phone = meta.phone || "";
+            const country = meta.country || "";
+
+            const { data: newProfile } = await supabase
+              .from("profiles")
+              .insert({
+                id: session.user.id,
+                full_name: fullName,
+                email: email,
+                role: role,
+                phone: phone,
+                country: country,
+                avatar_url: "",
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString(),
+              })
+              .select()
+              .single();
+
+            profile = newProfile;
+          }
 
           if (profile) {
             if (profile.suspended) {
@@ -94,14 +159,15 @@ export function AcademyAuthProvider({ children }: { children: React.ReactNode })
               localStorage.removeItem("mervox_academy_current_user");
               await supabase.auth.signOut();
             } else {
+              const { firstName, lastName, memberSince } = getNamesAndDate(profile);
               const studentData: Student = {
                 id: profile.id,
-                firstName: profile.first_name,
-                lastName: profile.last_name,
+                firstName,
+                lastName,
                 email: profile.email,
                 phone: profile.phone || "",
                 country: profile.country || "",
-                memberSince: profile.member_since,
+                memberSince,
                 avatarUrl: profile.avatar_url || "",
                 bio: profile.bio || "",
                 occupation: profile.occupation || "",
@@ -122,12 +188,12 @@ export function AcademyAuthProvider({ children }: { children: React.ReactNode })
   }, []);
 
   const signup = async (userData: Omit<Student, "id" | "memberSince" | "avatarUrl"> & { password: string }) => {
-    // Register the user with Supabase Auth
     const { data, error } = await supabase.auth.signUp({
       email: userData.email,
       password: userData.password,
       options: {
         data: {
+          fullName: `${userData.firstName} ${userData.lastName}`.trim(),
           firstName: userData.firstName,
           lastName: userData.lastName,
           phone: userData.phone,
@@ -159,15 +225,43 @@ export function AcademyAuthProvider({ children }: { children: React.ReactNode })
       await new Promise((r) => setTimeout(r, 500));
     }
 
+    // Fallback: If trigger did not create it in time, auto-create it
+    if (!profile) {
+      const email = data.user.email || "";
+      const role = email === "marvelousotugalu0125@gmail.com" || email === "marvelousotugalu012@gmail.com" ? "admin" : "student";
+      const { data: newProfile, error: insertError } = await supabase
+        .from("profiles")
+        .insert({
+          id: data.user.id,
+          full_name: `${userData.firstName} ${userData.lastName}`.trim(),
+          email: email,
+          role: role,
+          phone: userData.phone,
+          country: userData.country,
+          avatar_url: "",
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+      
+      if (insertError) {
+        console.error("Fallback profile creation failed on signup. Supabase Error:", insertError);
+      } else {
+        profile = newProfile;
+      }
+    }
+
     if (profile) {
+      const { firstName, lastName, memberSince } = getNamesAndDate(profile);
       const studentData: Student = {
         id: profile.id,
-        firstName: profile.first_name,
-        lastName: profile.last_name,
+        firstName,
+        lastName,
         email: profile.email,
         phone: profile.phone || "",
         country: profile.country || "",
-        memberSince: profile.member_since,
+        memberSince,
         avatarUrl: profile.avatar_url || "",
         bio: profile.bio || "",
         occupation: profile.occupation || "",
@@ -191,16 +285,43 @@ export function AcademyAuthProvider({ children }: { children: React.ReactNode })
     }
 
     if (data.user) {
-      const { data: profile } = await supabase
+      let { data: profile } = await supabase
         .from("profiles")
         .select("*")
         .eq("id", data.user.id)
         .single();
 
       if (!profile) {
-        alert("Account profile missing.");
-        await supabase.auth.signOut();
-        return false;
+        // Automatically create missing profile during login
+        const role = email === "marvelousotugalu012@gmail.com" ? "admin" : "student";
+        const meta = data.user.user_metadata || {};
+        const fullName = meta.fullName || `${meta.firstName || ""} ${meta.lastName || ""}`.trim() || email.split("@")[0];
+        const phone = meta.phone || "";
+        const country = meta.country || "";
+
+        const { data: newProfile, error: insertError } = await supabase
+          .from("profiles")
+          .insert({
+            id: data.user.id,
+            full_name: fullName,
+            email: email,
+            role: role,
+            phone: phone,
+            country: country,
+            avatar_url: "",
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .select()
+          .single();
+
+        if (insertError) {
+          console.error("Failed to auto-create profile during login. Supabase Error:", insertError);
+          alert(`Failed to initialize your user profile: ${insertError.message || JSON.stringify(insertError)}`);
+          await supabase.auth.signOut();
+          return false;
+        }
+        profile = newProfile;
       }
 
       if (profile.suspended) {
@@ -209,14 +330,15 @@ export function AcademyAuthProvider({ children }: { children: React.ReactNode })
         return false;
       }
 
+      const { firstName, lastName, memberSince } = getNamesAndDate(profile);
       const studentData: Student = {
         id: profile.id,
-        firstName: profile.first_name,
-        lastName: profile.last_name,
+        firstName,
+        lastName,
         email: profile.email,
         phone: profile.phone || "",
         country: profile.country || "",
-        memberSince: profile.member_since,
+        memberSince,
         avatarUrl: profile.avatar_url || "",
         bio: profile.bio || "",
         occupation: profile.occupation || "",
@@ -242,8 +364,11 @@ export function AcademyAuthProvider({ children }: { children: React.ReactNode })
     if (!student) return;
 
     const dbData: any = {};
-    if (updatedData.firstName !== undefined) dbData.first_name = updatedData.firstName;
-    if (updatedData.lastName !== undefined) dbData.last_name = updatedData.lastName;
+    if (updatedData.firstName !== undefined || updatedData.lastName !== undefined) {
+      const currentFirst = updatedData.firstName !== undefined ? updatedData.firstName : student.firstName;
+      const currentLast = updatedData.lastName !== undefined ? updatedData.lastName : student.lastName;
+      dbData.full_name = `${currentFirst} ${currentLast}`.trim();
+    }
     if (updatedData.phone !== undefined) dbData.phone = updatedData.phone;
     if (updatedData.country !== undefined) dbData.country = updatedData.country;
     if (updatedData.avatarUrl !== undefined) dbData.avatar_url = updatedData.avatarUrl;
@@ -256,6 +381,7 @@ export function AcademyAuthProvider({ children }: { children: React.ReactNode })
         ...updatedData.socials,
       };
     }
+    dbData.updated_at = new Date().toISOString();
 
     const { error } = await supabase
       .from("profiles")
