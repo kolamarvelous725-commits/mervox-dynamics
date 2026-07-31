@@ -5,15 +5,28 @@ import { Sidebar } from "@/components/academy/Sidebar";
 import { TopBar } from "@/components/academy/TopBar";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
+import { AcademyDB } from "@/utils/academyDb";
 
 export default function DashboardClientWrapper({ children }: { children: React.ReactNode }) {
   const { student, loading } = useAcademyAuth();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [syncKey, setSyncKey] = useState(0);
 
   useEffect(() => {
     if (!loading && !student) {
       router.push("/academy/login");
+    } else if (student) {
+      // Sync latest curriculum changes from Supabase in the background
+      const runSync = async () => {
+        try {
+          await AcademyDB.syncFromCloud();
+          setSyncKey((prev) => prev + 1);
+        } catch (err) {
+          console.error("Failed to sync cloud state for student portal:", err);
+        }
+      };
+      runSync();
     }
   }, [student, loading, router]);
 
@@ -39,7 +52,7 @@ export default function DashboardClientWrapper({ children }: { children: React.R
         <TopBar onMenuClick={() => setSidebarOpen(true)} />
 
         {/* Dynamic page container */}
-        <main className="flex-1 overflow-y-auto p-6">
+        <main className="flex-1 overflow-y-auto p-6" key={syncKey}>
           <div className="max-w-7xl mx-auto w-full space-y-6">
             {children}
           </div>

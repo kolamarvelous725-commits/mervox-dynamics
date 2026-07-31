@@ -534,22 +534,22 @@ export const AcademyDB = {
 
       // 2. Sync Curriculum
       const { data: courses } = await supabase.from("courses").select("*");
-      if (courses && courses.length > 0) {
+      if (courses) {
         localStorage.setItem("mervox_academy_courses", JSON.stringify(courses));
       }
 
       const { data: live } = await supabase.from("live_classes").select("*");
-      if (live && live.length > 0) {
+      if (live) {
         localStorage.setItem("mervox_academy_live_classes", JSON.stringify(live));
       }
 
       const { data: announcements } = await supabase.from("announcements").select("*");
-      if (announcements && announcements.length > 0) {
+      if (announcements) {
         localStorage.setItem("mervox_academy_announcements", JSON.stringify(announcements));
       }
 
       const { data: assignments } = await supabase.from("assignments").select("*");
-      if (assignments && assignments.length > 0) {
+      if (assignments) {
         localStorage.setItem("mervox_academy_assignments_list", JSON.stringify(assignments));
       }
 
