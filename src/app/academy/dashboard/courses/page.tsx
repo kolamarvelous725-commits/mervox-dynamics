@@ -284,6 +284,11 @@ export default function CoursesPage() {
   const coursesList: ExtendedCourse[] = courses.map((tpl) => {
     const progressData = studentProgress.find((p) => p.courseId === tpl.id);
     const quizData = studentQuizzes.find((q) => q.courseId === tpl.id);
+    
+    // Resolve video and PDF from direct columns or arrays
+    const videoUrl = tpl.video_url || (tpl.videos && tpl.videos.length > 0 ? tpl.videos[0] : undefined);
+    const pdfUrl = tpl.pdf_url || (tpl.pdfs && tpl.pdfs.length > 0 ? tpl.pdfs[0] : undefined);
+
     return {
       ...tpl,
       progress: progressData ? progressData.progress : 0,
@@ -291,8 +296,8 @@ export default function CoursesPage() {
       lessonsCompleted: progressData ? progressData.lessonsCompleted : 0,
       progressData,
       quizData,
-      video_url: tpl.video_url,
-      pdf_url: tpl.pdf_url,
+      video_url: videoUrl,
+      pdf_url: pdfUrl,
     };
   });
 
