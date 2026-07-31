@@ -24,6 +24,8 @@ import {
 interface ExtendedCourse extends Course {
   progressData?: UserCourseProgress;
   quizData?: QuizAttempt;
+  video_url?: string;
+  pdf_url?: string;
 }
 
 export default function CoursesPage() {
@@ -289,6 +291,8 @@ export default function CoursesPage() {
       lessonsCompleted: progressData ? progressData.lessonsCompleted : 0,
       progressData,
       quizData,
+      video_url: tpl.video_url,
+      pdf_url: tpl.pdf_url,
     };
   });
 
@@ -421,6 +425,43 @@ export default function CoursesPage() {
               {isExpanded && (
                 <div className="border-t border-card-border/40 p-6 bg-slate-50/30 dark:bg-slate-900/10 space-y-6">
                   
+                  {/* Dynamic Video & PDF resources */}
+                  <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-card-border/60 grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
+                    <div className="space-y-1.5">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block font-heading">Course Video Reference</span>
+                      {course.video_url ? (
+                        <a
+                          href={course.video_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#0055ff] hover:bg-[#0044dd] text-white text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer select-none"
+                        >
+                          <Play className="w-3.5 h-3.5" />
+                          <span>Watch Video</span>
+                        </a>
+                      ) : (
+                        <span className="text-xs text-slate-400 font-semibold italic block">No video available.</span>
+                      )}
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block font-heading">Course Study Slides</span>
+                      {course.pdf_url ? (
+                        <a
+                          href={course.pdf_url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl border border-card-border/40 transition-all shadow-xs cursor-pointer select-none"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span>Download PDF</span>
+                        </a>
+                      ) : (
+                        <span className="text-xs text-slate-400 font-semibold italic block">No PDF available.</span>
+                      )}
+                    </div>
+                  </div>
+
                   {/* Sub-navigation bar inside card */}
                   <div className="flex gap-4 border-b border-card-border/40 pb-3">
                     <button
@@ -449,25 +490,25 @@ export default function CoursesPage() {
                         <span>Each completed lesson adds **25 minutes** to study logs and **5%** to progress.</span>
                       </div>
                                            {/* List of lessons */}
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-left">
-                        {((course.lessons && course.lessons.length > 0)
-                          ? course.lessons
-                          : Array.from({ length: 20 }).map((_, idx) => `Lesson ${idx + 1}: Advanced Concepts & Overview Part ${idx + 1}`)
-                        ).map((title, idx) => {
-                          const lessonIndex = idx + 1;
-                          const lessonTitle = title;
-                          const isDone = course.progressData?.completedLessons.includes(lessonIndex) || false;
- 
-                          return (
-                            <div
-                              key={lessonIndex}
-                              onClick={() => handleLessonToggle(course.id, course.title, lessonIndex, lessonTitle)}
-                              className={`p-3 rounded-xl border flex items-center justify-between gap-3 cursor-pointer transition-all hover:-translate-y-[1px] select-none ${
-                                isDone
-                                  ? "bg-blue-50/40 dark:bg-blue-950/10 border-blue-100/50 dark:border-blue-900/10 text-slate-700 dark:text-slate-300"
-                                  : "border-card-border bg-white dark:bg-[#18181c] text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-800"
-                              }`}
-                            >
+                      {(!course.lessons || course.lessons.length === 0) ? (
+                        <p className="text-xs text-slate-400 font-semibold italic pt-2 text-left">No lessons available.</p>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-left">
+                          {course.lessons.map((title, idx) => {
+                            const lessonIndex = idx + 1;
+                            const lessonTitle = title;
+                            const isDone = course.progressData?.completedLessons.includes(lessonIndex) || false;
+
+                            return (
+                              <div
+                                key={lessonIndex}
+                                onClick={() => handleLessonToggle(course.id, course.title, lessonIndex, lessonTitle)}
+                                className={`p-3 rounded-xl border flex items-center justify-between gap-3 cursor-pointer transition-all hover:-translate-y-[1px] select-none ${
+                                  isDone
+                                    ? "bg-blue-50/40 dark:bg-blue-950/10 border-blue-100/50 dark:border-blue-900/10 text-slate-700 dark:text-slate-300"
+                                    : "border-card-border bg-white dark:bg-[#18181c] text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-800"
+                                }`}
+                              >
                               <div className="flex items-center gap-2.5 truncate">
                                 <Play className={`w-3.5 h-3.5 shrink-0 ${isDone ? "text-[#0055ff]" : "text-slate-400"}`} />
                                 <span className={`text-xs truncate ${isDone ? "font-bold" : "font-medium"}`}>
@@ -481,9 +522,10 @@ export default function CoursesPage() {
                                 className="w-4 h-4 text-[#0055ff] border-card-border rounded-sm cursor-pointer shrink-0"
                               />
                             </div>
-                          );
-                        })}
-                      </div>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   ) : (
                     /* Active Quiz view */
