@@ -67,12 +67,38 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
         password: pass,
       });
 
+      if (error) {
+        throw new Error(error.message);
+      }
+
       if (data.user) {
-        const { data: profile } = await supabase
+        let { data: profile } = await supabase
           .from("profiles")
           .select("*")
           .eq("id", data.user.id)
           .single();
+
+        if (!profile) {
+          // Auto-create missing admin profile
+          const { data: newProfile, error: insertError } = await supabase
+            .from("profiles")
+            .insert({
+              id: data.user.id,
+              full_name: "Academy Administrator",
+              email: data.user.email || email,
+              role: "admin",
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString()
+            })
+            .select()
+            .single();
+
+          if (insertError) {
+            console.error("Failed to auto-create admin profile:", insertError);
+          } else {
+            profile = newProfile;
+          }
+        }
 
         if (profile && profile.role === "admin") {
           setIsAdminAuthenticated(true);

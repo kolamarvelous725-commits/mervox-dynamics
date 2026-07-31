@@ -10,85 +10,113 @@ const syncToCloud = async (users: any[]) => {
 const syncAnnouncementsToCloud = async (list: any[]) => {
   try {
     const ids = list.map((ann) => ann.id);
-    if (ids.length > 0) {
-      await supabase.from("announcements").delete().not("id", "in", `(${ids.join(",")})`);
-    } else {
-      await supabase.from("announcements").delete().neq("id", "");
+    const { data: cloudItems } = await supabase.from("announcements").select("id");
+    const cloudIds = cloudItems?.map((item) => item.id) || [];
+    for (const cloudId of cloudIds) {
+      if (!ids.includes(cloudId)) {
+        await supabase.from("announcements").delete().eq("id", cloudId);
+      }
     }
     for (const ann of list) {
-      await supabase.from("announcements").upsert({
+      const { error } = await supabase.from("announcements").upsert({
         id: ann.id,
         title: ann.title,
         content: ann.content,
-        category: ann.category,
+        category: ann.tag || ann.category,
         date: ann.date,
       });
+      if (error) {
+        console.error("Failed to upsert announcement to Supabase:", error);
+      }
     }
-  } catch (err) {}
+  } catch (err) {
+    console.error("Exception inside syncAnnouncementsToCloud:", err);
+  }
 };
 
 const syncLiveClassesToCloud = async (list: any[]) => {
   try {
     const ids = list.map((lc) => lc.id);
-    if (ids.length > 0) {
-      await supabase.from("live_classes").delete().not("id", "in", `(${ids.join(",")})`);
-    } else {
-      await supabase.from("live_classes").delete().neq("id", "");
+    const { data: cloudItems } = await supabase.from("live_classes").select("id");
+    const cloudIds = cloudItems?.map((item) => item.id) || [];
+    for (const cloudId of cloudIds) {
+      if (!ids.includes(cloudId)) {
+        await supabase.from("live_classes").delete().eq("id", cloudId);
+      }
     }
     for (const lc of list) {
-      await supabase.from("live_classes").upsert({
+      const { error } = await supabase.from("live_classes").upsert({
         id: lc.id,
-        course_id: lc.courseId,
+        course_id: lc.courseId || lc.course_id,
         title: lc.title,
         instructor: lc.instructor,
         date: lc.date,
         time: lc.time,
         link: lc.link,
       });
+      if (error) {
+        console.error("Failed to upsert live class to Supabase:", error);
+      }
     }
-  } catch (err) {}
+  } catch (err) {
+    console.error("Exception inside syncLiveClassesToCloud:", err);
+  }
 };
 
 const syncCoursesToCloud = async (list: any[]) => {
   try {
     const ids = list.map((c) => c.id);
-    if (ids.length > 0) {
-      await supabase.from("courses").delete().not("id", "in", `(${ids.join(",")})`);
-    } else {
-      await supabase.from("courses").delete().neq("id", "");
+    const { data: cloudItems } = await supabase.from("courses").select("id");
+    const cloudIds = cloudItems?.map((item) => item.id) || [];
+    for (const cloudId of cloudIds) {
+      if (!ids.includes(cloudId)) {
+        await supabase.from("courses").delete().eq("id", cloudId);
+      }
     }
     for (const c of list) {
-      await supabase.from("courses").upsert({
+      const { error } = await supabase.from("courses").upsert({
         id: c.id,
         title: c.title,
         description: c.description,
         thumbnail: c.thumbnail,
         lessons: c.lessons,
-        total_lessons: c.totalLessons,
+        total_lessons: c.totalLessons || c.total_lessons,
         published: c.published,
       });
+      if (error) {
+        console.error("Failed to upsert course to Supabase:", error);
+      }
     }
-  } catch (err) {}
+  } catch (err) {
+    console.error("Exception inside syncCoursesToCloud:", err);
+  }
 };
 
 const syncAssignmentsToCloud = async (list: any[]) => {
   try {
     const ids = list.map((asg) => asg.id);
-    if (ids.length > 0) {
-      await supabase.from("assignments").delete().not("id", "in", `(${ids.join(",")})`);
-    } else {
-      await supabase.from("assignments").delete().neq("id", "");
+    const { data: cloudItems } = await supabase.from("assignments").select("id");
+    const cloudIds = cloudItems?.map((item) => item.id) || [];
+    for (const cloudId of cloudIds) {
+      if (!ids.includes(cloudId)) {
+        await supabase.from("assignments").delete().eq("id", cloudId);
+      }
     }
     for (const asg of list) {
-      await supabase.from("assignments").upsert({
+      const { error } = await supabase.from("assignments").upsert({
         id: asg.id,
-        course_id: asg.courseId,
-        course_title: asg.courseTitle,
+        course_id: asg.courseId || asg.course_id,
+        course_title: asg.courseTitle || asg.course_title,
         title: asg.title,
-        due_date: asg.dueDate,
+        due_date: asg.dueDate || asg.due_date,
       });
+      if (error) {
+        console.error("Failed to upsert assignment to Supabase:", error);
+      }
     }
-  } catch (err) {}
+  } catch (err) {
+    console.error("Exception inside syncAssignmentsToCloud:", err);
+  }
 };
 
 export const AcademyDB = {
@@ -535,22 +563,54 @@ export const AcademyDB = {
       // 2. Sync Curriculum
       const { data: courses } = await supabase.from("courses").select("*");
       if (courses) {
-        localStorage.setItem("mervox_academy_courses", JSON.stringify(courses));
+        const mappedCourses = courses.map((c: any) => ({
+          id: c.id,
+          title: c.title,
+          description: c.description,
+          thumbnail: c.thumbnail,
+          lessons: c.lessons,
+          totalLessons: c.total_lessons || c.totalLessons || 0,
+          published: c.published,
+        }));
+        localStorage.setItem("mervox_academy_courses", JSON.stringify(mappedCourses));
       }
 
       const { data: live } = await supabase.from("live_classes").select("*");
       if (live) {
-        localStorage.setItem("mervox_academy_live_classes", JSON.stringify(live));
+        const mappedLive = live.map((lc: any) => ({
+          id: lc.id,
+          courseId: lc.course_id || lc.courseId,
+          title: lc.title,
+          instructor: lc.instructor,
+          date: lc.date,
+          time: lc.time,
+          link: lc.link,
+        }));
+        localStorage.setItem("mervox_academy_live_classes", JSON.stringify(mappedLive));
       }
 
       const { data: announcements } = await supabase.from("announcements").select("*");
       if (announcements) {
-        localStorage.setItem("mervox_academy_announcements", JSON.stringify(announcements));
+        const mappedAnn = announcements.map((ann: any) => ({
+          id: ann.id,
+          title: ann.title,
+          content: ann.content,
+          date: ann.date,
+          tag: ann.category || ann.tag,
+        }));
+        localStorage.setItem("mervox_academy_announcements", JSON.stringify(mappedAnn));
       }
 
       const { data: assignments } = await supabase.from("assignments").select("*");
       if (assignments) {
-        localStorage.setItem("mervox_academy_assignments_list", JSON.stringify(assignments));
+        const mappedAsg = assignments.map((asg: any) => ({
+          id: asg.id,
+          courseId: asg.course_id || asg.courseId,
+          courseTitle: asg.course_title || asg.courseTitle,
+          title: asg.title,
+          dueDate: asg.due_date || asg.dueDate,
+        }));
+        localStorage.setItem("mervox_academy_assignments_list", JSON.stringify(mappedAsg));
       }
 
       const usersJson = localStorage.getItem("mervox_academy_users");
