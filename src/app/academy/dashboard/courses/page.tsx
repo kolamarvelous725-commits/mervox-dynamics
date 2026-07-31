@@ -108,26 +108,49 @@ export default function CoursesPage() {
   }, [userId]);
 
   const handleEnroll = async (courseId: string, courseTitle: string) => {
-    try {
-      await supabase.from("enrollments").insert({
-        user_id: userId,
-        course_id: courseId,
-        status: "In Progress",
-      });
+    const enrollmentPayload = {
+      user_id: userId,
+      course_id: courseId,
+      status: "In Progress",
+    };
+    console.log("Enrollment payload:", enrollmentPayload);
 
-      await supabase.from("progress").insert({
+    try {
+      const { data: enrollRes, error: enrollError } = await supabase
+        .from("enrollments")
+        .insert(enrollmentPayload);
+
+      if (enrollError) {
+        console.error("Supabase enrollments table INSERT error:", enrollError);
+        alert(`Failed to enroll: ${enrollError.message}`);
+        return;
+      }
+
+      const progressPayload = {
         user_id: userId,
         course_id: courseId,
         progress_percent: 0,
-        status: "In Progress",
         lessons_completed: {
           completed_lessons: [],
         },
-      });
+      };
+      console.log("Progress initialization payload:", progressPayload);
 
+      const { error: progressError } = await supabase
+        .from("progress")
+        .insert(progressPayload);
+
+      if (progressError) {
+        console.error("Supabase progress table INSERT error:", progressError);
+        alert(`Failed to initialize progress table row: ${progressError.message}`);
+        return;
+      }
+
+      alert("Enrolled successfully in the course program!");
       refreshData();
     } catch (err) {
-      console.error("Failed to enroll course:", err);
+      console.error("Exception during course enrollment flow:", err);
+      alert(`Enrollment operation exception: ${err}`);
     }
   };
 
@@ -189,6 +212,7 @@ export default function CoursesPage() {
         course_id: courseId,
         score: correctCount,
         passed,
+        date: dateStr,
       });
 
       if (passed) {
