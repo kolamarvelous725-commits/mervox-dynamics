@@ -23,6 +23,13 @@ export default function LiveClassesPage() {
     }
   }, [userId]);
 
+  const getThumbnailForCourse = (courseId: string) => {
+    if (courseId === "forex-trading") return "/course-forex-v3.webp";
+    if (courseId === "ai-automation") return "/course-ai-v3.webp";
+    if (courseId === "web-dev") return "/course-webdev-v3.webp";
+    return "/course-youtube-v3.webp";
+  };
+
   const pastRecordings = [
     {
       id: "rec-1",
@@ -33,15 +40,22 @@ export default function LiveClassesPage() {
     },
     {
       id: "rec-2",
-      title: "Introduction to No-Code AI Integrations",
+      title: "ChatGPT Lead Gen Automation workflow setup",
       duration: "1h 20m",
-      date: "July 20, 2026",
+      date: "July 26, 2026",
       thumbnail: "/course-ai-v3.webp",
+    },
+    {
+      id: "rec-3",
+      title: "Modular Landing layouts & routing practices",
+      duration: "1h 55m",
+      date: "July 28, 2026",
+      thumbnail: "/course-webdev-v3.webp",
     },
   ];
 
   const handleJoinClass = (title: string) => {
-    alert(`Connecting to live stream for "${title}"...\nThis is simulated for the MVP Portal.`);
+    alert(`Launching live mentoring session stream:\n"${title}"\n\nConnecting to Zoom portal...`);
   };
 
   return (
@@ -78,15 +92,15 @@ export default function LiveClassesPage() {
           </button>
         </div>
       ) : (
-        /* Content List */
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        /* Mentorship Workspace */
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 text-left">
           
-          {/* Left Column: Live schedule */}
-          <div className="lg:col-span-8 space-y-4 text-left">
+          {/* Left Column: Live sessions roster */}
+          <div className="lg:col-span-8 space-y-4">
             <h3 className="text-sm font-heading font-black text-slate-800 dark:text-white uppercase tracking-wider">
-              Upcoming Streams
+              Upcoming Mentoring Streams
             </h3>
-            
+
             <div className="space-y-4">
               {liveSessions.map((session) => (
                 <div
@@ -94,13 +108,13 @@ export default function LiveClassesPage() {
                   className="p-5 rounded-2xl border border-card-border bg-white dark:bg-[#18181c] flex flex-col md:flex-row items-start md:items-center gap-5 shadow-xs transition-all hover:border-slate-350 dark:hover:border-slate-800"
                 >
                   <div className="relative w-full md:w-36 aspect-video rounded-xl overflow-hidden shrink-0 border border-card-border/40 bg-slate-100 dark:bg-slate-900">
-                    <Image src={session.thumbnail} alt={session.title} fill className="object-cover" />
+                    <Image src={session.thumbnail || getThumbnailForCourse(session.courseId)} alt={session.title} fill className="object-cover" />
                   </div>
                   
                   <div className="space-y-2 flex-grow">
                     <div className="flex gap-2 items-center">
-                      <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-red-100 text-red-700 dark:bg-red-950/20 dark:text-red-400 animate-pulse">
-                        {session.status}
+                      <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-red-100 text-red-700 dark:bg-red-955/20 dark:text-red-400 animate-pulse">
+                        {session.status || "Upcoming"}
                       </span>
                       <span className="text-[10px] text-slate-400 font-semibold">{session.instructor}</span>
                     </div>

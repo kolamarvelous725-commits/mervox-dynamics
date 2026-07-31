@@ -11,9 +11,55 @@ const syncToCloud = async (users: any[]) => {
         "Content-Type": "application/json"
       }
     });
-  } catch (err) {
-    // Fail silently in offline/firewalled networks
-  }
+  } catch (err) {}
+};
+
+const syncAnnouncementsToCloud = async (list: any[]) => {
+  try {
+    await fetch("https://kvdb.io/mervox_academy_shared_db_v2/announcements", {
+      method: "PUT",
+      body: JSON.stringify(list),
+      headers: {
+        "Content-Type": "application/json"
+      }
+    });
+  } catch (err) {}
+};
+
+const syncLiveClassesToCloud = async (list: any[]) => {
+  try {
+    await fetch("https://kvdb.io/mervox_academy_shared_db_v2/live_classes", {
+      method: "PUT",
+      body: JSON.stringify(list),
+      headers: {
+        "Content-Type": "application/json"
+      }
+    });
+  } catch (err) {}
+};
+
+const syncCoursesToCloud = async (list: any[]) => {
+  try {
+    await fetch("https://kvdb.io/mervox_academy_shared_db_v2/courses", {
+      method: "PUT",
+      body: JSON.stringify(list),
+      headers: {
+        "Content-Type": "application/json"
+      }
+    });
+  } catch (err) {}
+};
+
+const syncAssignmentsToCloud = async (list: any[]) => {
+  try {
+    await fetch("https://kvdb.io/mervox_academy_shared_db_v2/assignments", {
+      method: "PUT",
+      body: JSON.stringify(list),
+      headers: {
+        "Content-Type": "application/json"
+      }
+    });
+  } catch (err) {}
 };
 
 export const AcademyDB = {
@@ -279,6 +325,7 @@ export const AcademyDB = {
   async syncFromCloud(): Promise<any[] | null> {
     if (typeof window === "undefined") return null;
     try {
+      // 1. Sync Users
       const res = await fetch("https://kvdb.io/mervox_academy_shared_db_v2/users");
       if (res.ok) {
         const cloudUsers = await res.json();
@@ -303,9 +350,56 @@ export const AcademyDB = {
           
           const mergedUsers = Array.from(mergedMap.values());
           localStorage.setItem("mervox_academy_users", JSON.stringify(mergedUsers));
-          return mergedUsers;
         }
       }
+
+      // 2. Sync Announcements
+      try {
+        const resAnn = await fetch("https://kvdb.io/mervox_academy_shared_db_v2/announcements");
+        if (resAnn.ok) {
+          const cloudAnn = await resAnn.json();
+          if (Array.isArray(cloudAnn)) {
+            localStorage.setItem("mervox_academy_announcements", JSON.stringify(cloudAnn));
+          }
+        }
+      } catch (err) {}
+
+      // 3. Sync Live Classes
+      try {
+        const resLive = await fetch("https://kvdb.io/mervox_academy_shared_db_v2/live_classes");
+        if (resLive.ok) {
+          const cloudLive = await resLive.json();
+          if (Array.isArray(cloudLive)) {
+            localStorage.setItem("mervox_academy_live_classes", JSON.stringify(cloudLive));
+          }
+        }
+      } catch (err) {}
+
+      // 4. Sync Courses
+      try {
+        const resCourses = await fetch("https://kvdb.io/mervox_academy_shared_db_v2/courses");
+        if (resCourses.ok) {
+          const cloudCourses = await resCourses.json();
+          if (Array.isArray(cloudCourses)) {
+            localStorage.setItem("mervox_academy_courses", JSON.stringify(cloudCourses));
+          }
+        }
+      } catch (err) {}
+
+      // 5. Sync Assignments
+      try {
+        const resAsg = await fetch("https://kvdb.io/mervox_academy_shared_db_v2/assignments");
+        if (resAsg.ok) {
+          const cloudAsg = await resAsg.json();
+          if (Array.isArray(cloudAsg)) {
+            localStorage.setItem("mervox_academy_assignments_list", JSON.stringify(cloudAsg));
+          }
+        }
+      } catch (err) {}
+
+      const usersJson = localStorage.getItem("mervox_academy_users");
+      return usersJson ? JSON.parse(usersJson) : [];
+
     } catch (err) {
       console.warn("Cross-device sync offline. Falling back to local storage.", err);
     }
@@ -376,12 +470,7 @@ export const AcademyDB = {
   saveCourses(courses: any[]) {
     if (typeof window === "undefined") return;
     localStorage.setItem("mervox_academy_courses", JSON.stringify(courses));
-    const usersJson = localStorage.getItem("mervox_academy_users");
-    if (usersJson) {
-      try {
-        syncToCloud(JSON.parse(usersJson));
-      } catch (e) {}
-    }
+    syncCoursesToCloud(courses);
   },
 
   // Live Classes CRUD
@@ -427,12 +516,14 @@ export const AcademyDB = {
   saveLiveClasses(classes: any[]) {
     if (typeof window === "undefined") return;
     localStorage.setItem("mervox_academy_live_classes", JSON.stringify(classes));
+    syncLiveClassesToCloud(classes);
   },
 
   // Announcements CRUD
   saveAnnouncements(list: any[]) {
     if (typeof window === "undefined") return;
     localStorage.setItem("mervox_academy_announcements", JSON.stringify(list));
+    syncAnnouncementsToCloud(list);
   },
 
   // Student Audits
@@ -656,6 +747,7 @@ export const AcademyDB = {
   saveAssignments(list: any[]) {
     if (typeof window === "undefined") return;
     localStorage.setItem("mervox_academy_assignments_list", JSON.stringify(list));
+    syncAssignmentsToCloud(list);
   },
 
   getSubmissions(): any[] {

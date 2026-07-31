@@ -68,16 +68,18 @@ export default function CoursesPage() {
   };
 
   const handleQuizSubmit = (courseId: string, courseTitle: string) => {
-    const questions = quizQuestions[courseId];
+    const questions = quizQuestions[courseId] || [];
     let correctCount = 0;
     
     questions.forEach((q, idx) => {
-      if (quizAnswers[idx] === q.correct) {
+      const selected = quizAnswers[idx];
+      const correctText = q.options[q.answer];
+      if (selected === correctText) {
         correctCount++;
       }
     });
 
-    const passed = correctCount === questions.length; // Pass only if 3/3 score
+    const passed = questions.length > 0 && correctCount === questions.length;
     
     AcademyDB.saveQuizAttempt(userId, courseId, courseTitle, correctCount, passed);
     setQuizResult({ score: correctCount, passed });

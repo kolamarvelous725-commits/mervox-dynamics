@@ -35,34 +35,7 @@ export default function DashboardPage() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [certificates, setCertificates] = useState<string[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>([]);
-
-  // Static course definitions for metadata lookup
-  const courseTemplates = [
-    {
-      id: "forex-trading",
-      title: "Forex Trading Masterclass",
-      description: "Master technical analysis, risk management, and live trading strategies.",
-      thumbnail: "/course-forex-v3.webp",
-    },
-    {
-      id: "ai-automation",
-      title: "AI & Business Automation",
-      description: "Harness generative AI, prompt engineering, and no-code workflow funnels.",
-      thumbnail: "/course-ai-v3.webp",
-    },
-    {
-      id: "web-dev",
-      title: "Web & Software Development",
-      description: "Master coding with React, Next.js, databases, and remote software engineering.",
-      thumbnail: "/course-webdev-v3.webp",
-    },
-    {
-      id: "youtube-monetization",
-      title: "YouTube Algorithm Monetization",
-      description: "Build channel automation, SEO strategies, and multiple video revenue layers.",
-      thumbnail: "/course-youtube-v3.webp",
-    },
-  ];
+  const [courses, setCourses] = useState<any[]>([]);
 
   // Load user data on mount / session load
   useEffect(() => {
@@ -72,6 +45,7 @@ export default function DashboardPage() {
       setNotifications(AcademyDB.getNotifications(userId));
       setCertificates(AcademyDB.getCertificates(userId));
       setAnnouncements(AcademyDB.getAnnouncements());
+      setCourses(AcademyDB.getCourses());
     }
   }, [userId]);
 
@@ -109,7 +83,7 @@ export default function DashboardPage() {
 
   // Filter dynamic enrolled courses metadata
   const enrolledCoursesList = studentProgress.map((prog) => {
-    const meta = courseTemplates.find((t) => t.id === prog.courseId);
+    const meta = courses.find((t) => t.id === prog.courseId);
     return {
       id: prog.courseId,
       title: meta?.title || "Course Program",

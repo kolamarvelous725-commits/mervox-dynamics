@@ -8,10 +8,12 @@ export default function AdminStudentsPage() {
   const [students, setStudents] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
+  const [courses, setCourses] = useState<any[]>([]);
 
   // Load students list
   const loadData = () => {
     setStudents(AcademyDB.getStudents());
+    setCourses(AcademyDB.getCourses());
   };
 
   useEffect(() => {
@@ -245,13 +247,7 @@ export default function AdminStudentsPage() {
                       <div key={prog.courseId} className="p-3 rounded-xl border border-card-border space-y-2">
                         <div className="flex justify-between items-start gap-2">
                           <h4 className="text-[10px] font-black text-slate-800 dark:text-white leading-tight">
-                            {prog.courseId === "forex-trading" 
-                              ? "Forex Trading Masterclass" 
-                              : prog.courseId === "ai-automation" 
-                                ? "AI & Business Automation" 
-                                : prog.courseId === "web-dev" 
-                                  ? "Web & Software Development" 
-                                  : "YouTube Algorithm Monetization"}
+                            {courses.find((c) => c.id === prog.courseId)?.title || prog.courseId}
                           </h4>
                           <span className="text-[8px] px-1.5 py-0.5 rounded font-black uppercase bg-blue-50 text-[#0055ff] shrink-0 leading-none">
                             {prog.progress}%

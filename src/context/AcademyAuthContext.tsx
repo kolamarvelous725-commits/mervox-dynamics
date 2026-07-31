@@ -40,14 +40,40 @@ export function AcademyAuthProvider({ children }: { children: React.ReactNode })
       if (storedUser) {
         try {
           const current = JSON.parse(storedUser);
-          setStudent(current);
+          let studentData = current;
 
-          // Update local device keys from the synced users record
+          // Enforce suspended status & update profile from cloud sync
           const usersJson = localStorage.getItem("mervox_academy_users");
           if (usersJson) {
             const users = JSON.parse(usersJson);
             const matched = users.find((u: any) => u.id === current.id);
             if (matched) {
+              if (matched.suspended) {
+                localStorage.removeItem("mervox_academy_current_user");
+                setStudent(null);
+                alert("Your account has been suspended by the administrator.");
+                setLoading(false);
+                return;
+              }
+              
+              // Build updated student data from synced cloud profile!
+              studentData = {
+                id: matched.id,
+                firstName: matched.firstName,
+                lastName: matched.lastName,
+                email: matched.email,
+                phone: matched.phone || "",
+                country: matched.country || "",
+                memberSince: matched.memberSince,
+                avatarUrl: matched.avatarUrl || "",
+                bio: matched.bio || "",
+                occupation: matched.occupation || "",
+                dob: matched.dob || "",
+                socials: matched.socials || {},
+              };
+              localStorage.setItem("mervox_academy_current_user", JSON.stringify(studentData));
+
+              // Update local device keys from the synced users record
               if (matched.progress) localStorage.setItem(`mervox_academy_progress_${matched.id}`, JSON.stringify(matched.progress));
               if (matched.quizzes) localStorage.setItem(`mervox_academy_quizzes_${matched.id}`, JSON.stringify(matched.quizzes));
               if (matched.certificates) localStorage.setItem(`mervox_academy_certificates_${matched.id}`, JSON.stringify(matched.certificates));
@@ -55,6 +81,8 @@ export function AcademyAuthProvider({ children }: { children: React.ReactNode })
               if (matched.notifications) localStorage.setItem(`mervox_academy_notifications_${matched.id}`, JSON.stringify(matched.notifications));
             }
           }
+
+          setStudent(studentData);
         } catch (err) {
           console.error("Failed to parse current student", err);
         }
@@ -114,6 +142,10 @@ export function AcademyAuthProvider({ children }: { children: React.ReactNode })
     );
 
     if (matchedUser) {
+      if (matchedUser.suspended) {
+        alert("Your account has been suspended by the administrator.");
+        return false;
+      }
       // Hydrate local device database keys from cloud data model
       if (matchedUser.progress) localStorage.setItem(`mervox_academy_progress_${matchedUser.id}`, JSON.stringify(matchedUser.progress));
       if (matchedUser.quizzes) localStorage.setItem(`mervox_academy_quizzes_${matchedUser.id}`, JSON.stringify(matchedUser.quizzes));

@@ -3,6 +3,7 @@
 import { useAdminAuth } from "@/context/AdminAuthContext";
 import { AdminSidebar } from "@/components/admin/AdminSidebar";
 import { AdminTopBar } from "@/components/admin/AdminTopBar";
+import { AcademyDB } from "@/utils/academyDb";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 
@@ -10,10 +11,20 @@ export default function AdminDashboardClientWrapper({ children }: { children: Re
   const { isAdminAuthenticated, loading } = useAdminAuth();
   const router = useRouter();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     if (!loading && !isAdminAuthenticated) {
       router.push("/admin/login");
+    } else if (isAdminAuthenticated) {
+      const syncData = async () => {
+        setSyncing(true);
+        try {
+          await AcademyDB.syncFromCloud();
+        } catch (e) {}
+        setSyncing(false);
+      };
+      syncData();
     }
   }, [isAdminAuthenticated, loading, router]);
 
