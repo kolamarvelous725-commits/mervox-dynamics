@@ -108,42 +108,77 @@ export default function CoursesPage() {
   }, [userId]);
 
   const handleEnroll = async (courseId: string, courseTitle: string) => {
-    const enrollmentPayload = {
-      user_id: userId,
-      course_id: courseId,
-      status: "In Progress",
-    };
-    console.log("Enrollment payload:", enrollmentPayload);
-
     try {
-      const { data: enrollRes, error: enrollError } = await supabase
+      // 1. Check if enrollment already exists to avoid unique constraint conflicts
+      const { data: existingEnroll, error: checkError } = await supabase
+        .from("enrollments")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("course_id", courseId)
+        .maybeSingle();
+
+      if (checkError) {
+        console.error("Error checking existing enrollment:", checkError);
+      }
+
+      if (existingEnroll) {
+        // Verify progress checkpoint row is synced
+        const { data: existingProg } = await supabase
+          .from("progress")
+          .select("*")
+          .eq("user_id", userId)
+          .eq("course_id", courseId)
+          .maybeSingle();
+
+        if (!existingProg) {
+          await supabase.from("progress").insert({
+            user_id: userId,
+            course_id: courseId,
+            progress_percent: 0,
+            lessons_completed: {
+              completed_lessons: [],
+            },
+          });
+        }
+
+        refreshData();
+        return;
+      }
+
+      // 2. Perform insert if new enrollment
+      const enrollmentPayload = {
+        user_id: userId,
+        course_id: courseId,
+        status: "In Progress",
+      };
+
+      const { error: enrollError } = await supabase
         .from("enrollments")
         .insert(enrollmentPayload);
 
       if (enrollError) {
+        if (enrollError.message.includes("duplicate key")) {
+          refreshData();
+          return;
+        }
         console.error("Supabase enrollments table INSERT error:", enrollError);
         alert(`Failed to enroll: ${enrollError.message}`);
         return;
       }
 
-      const progressPayload = {
-        user_id: userId,
-        course_id: courseId,
-        progress_percent: 0,
-        lessons_completed: {
-          completed_lessons: [],
-        },
-      };
-      console.log("Progress initialization payload:", progressPayload);
-
       const { error: progressError } = await supabase
         .from("progress")
-        .insert(progressPayload);
+        .insert({
+          user_id: userId,
+          course_id: courseId,
+          progress_percent: 0,
+          lessons_completed: {
+            completed_lessons: [],
+          },
+        });
 
-      if (progressError) {
+      if (progressError && !progressError.message.includes("duplicate key")) {
         console.error("Supabase progress table INSERT error:", progressError);
-        alert(`Failed to initialize progress table row: ${progressError.message}`);
-        return;
       }
 
       alert("Enrolled successfully in the course program!");
