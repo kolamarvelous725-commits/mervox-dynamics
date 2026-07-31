@@ -1,6 +1,6 @@
 "use client";
 
-import { AcademyDB } from "@/utils/academyDb";
+import { supabase } from "@/utils/supabaseClient";
 import { useState, useEffect } from "react";
 import { Users, BookOpen, UserPlus, DollarSign, Award, Video, Megaphone, Calendar, ArrowRight, UserCheck } from "lucide-react";
 import Link from "next/link";
@@ -14,42 +14,78 @@ export default function AdminDashboardPage() {
     certificates: 0,
     liveClasses: 0,
     announcements: 0,
+    enrollments: 0,
   });
 
   const [recentStudents, setRecentStudents] = useState<any[]>([]);
 
   useEffect(() => {
-    // Read dynamic collection values
-    const students = AcademyDB.getStudents();
-    const courses = AcademyDB.getCourses();
-    const live = AcademyDB.getLiveClasses();
-    const announcements = AcademyDB.getAnnouncements();
-    const certs = AcademyDB.getAllCertificates();
+    const fetchMetrics = async () => {
+      try {
+        const [
+          { count: studentCount, data: recentStudentsData },
+          { count: courseCount },
+          { count: certCount },
+          { count: liveCount },
+          { count: annCount },
+          { count: enrollCount },
+          { data: paymentsData }
+        ] = await Promise.all([
+          supabase
+            .from("profiles")
+            .select("*", { count: "exact" })
+            .eq("role", "student")
+            .order("created_at", { ascending: false }),
+          supabase
+            .from("courses")
+            .select("*", { count: "exact", head: true }),
+          supabase
+            .from("certificates")
+            .select("*", { count: "exact", head: true }),
+          supabase
+            .from("live_classes")
+            .select("*", { count: "exact", head: true }),
+          supabase
+            .from("announcements")
+            .select("*", { count: "exact", head: true }),
+          supabase
+            .from("enrollments")
+            .select("*", { count: "exact", head: true }),
+          supabase
+            .from("payments")
+            .select("amount")
+            .eq("status", "Paid")
+        ]);
 
-    // Compute revenue based on course enrollments
-    let totalRevenue = 0;
-    students.forEach((student: any) => {
-      const progress = student.progress || [];
-      progress.forEach((p: any) => {
-        let price = 199;
-        if (p.courseId === "forex-trading") price = 299;
-        if (p.courseId === "ai-automation") price = 249;
-        totalRevenue += price;
-      });
-    });
+        const totalRevenue = paymentsData?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
 
-    setMetrics({
-      totalStudents: students.length,
-      totalCourses: courses.length,
-      onlineStudents: Math.floor(3 + Math.random() * 9), // Simulated online count (3 to 11)
-      revenue: totalRevenue,
-      certificates: certs.length,
-      liveClasses: live.length,
-      announcements: announcements.length,
-    });
+        setMetrics({
+          totalStudents: studentCount || 0,
+          totalCourses: courseCount || 0,
+          onlineStudents: 0,
+          revenue: totalRevenue,
+          certificates: certCount || 0,
+          liveClasses: liveCount || 0,
+          announcements: annCount || 0,
+          enrollments: enrollCount || 0,
+        });
 
-    // Get 4 most recent students
-    setRecentStudents(students.slice(0, 4));
+        if (recentStudentsData) {
+          const formatted = recentStudentsData.slice(0, 4).map((p: any) => ({
+            id: p.id,
+            firstName: p.first_name,
+            lastName: p.last_name,
+            email: p.email,
+            memberSince: p.member_since,
+          }));
+          setRecentStudents(formatted);
+        }
+      } catch (err) {
+        console.error("Error fetching admin metrics:", err);
+      }
+    };
+
+    fetchMetrics();
   }, []);
 
   const cardDetails = [
@@ -60,6 +96,7 @@ export default function AdminDashboardPage() {
     { name: "Certificates Issued", value: metrics.certificates, icon: Award, color: "text-rose-600 bg-rose-50/70 dark:bg-rose-950/20" },
     { name: "Live Classes", value: metrics.liveClasses, icon: Video, color: "text-indigo-600 bg-indigo-50/70 dark:bg-indigo-950/20" },
     { name: "Announcements", value: metrics.announcements, icon: Megaphone, color: "text-sky-600 bg-sky-50/70 dark:bg-sky-950/20" },
+    { name: "Enrollments", value: metrics.enrollments, icon: UserPlus, color: "text-blue-600 bg-blue-50/70 dark:bg-blue-950/20" },
   ];
 
   return (
