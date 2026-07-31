@@ -4,9 +4,12 @@ const getStorageKey = (key: string, userId: string) => `mervox_academy_${key}_${
 
 const syncToCloud = async (users: any[]) => {
   try {
-    await fetch("https://kvdb.io/mervox_academy_shared_db_v2/users", {
+    await fetch("https://api.restful-api.dev/objects/ff8081819f7e10ae019fb828537555d5", {
       method: "PUT",
-      body: JSON.stringify(users),
+      body: JSON.stringify({
+        name: "Mervox Academy DB - users",
+        data: { list: users }
+      }),
       headers: {
         "Content-Type": "application/json"
       }
@@ -16,9 +19,12 @@ const syncToCloud = async (users: any[]) => {
 
 const syncAnnouncementsToCloud = async (list: any[]) => {
   try {
-    await fetch("https://kvdb.io/mervox_academy_shared_db_v2/announcements", {
+    await fetch("https://api.restful-api.dev/objects/ff8081819f7e10ae019fb828557755d6", {
       method: "PUT",
-      body: JSON.stringify(list),
+      body: JSON.stringify({
+        name: "Mervox Academy DB - announcements",
+        data: { list }
+      }),
       headers: {
         "Content-Type": "application/json"
       }
@@ -28,9 +34,12 @@ const syncAnnouncementsToCloud = async (list: any[]) => {
 
 const syncLiveClassesToCloud = async (list: any[]) => {
   try {
-    await fetch("https://kvdb.io/mervox_academy_shared_db_v2/live_classes", {
+    await fetch("https://api.restful-api.dev/objects/ff8081819f7e10ae019fb8285b7555d7", {
       method: "PUT",
-      body: JSON.stringify(list),
+      body: JSON.stringify({
+        name: "Mervox Academy DB - live_classes",
+        data: { list }
+      }),
       headers: {
         "Content-Type": "application/json"
       }
@@ -40,9 +49,12 @@ const syncLiveClassesToCloud = async (list: any[]) => {
 
 const syncCoursesToCloud = async (list: any[]) => {
   try {
-    await fetch("https://kvdb.io/mervox_academy_shared_db_v2/courses", {
+    await fetch("https://api.restful-api.dev/objects/ff8081819f7e10ae019fb8285e0455d8", {
       method: "PUT",
-      body: JSON.stringify(list),
+      body: JSON.stringify({
+        name: "Mervox Academy DB - courses",
+        data: { list }
+      }),
       headers: {
         "Content-Type": "application/json"
       }
@@ -52,9 +64,12 @@ const syncCoursesToCloud = async (list: any[]) => {
 
 const syncAssignmentsToCloud = async (list: any[]) => {
   try {
-    await fetch("https://kvdb.io/mervox_academy_shared_db_v2/assignments", {
+    await fetch("https://api.restful-api.dev/objects/ff8081819f7e10ae019fb8285fc255d9", {
       method: "PUT",
-      body: JSON.stringify(list),
+      body: JSON.stringify({
+        name: "Mervox Academy DB - assignments",
+        data: { list }
+      }),
       headers: {
         "Content-Type": "application/json"
       }
@@ -326,9 +341,10 @@ export const AcademyDB = {
     if (typeof window === "undefined") return null;
     try {
       // 1. Sync Users
-      const res = await fetch("https://kvdb.io/mervox_academy_shared_db_v2/users");
+      const res = await fetch("https://api.restful-api.dev/objects/ff8081819f7e10ae019fb828537555d5");
       if (res.ok) {
-        const cloudUsers = await res.json();
+        const payload = await res.json();
+        const cloudUsers = payload.data?.list || [];
         if (Array.isArray(cloudUsers)) {
           const localJson = localStorage.getItem("mervox_academy_users");
           const localUsers = localJson ? JSON.parse(localJson) : [];
@@ -355,9 +371,10 @@ export const AcademyDB = {
 
       // 2. Sync Announcements
       try {
-        const resAnn = await fetch("https://kvdb.io/mervox_academy_shared_db_v2/announcements");
+        const resAnn = await fetch("https://api.restful-api.dev/objects/ff8081819f7e10ae019fb828557755d6");
         if (resAnn.ok) {
-          const cloudAnn = await resAnn.json();
+          const payload = await resAnn.json();
+          const cloudAnn = payload.data?.list || [];
           if (Array.isArray(cloudAnn)) {
             localStorage.setItem("mervox_academy_announcements", JSON.stringify(cloudAnn));
           }
@@ -366,9 +383,10 @@ export const AcademyDB = {
 
       // 3. Sync Live Classes
       try {
-        const resLive = await fetch("https://kvdb.io/mervox_academy_shared_db_v2/live_classes");
+        const resLive = await fetch("https://api.restful-api.dev/objects/ff8081819f7e10ae019fb8285b7555d7");
         if (resLive.ok) {
-          const cloudLive = await resLive.json();
+          const payload = await resLive.json();
+          const cloudLive = payload.data?.list || [];
           if (Array.isArray(cloudLive)) {
             localStorage.setItem("mervox_academy_live_classes", JSON.stringify(cloudLive));
           }
@@ -377,9 +395,10 @@ export const AcademyDB = {
 
       // 4. Sync Courses
       try {
-        const resCourses = await fetch("https://kvdb.io/mervox_academy_shared_db_v2/courses");
+        const resCourses = await fetch("https://api.restful-api.dev/objects/ff8081819f7e10ae019fb8285e0455d8");
         if (resCourses.ok) {
-          const cloudCourses = await resCourses.json();
+          const payload = await resCourses.json();
+          const cloudCourses = payload.data?.list || [];
           if (Array.isArray(cloudCourses)) {
             localStorage.setItem("mervox_academy_courses", JSON.stringify(cloudCourses));
           }
@@ -388,9 +407,10 @@ export const AcademyDB = {
 
       // 5. Sync Assignments
       try {
-        const resAsg = await fetch("https://kvdb.io/mervox_academy_shared_db_v2/assignments");
+        const resAsg = await fetch("https://api.restful-api.dev/objects/ff8081819f7e10ae019fb8285fc255d9");
         if (resAsg.ok) {
-          const cloudAsg = await resAsg.json();
+          const payload = await resAsg.json();
+          const cloudAsg = payload.data?.list || [];
           if (Array.isArray(cloudAsg)) {
             localStorage.setItem("mervox_academy_assignments_list", JSON.stringify(cloudAsg));
           }
