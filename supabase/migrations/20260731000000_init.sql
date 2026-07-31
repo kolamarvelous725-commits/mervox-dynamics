@@ -23,18 +23,21 @@ CREATE TABLE IF NOT EXISTS public.profiles (
 -- Enable RLS on Profiles
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 
+-- Profiles Policies
 DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.profiles;
-CREATE POLICY "Public profiles are viewable by everyone" ON public.profiles FOR SELECT USING (true);
+DROP POLICY IF EXISTS "Users can select their own profile" ON public.profiles;
+CREATE POLICY "Users can select their own profile" ON public.profiles FOR SELECT USING (auth.uid() = id);
 
 DROP POLICY IF EXISTS "Users can insert their own profile" ON public.profiles;
 CREATE POLICY "Users can insert their own profile" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
 
 DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
-CREATE POLICY "Users can update their own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Users can update their own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
 
 DROP POLICY IF EXISTS "Admins have full access to profiles" ON public.profiles;
-CREATE POLICY "Admins have full access to profiles" ON public.profiles FOR ALL USING (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+DROP POLICY IF EXISTS "Admins can access all profiles" ON public.profiles;
+CREATE POLICY "Admins can access all profiles" ON public.profiles FOR ALL USING (
+  (auth.jwt() ->> 'email') = 'marvelousotugalu012@gmail.com'
 );
 
 -- Trigger to automatically create a profile record when a user signs up
@@ -95,7 +98,7 @@ CREATE POLICY "Courses are viewable by everyone" ON public.courses FOR SELECT US
 
 DROP POLICY IF EXISTS "Admins have full access to courses" ON public.courses;
 CREATE POLICY "Admins have full access to courses" ON public.courses FOR ALL USING (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+  (auth.jwt() ->> 'email') = 'marvelousotugalu012@gmail.com'
 );
 
 -- 3. Enrollments Table
@@ -115,7 +118,7 @@ CREATE POLICY "Users can access their own enrollments" ON public.enrollments FOR
 
 DROP POLICY IF EXISTS "Admins can view and edit student enrollments" ON public.enrollments;
 CREATE POLICY "Admins can view and edit student enrollments" ON public.enrollments FOR ALL USING (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+  (auth.jwt() ->> 'email') = 'marvelousotugalu012@gmail.com'
 );
 
 -- 4. Progress Table
@@ -135,7 +138,7 @@ CREATE POLICY "Users can access their own progress" ON public.progress FOR ALL U
 
 DROP POLICY IF EXISTS "Admins can view and edit student progress" ON public.progress;
 CREATE POLICY "Admins can view and edit student progress" ON public.progress FOR ALL USING (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+  (auth.jwt() ->> 'email') = 'marvelousotugalu012@gmail.com'
 );
 
 -- 5. Quizzes Table
@@ -155,7 +158,7 @@ CREATE POLICY "Users can access their own quizzes" ON public.quizzes FOR ALL USI
 
 DROP POLICY IF EXISTS "Admins can view student quizzes" ON public.quizzes;
 CREATE POLICY "Admins can view student quizzes" ON public.quizzes FOR ALL USING (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+  (auth.jwt() ->> 'email') = 'marvelousotugalu012@gmail.com'
 );
 
 -- 6. Assignments Table
@@ -174,7 +177,7 @@ CREATE POLICY "Assignments are viewable by everyone" ON public.assignments FOR S
 
 DROP POLICY IF EXISTS "Admins have full access to assignments" ON public.assignments;
 CREATE POLICY "Admins have full access to assignments" ON public.assignments FOR ALL USING (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+  (auth.jwt() ->> 'email') = 'marvelousotugalu012@gmail.com'
 );
 
 -- 7. Live Classes Table
@@ -195,7 +198,7 @@ CREATE POLICY "Live classes are viewable by everyone" ON public.live_classes FOR
 
 DROP POLICY IF EXISTS "Admins have full access to live classes" ON public.live_classes;
 CREATE POLICY "Admins have full access to live classes" ON public.live_classes FOR ALL USING (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+  (auth.jwt() ->> 'email') = 'marvelousotugalu012@gmail.com'
 );
 
 -- 8. Announcements Table
@@ -214,7 +217,7 @@ CREATE POLICY "Announcements are viewable by everyone" ON public.announcements F
 
 DROP POLICY IF EXISTS "Admins have full access to announcements" ON public.announcements;
 CREATE POLICY "Admins have full access to announcements" ON public.announcements FOR ALL USING (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+  (auth.jwt() ->> 'email') = 'marvelousotugalu012@gmail.com'
 );
 
 -- 9. Messages Table
@@ -235,7 +238,7 @@ CREATE POLICY "Users can access their own messages" ON public.messages FOR ALL U
 
 DROP POLICY IF EXISTS "Admins can view and send messages" ON public.messages;
 CREATE POLICY "Admins can view and send messages" ON public.messages FOR ALL USING (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+  (auth.jwt() ->> 'email') = 'marvelousotugalu012@gmail.com'
 );
 
 -- 10. Certificates Table
@@ -255,7 +258,7 @@ CREATE POLICY "Users can access their own certificates" ON public.certificates F
 
 DROP POLICY IF EXISTS "Admins can view and edit student certificates" ON public.certificates;
 CREATE POLICY "Admins can view and edit student certificates" ON public.certificates FOR ALL USING (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+  (auth.jwt() ->> 'email') = 'marvelousotugalu012@gmail.com'
 );
 
 -- 11. Payments Table
@@ -275,7 +278,7 @@ CREATE POLICY "Users can access their own payments" ON public.payments FOR ALL U
 
 DROP POLICY IF EXISTS "Admins can view student payments" ON public.payments;
 CREATE POLICY "Admins can view student payments" ON public.payments FOR ALL USING (
-  EXISTS (SELECT 1 FROM public.profiles WHERE id = auth.uid() AND role = 'admin')
+  (auth.jwt() ->> 'email') = 'marvelousotugalu012@gmail.com'
 );
 
 
