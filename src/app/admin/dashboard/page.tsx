@@ -22,66 +22,148 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     const fetchMetrics = async () => {
       try {
-        const [
-          { count: studentCount, data: recentStudentsData },
-          { count: courseCount },
-          { count: certCount },
-          { count: liveCount },
-          { count: annCount },
-          { count: enrollCount },
-          { data: paymentsData }
-        ] = await Promise.all([
-          supabase
+        // Query Profiles
+        let studentCount = 0;
+        let recentStudentsData: any[] = [];
+        try {
+          const { count, data, error } = await supabase
             .from("profiles")
             .select("*", { count: "exact" })
             .eq("role", "student")
-            .order("created_at", { ascending: false }),
-          supabase
+            .order("created_at", { ascending: false });
+          if (error) {
+            console.error("Supabase profiles query error:", error);
+          } else {
+            studentCount = count || 0;
+            recentStudentsData = data || [];
+          }
+        } catch (e) {
+          console.error("Exception fetching profiles metrics:", e);
+        }
+
+        // Query Courses
+        let courseCount = 0;
+        try {
+          const { count, error } = await supabase
             .from("courses")
-            .select("*", { count: "exact", head: true }),
-          supabase
+            .select("*", { count: "exact", head: true });
+          if (error) {
+            console.error("Supabase courses query error:", error);
+          } else {
+            courseCount = count || 0;
+          }
+        } catch (e) {
+          console.error("Exception fetching courses metrics:", e);
+        }
+
+        // Query Certificates
+        let certCount = 0;
+        try {
+          const { count, error } = await supabase
             .from("certificates")
-            .select("*", { count: "exact", head: true }),
-          supabase
+            .select("*", { count: "exact", head: true });
+          if (error) {
+            console.error("Supabase certificates query error:", error);
+          } else {
+            certCount = count || 0;
+          }
+        } catch (e) {
+          console.error("Exception fetching certificates metrics:", e);
+        }
+
+        // Query Live Classes
+        let liveCount = 0;
+        try {
+          const { count, error } = await supabase
             .from("live_classes")
-            .select("*", { count: "exact", head: true }),
-          supabase
+            .select("*", { count: "exact", head: true });
+          if (error) {
+            console.error("Supabase live_classes query error:", error);
+          } else {
+            liveCount = count || 0;
+          }
+        } catch (e) {
+          console.error("Exception fetching live_classes metrics:", e);
+        }
+
+        // Query Announcements
+        let annCount = 0;
+        try {
+          const { count, error } = await supabase
             .from("announcements")
-            .select("*", { count: "exact", head: true }),
-          supabase
+            .select("*", { count: "exact", head: true });
+          if (error) {
+            console.error("Supabase announcements query error:", error);
+          } else {
+            annCount = count || 0;
+          }
+        } catch (e) {
+          console.error("Exception fetching announcements metrics:", e);
+        }
+
+        // Query Enrollments
+        let enrollCount = 0;
+        try {
+          const { count, error } = await supabase
             .from("enrollments")
-            .select("*", { count: "exact", head: true }),
-          supabase
+            .select("*", { count: "exact", head: true });
+          if (error) {
+            console.error("Supabase enrollments query error:", error);
+          } else {
+            enrollCount = count || 0;
+          }
+        } catch (e) {
+          console.error("Exception fetching enrollments metrics:", e);
+        }
+
+        // Query Payments
+        let totalRevenue = 0;
+        try {
+          const { data, error } = await supabase
             .from("payments")
             .select("amount")
-            .eq("status", "Paid")
-        ]);
-
-        const totalRevenue = paymentsData?.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
+            .eq("status", "Paid");
+          if (error) {
+            console.error("Supabase payments query error:", error);
+          } else if (data) {
+            totalRevenue = data.reduce((sum, p) => sum + Number(p.amount), 0) || 0;
+          }
+        } catch (e) {
+          console.error("Exception fetching payments metrics:", e);
+        }
 
         setMetrics({
-          totalStudents: studentCount || 0,
-          totalCourses: courseCount || 0,
+          totalStudents: studentCount,
+          totalCourses: courseCount,
           onlineStudents: 0,
           revenue: totalRevenue,
-          certificates: certCount || 0,
-          liveClasses: liveCount || 0,
-          announcements: annCount || 0,
-          enrollments: enrollCount || 0,
+          certificates: certCount,
+          liveClasses: liveCount,
+          announcements: annCount,
+          enrollments: enrollCount,
         });
 
-        if (recentStudentsData) {
-          const formatted = recentStudentsData.slice(0, 4).map((p: any) => ({
+        const formatted = recentStudentsData.slice(0, 4).map((p: any) => {
+          const parts = (p.full_name || "").trim().split(/\s+/);
+          const firstName = parts[0] || "";
+          const lastName = parts.slice(1).join(" ") || "";
+          let memberSince = "Joined";
+          if (p.created_at) {
+            try {
+              memberSince = new Date(p.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+            } catch {}
+          }
+          return {
             id: p.id,
-            firstName: p.first_name,
-            lastName: p.last_name,
+            firstName,
+            lastName,
             email: p.email,
-            memberSince: p.member_since,
-          }));
-          setRecentStudents(formatted);
-        }
+            memberSince,
+          };
+        });
+        setRecentStudents(formatted);
       } catch (err) {
-        console.error("Error fetching admin metrics:", err);
+        console.error("General error loading admin dashboard page metrics:", err);
       }
     };
 
@@ -164,7 +246,7 @@ export default function AdminDashboardPage() {
                 <div key={st.id} className="py-3.5 flex items-center justify-between gap-4 first:pt-0 last:pb-0">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-slate-900 border border-card-border/60 text-[#0055ff] flex items-center justify-center font-heading font-black text-xs">
-                      {st.firstName.charAt(0)}{st.lastName.charAt(0)}
+                      {(st.firstName || "S").charAt(0)}{(st.lastName || "U").charAt(0)}
                     </div>
                     <div>
                       <h4 className="text-xs font-bold text-slate-800 dark:text-white leading-none">
