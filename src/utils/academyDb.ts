@@ -311,5 +311,506 @@ export const AcademyDB = {
     }
     return null;
   },
+
+  // Dynamic Courses Management
+  getCourses(): any[] {
+    if (typeof window === "undefined") return [];
+    const data = localStorage.getItem("mervox_academy_courses");
+    if (!data) {
+      const defaultCourses = [
+        {
+          id: "forex-trading",
+          title: "Forex Trading Masterclass",
+          description: "Learn price action, market structure, risk management, and trading psychology from scratch.",
+          thumbnail: "/course-forex-v3.webp",
+          progress: 0,
+          status: "Not Started",
+          lessonsCompleted: 0,
+          totalLessons: 20,
+          published: true,
+          lessons: Array.from({ length: 20 }).map((_, idx) => `Lesson ${idx + 1}: Technical Analysis & Market Structures - Part ${idx + 1}`),
+        },
+        {
+          id: "ai-automation",
+          title: "AI & Business Automation",
+          description: "Integrate LLMs, design bots, set workflow triggers, and automate client processes with Make.com.",
+          thumbnail: "/course-ai-v3.webp",
+          progress: 0,
+          status: "Not Started",
+          lessonsCompleted: 0,
+          totalLessons: 20,
+          published: true,
+          lessons: Array.from({ length: 20 }).map((_, idx) => `Lesson ${idx + 1}: AI Automation & Trigger Funnels - Part ${idx + 1}`),
+        },
+        {
+          id: "web-dev",
+          title: "Web & Software Development",
+          description: "Build interactive apps using React, Tailwind CSS, TypeScript, and modern frameworks.",
+          thumbnail: "/course-webdev-v3.webp",
+          progress: 0,
+          status: "Not Started",
+          lessonsCompleted: 0,
+          totalLessons: 20,
+          published: true,
+          lessons: Array.from({ length: 20 }).map((_, idx) => `Lesson ${idx + 1}: React Components & NextJS APIs - Part ${idx + 1}`),
+        },
+        {
+          id: "youtube-monetization",
+          title: "YouTube Algorithm Monetization",
+          description: "Master niche creation, scriptwriting, video editing pipelines, and CTR optimization.",
+          thumbnail: "/course-youtube-v3.webp",
+          progress: 0,
+          status: "Not Started",
+          lessonsCompleted: 0,
+          totalLessons: 20,
+          published: true,
+          lessons: Array.from({ length: 20 }).map((_, idx) => `Lesson ${idx + 1}: YouTube Niches & SEO Mechanics - Part ${idx + 1}`),
+        }
+      ];
+      localStorage.setItem("mervox_academy_courses", JSON.stringify(defaultCourses));
+      return defaultCourses;
+    }
+    return JSON.parse(data);
+  },
+
+  saveCourses(courses: any[]) {
+    if (typeof window === "undefined") return;
+    localStorage.setItem("mervox_academy_courses", JSON.stringify(courses));
+    const usersJson = localStorage.getItem("mervox_academy_users");
+    if (usersJson) {
+      try {
+        syncToCloud(JSON.parse(usersJson));
+      } catch (e) {}
+    }
+  },
+
+  // Live Classes CRUD
+  getLiveClasses(): any[] {
+    if (typeof window === "undefined") return [];
+    const data = localStorage.getItem("mervox_academy_live_classes");
+    if (!data) {
+      const defaultLive = [
+        {
+          id: "live-forex",
+          courseId: "forex-trading",
+          title: "Live Forex Market Review & Trade setups",
+          instructor: "JPForex Mentor",
+          date: "July 31, 2026",
+          time: "16:00 BST",
+          link: "https://zoom.us/j/123456789",
+        },
+        {
+          id: "live-ai",
+          courseId: "ai-automation",
+          title: "ChatGPT Prompts Deep Dive & Make.com workflows",
+          instructor: "AI Automation Specialist",
+          date: "August 2, 2026",
+          time: "18:00 BST",
+          link: "https://zoom.us/j/123456790",
+        },
+        {
+          id: "live-web",
+          courseId: "web-dev",
+          title: "React Server Components & Next.js 16 APIs",
+          instructor: "Lead Web Developer",
+          date: "August 5, 2026",
+          time: "17:00 BST",
+          link: "https://zoom.us/j/123456791",
+        },
+      ];
+      localStorage.setItem("mervox_academy_live_classes", JSON.stringify(defaultLive));
+      return defaultLive;
+    }
+    return JSON.parse(data);
+  },
+
+  saveLiveClasses(classes: any[]) {
+    if (typeof window === "undefined") return;
+    localStorage.setItem("mervox_academy_live_classes", JSON.stringify(classes));
+  },
+
+  // Announcements CRUD
+  saveAnnouncements(list: any[]) {
+    if (typeof window === "undefined") return;
+    localStorage.setItem("mervox_academy_announcements", JSON.stringify(list));
+  },
+
+  // Student Audits
+  getStudents(): any[] {
+    if (typeof window === "undefined") return [];
+    const usersJson = localStorage.getItem("mervox_academy_users");
+    const users = usersJson ? JSON.parse(usersJson) : [];
+    return users.filter((u: any) => u.email !== "marvelousotugalu012@gmail.com");
+  },
+
+  suspendStudent(studentId: string, suspended: boolean) {
+    if (typeof window === "undefined") return;
+    const usersJson = localStorage.getItem("mervox_academy_users");
+    if (usersJson) {
+      const users = JSON.parse(usersJson);
+      const updated = users.map((u: any) => {
+        if (u.id === studentId) {
+          return { ...u, suspended };
+        }
+        return u;
+      });
+      localStorage.setItem("mervox_academy_users", JSON.stringify(updated));
+      syncToCloud(updated);
+    }
+  },
+
+  deleteStudent(studentId: string) {
+    if (typeof window === "undefined") return;
+    const usersJson = localStorage.getItem("mervox_academy_users");
+    if (usersJson) {
+      const users = JSON.parse(usersJson);
+      const updated = users.filter((u: any) => u.id !== studentId);
+      localStorage.setItem("mervox_academy_users", JSON.stringify(updated));
+      syncToCloud(updated);
+    }
+  },
+
+  // Quiz Editor
+  getQuizQuestions(): Record<string, any[]> {
+    if (typeof window === "undefined") return {};
+    const data = localStorage.getItem("mervox_academy_quiz_questions");
+    if (!data) {
+      const defaults = {
+        "forex-trading": [
+          {
+            q: "Which analysis form focuses on price charts, candlesticks, and market patterns?",
+            options: ["Fundamental Analysis", "Technical Analysis", "Sentiment Analysis"],
+            answer: 1,
+          },
+          {
+            q: "What is risk management's primary rule?",
+            options: ["Leverage as much as possible", "Never risk more than 1-2% per trade", "Trade only high volatility markets"],
+            answer: 1,
+          },
+          {
+            q: "A bullish candlestick indicates what market sentiment?",
+            options: ["Sellers are dominant", "Buyers are dominant", "Market is consolidation range"],
+            answer: 1,
+          },
+        ],
+        "ai-automation": [
+          {
+            q: "What is the primary role of Make.com in automation?",
+            options: ["Hosting LLMs", "Connecting APIs and automating workflow data", "Writing raw Python code"],
+            answer: 1,
+          },
+          {
+            q: "Which component triggers a workflow sequence in Make?",
+            options: ["Router", "Webhook or Instant Trigger", "JSON Parser"],
+            answer: 1,
+          },
+          {
+            q: "To prevent API timeouts, which strategy is best?",
+            options: ["Shorten LLM prompts", "Increase script concurrency / queues", "Add delay timers"],
+            answer: 1,
+          },
+        ],
+        "web-dev": [
+          {
+            q: "Next.js App Router renders pages by default as what component type?",
+            options: ["Client Components", "Server Components", "Stateful Components"],
+            answer: 1,
+          },
+          {
+            q: "Which Tailwind utility sets fixed flex sizes?",
+            options: ["flex-grow", "shrink-0", "basis-auto"],
+            answer: 1,
+          },
+          {
+            q: "React Hydration mismatches commonly happen due to what?",
+            options: ["Render logic differences between server and client states", "Mismatching package versions", "Missing TS interfaces"],
+            answer: 0,
+          },
+        ],
+        "youtube-monetization": [
+          {
+            q: "What are the two key metrics driving YouTube click-through visibility?",
+            options: ["CTR and AVD (Average View Duration)", "Likes and Shares", "Comments and Playlists"],
+            answer: 0,
+          },
+          {
+            q: "When launching a new faceless channel, which step is most crucial?",
+            options: ["Uploading 10 videos immediately", "Subscribing to competitors", "Defining a focused sub-niche structure"],
+            answer: 2,
+          },
+          {
+            q: "To maximize thumbnail CTR, you should do what?",
+            options: ["Use high-contrast visuals with 3-5 bold keywords", "Put the entire video title on the thumbnail", "Use dark backgrounds exclusively"],
+            answer: 0,
+          },
+        ]
+      };
+      localStorage.setItem("mervox_academy_quiz_questions", JSON.stringify(defaults));
+      return defaults;
+    }
+    return JSON.parse(data);
+  },
+
+  saveQuizQuestions(questions: Record<string, any[]>) {
+    if (typeof window === "undefined") return;
+    localStorage.setItem("mervox_academy_quiz_questions", JSON.stringify(questions));
+  },
+
+  // Certificates Manager
+  getAllCertificates(): any[] {
+    if (typeof window === "undefined") return [];
+    const users = this.getStudents();
+    const certs: any[] = [];
+    users.forEach((student: any) => {
+      const studentCerts = student.certificates || [];
+      studentCerts.forEach((courseId: string) => {
+        certs.push({
+          studentId: student.id,
+          studentName: `${student.firstName} ${student.lastName}`,
+          studentEmail: student.email,
+          courseId,
+          dateIssued: "July 2026",
+        });
+      });
+    });
+    return certs;
+  },
+
+  revokeCertificate(studentId: string, courseId: string) {
+    if (typeof window === "undefined") return;
+    const usersJson = localStorage.getItem("mervox_academy_users");
+    if (usersJson) {
+      const users = JSON.parse(usersJson);
+      const updated = users.map((u: any) => {
+        if (u.id === studentId) {
+          const certs = u.certificates || [];
+          return {
+            ...u,
+            certificates: certs.filter((id: string) => id !== courseId),
+          };
+        }
+        return u;
+      });
+      localStorage.setItem("mervox_academy_users", JSON.stringify(updated));
+      syncToCloud(updated);
+    }
+  },
+
+  regenerateCertificate(studentId: string, courseId: string) {
+    if (typeof window === "undefined") return;
+    const usersJson = localStorage.getItem("mervox_academy_users");
+    if (usersJson) {
+      const users = JSON.parse(usersJson);
+      const updated = users.map((u: any) => {
+        if (u.id === studentId) {
+          const certs = u.certificates || [];
+          if (!certs.includes(courseId)) {
+            certs.push(courseId);
+          }
+          return {
+            ...u,
+            certificates: certs,
+          };
+        }
+        return u;
+      });
+      localStorage.setItem("mervox_academy_users", JSON.stringify(updated));
+      syncToCloud(updated);
+    }
+  },
+
+  // Assignments & Project Review
+  getAssignments(): any[] {
+    if (typeof window === "undefined") return [];
+    const data = localStorage.getItem("mervox_academy_assignments_list");
+    if (!data) {
+      const defaults = [
+        {
+          id: "asg-forex",
+          courseId: "forex-trading",
+          courseTitle: "Forex Trading Masterclass",
+          title: "Support & Resistance Area Marking Practice",
+          dueDate: "August 10, 2026",
+        },
+        {
+          id: "asg-ai",
+          courseId: "ai-automation",
+          courseTitle: "AI & Business Automation",
+          title: "ChatGPT Lead-Gen Workflow Make.com Setup Blueprint",
+          dueDate: "August 15, 2026",
+        },
+        {
+          id: "asg-web",
+          courseId: "web-dev",
+          courseTitle: "Web & Software Development",
+          title: "React Modular Dashboard Layout Build",
+          dueDate: "August 20, 2026",
+        },
+      ];
+      localStorage.setItem("mervox_academy_assignments_list", JSON.stringify(defaults));
+      return defaults;
+    }
+    return JSON.parse(data);
+  },
+
+  saveAssignments(list: any[]) {
+    if (typeof window === "undefined") return;
+    localStorage.setItem("mervox_academy_assignments_list", JSON.stringify(list));
+  },
+
+  getSubmissions(): any[] {
+    if (typeof window === "undefined") return [];
+    const data = localStorage.getItem("mervox_academy_all_submissions");
+    if (!data) {
+      const defaults = [
+        {
+          id: "sub-1",
+          studentId: "student-1",
+          studentName: "John Doe",
+          assignmentId: "asg-forex",
+          courseTitle: "Forex Trading Masterclass",
+          assignmentTitle: "Support & Resistance Area Marking Practice",
+          fileName: "Forex_S_R_Assignment.pdf",
+          dateSubmitted: "July 28, 2026",
+          status: "Pending",
+          grade: "",
+          feedback: "",
+        },
+        {
+          id: "sub-2",
+          studentId: "student-2",
+          studentName: "Sarah Connor",
+          assignmentId: "asg-ai",
+          courseTitle: "AI & Business Automation",
+          assignmentTitle: "ChatGPT Lead-Gen Workflow Make.com Setup Blueprint",
+          fileName: "AI_Workflow_Make_Blueprint.json",
+          dateSubmitted: "July 29, 2026",
+          status: "Graded",
+          grade: "A+",
+          feedback: "Incredible attention to detail on Make.com routing modules. Well done!",
+        }
+      ];
+      localStorage.setItem("mervox_academy_all_submissions", JSON.stringify(defaults));
+      return defaults;
+    }
+    return JSON.parse(data);
+  },
+
+  gradeSubmission(submissionId: string, grade: string, feedback: string) {
+    if (typeof window === "undefined") return;
+    const list = this.getSubmissions();
+    const updated = list.map((sub: any) => {
+      if (sub.id === submissionId) {
+        return {
+          ...sub,
+          status: "Graded",
+          grade,
+          feedback,
+        };
+      }
+      return sub;
+    });
+    localStorage.setItem("mervox_academy_all_submissions", JSON.stringify(updated));
+
+    const sub = list.find((s: any) => s.id === submissionId);
+    if (sub) {
+      const savedKey = `mervox_academy_assignments_${sub.studentId}`;
+      const savedData = localStorage.getItem(savedKey);
+      if (savedData) {
+        const studentAsgs = JSON.parse(savedData);
+        const updatedStudentAsgs = studentAsgs.map((asg: any) => {
+          if (asg.id === sub.assignmentId) {
+            return {
+              ...asg,
+              status: "Graded",
+              grade,
+              feedback,
+            };
+          }
+          return asg;
+        });
+        localStorage.setItem(savedKey, JSON.stringify(updatedStudentAsgs));
+        this.syncUserData(sub.studentId);
+        this.addNotification(sub.studentId, `Your assignment "${sub.assignmentTitle}" has been graded: ${grade}.`);
+      }
+    }
+  },
+
+  // Admin Direct Chat Channels
+  getAllMessageThreads(): any[] {
+    if (typeof window === "undefined") return [];
+    const students = this.getStudents();
+    const threads: any[] = [];
+    const channels = ["forex-mentor", "ai-support", "helpdesk"];
+    
+    students.forEach((student: any) => {
+      channels.forEach((channelId) => {
+        const savedKey = `mervox_academy_msg_${student.id}_${channelId}`;
+        const data = localStorage.getItem(savedKey);
+        if (data) {
+          const messages = JSON.parse(data);
+          if (messages.length > 0) {
+            threads.push({
+              studentId: student.id,
+              studentName: `${student.firstName} ${student.lastName}`,
+              channelId,
+              lastMessage: messages[messages.length - 1].text,
+              lastMessageTime: messages[messages.length - 1].time,
+              messages,
+            });
+          }
+        }
+      });
+    });
+    return threads;
+  },
+
+  sendAdminReply(studentId: string, channelId: string, text: string) {
+    if (typeof window === "undefined") return;
+    const savedKey = `mervox_academy_msg_${studentId}_${channelId}`;
+    const data = localStorage.getItem(savedKey);
+    const messages = data ? JSON.parse(data) : [];
+    
+    const timestamp = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+    const newMsg = {
+      id: Math.random().toString(36).substring(2, 9),
+      sender: "mentor" as const,
+      text,
+      time: timestamp,
+    };
+    
+    messages.push(newMsg);
+    localStorage.setItem(savedKey, JSON.stringify(messages));
+    
+    this.addNotification(studentId, `New direct message from your instructor.`);
+    this.syncUserData(studentId);
+  },
+
+  // Admin Configuration Settings
+  getAdminSettings(): any {
+    if (typeof window === "undefined") return {};
+    const data = localStorage.getItem("mervox_academy_admin_settings");
+    if (!data) {
+      const defaults = {
+        logoUrl: "/logo.png",
+        academyName: "Mervox Academy",
+        contactEmail: "support@mervoxdynamic.com",
+        contactPhone: "+234 812 345 6789",
+        twitter: "https://twitter.com/mervoxdynamic",
+        github: "https://github.com/mervoxdynamic",
+        linkedin: "https://linkedin.com/company/mervoxdynamic",
+        emailProvider: "SMTP (Default)",
+        paymentProvider: "Stripe Test",
+      };
+      localStorage.setItem("mervox_academy_admin_settings", JSON.stringify(defaults));
+      return defaults;
+    }
+    return JSON.parse(data);
+  },
+
+  saveAdminSettings(settings: any) {
+    if (typeof window === "undefined") return;
+    localStorage.setItem("mervox_academy_admin_settings", JSON.stringify(settings));
+  },
 };
 export default AcademyDB;

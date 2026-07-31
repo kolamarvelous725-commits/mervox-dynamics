@@ -36,62 +36,9 @@ export default function CoursesPage() {
   const [studentProgress, setStudentProgress] = useState<UserCourseProgress[]>([]);
   const [studentQuizzes, setStudentQuizzes] = useState<QuizAttempt[]>([]);
   const [studentCertificates, setStudentCertificates] = useState<string[]>([]);
+  const [courses, setCourses] = useState<any[]>([]);
 
-  // Static course templates
-  const courseTemplates = [
-    {
-      id: "forex-trading",
-      title: "Forex Trading Masterclass",
-      description: "Master technical analysis, risk management, and live trading strategies.",
-      thumbnail: "/course-forex-v3.webp",
-      totalLessons: 20,
-    },
-    {
-      id: "ai-automation",
-      title: "AI & Business Automation",
-      description: "Harness generative AI, prompt engineering, and no-code workflow funnels.",
-      thumbnail: "/course-ai-v3.webp",
-      totalLessons: 20,
-    },
-    {
-      id: "web-dev",
-      title: "Web & Software Development",
-      description: "Master coding with React, Next.js, databases, and remote software engineering.",
-      thumbnail: "/course-webdev-v3.webp",
-      totalLessons: 20,
-    },
-    {
-      id: "youtube-monetization",
-      title: "YouTube Algorithm Monetization",
-      description: "Build channel automation, SEO strategies, and multiple video revenue layers.",
-      thumbnail: "/course-youtube-v3.webp",
-      totalLessons: 20,
-    },
-  ];
-
-  // Quiz questions mapped by course id
-  const quizQuestions: Record<string, { q: string; options: string[]; correct: string }[]> = {
-    "forex-trading": [
-      { q: "What does PIP stand for in Forex trading?", options: ["Percentage in Point", "Price Interest Percentage", "Private Investment Portfolio"], correct: "Percentage in Point" },
-      { q: "Which is a major currency pair?", options: ["EUR/USD", "USD/ZAR", "EUR/TRY"], correct: "EUR/USD" },
-      { q: "What is leverage in Forex?", options: ["Borrowed funds to increase trading position size", "A type of technical indicator", "The commission fee charged by brokers"], correct: "Borrowed funds to increase trading position size" }
-    ],
-    "ai-automation": [
-      { q: "What is prompt engineering?", options: ["Crafting instructions to get desired AI outputs", "Coding a neural network from scratch", "Fixing SQL database performance"], correct: "Crafting instructions to get desired AI outputs" },
-      { q: "Which tool is commonly used for no-code workflow automation?", options: ["Make.com", "Visual Studio Code", "PostgreSQL"], correct: "Make.com" },
-      { q: "What does LLM stand for?", options: ["Large Language Model", "Linear Logic Machine", "Local Latency Manager"], correct: "Large Language Model" }
-    ],
-    "web-dev": [
-      { q: "What is React?", options: ["A JavaScript library for building user interfaces", "A backend database engine", "A compiler for TypeScript"], correct: "A JavaScript library for building user interfaces" },
-      { q: "Which Next.js feature handles static page pre-rendering?", options: ["Static Site Generation", "Client Side Hydration", "Database Migration"], correct: "Static Site Generation" },
-      { q: "What does CSS stand for?", options: ["Cascading Style Sheets", "Computer State Syntax", "Creative System Style"], correct: "Cascading Style Sheets" }
-    ],
-    "youtube-monetization": [
-      { q: "What is the watch hours requirement for the YouTube Partner Program?", options: ["4,000 hours", "1,000 hours", "10,000 hours"], correct: "4,000 hours" },
-      { q: "What does CTR stand for in video performance?", options: ["Click-Through Rate", "Channel Tracking Ratio", "Cash Transfer Registry"], correct: "Click-Through Rate" },
-      { q: "What is YouTube SEO?", options: ["Optimizing titles, descriptions, and tags for algorithm search", "Editing videos in high definition", "Running Google Search campaigns"], correct: "Optimizing titles, descriptions, and tags for algorithm search" }
-    ]
-  };
+  const quizQuestions = AcademyDB.getQuizQuestions();
 
   // Load database values
   useEffect(() => {
@@ -99,6 +46,7 @@ export default function CoursesPage() {
       setStudentProgress(AcademyDB.getProgress(userId));
       setStudentQuizzes(AcademyDB.getQuizzes(userId));
       setStudentCertificates(AcademyDB.getCertificates(userId));
+      setCourses(AcademyDB.getCourses().filter((c) => c.published));
     }
   }, [userId]);
 
@@ -106,6 +54,7 @@ export default function CoursesPage() {
     setStudentProgress(AcademyDB.getProgress(userId));
     setStudentQuizzes(AcademyDB.getQuizzes(userId));
     setStudentCertificates(AcademyDB.getCertificates(userId));
+    setCourses(AcademyDB.getCourses().filter((c) => c.published));
   };
 
   const handleEnroll = (courseId: string, courseTitle: string) => {
@@ -146,7 +95,7 @@ export default function CoursesPage() {
   };
 
   // Merge templates with user database progress
-  const coursesList: ExtendedCourse[] = courseTemplates.map((tpl) => {
+  const coursesList: ExtendedCourse[] = courses.map((tpl) => {
     const progressData = studentProgress.find((p) => p.courseId === tpl.id);
     const quizData = studentQuizzes.find((q) => q.courseId === tpl.id);
     return {
@@ -315,14 +264,16 @@ export default function CoursesPage() {
                         <Clock className="w-4 h-4" />
                         <span>Each completed lesson adds **25 minutes** to study logs and **5%** to progress.</span>
                       </div>
-                      
-                      {/* List of 20 lessons */}
+                                           {/* List of lessons */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-left">
-                        {Array.from({ length: 20 }).map((_, idx) => {
+                        {((course.lessons && course.lessons.length > 0)
+                          ? course.lessons
+                          : Array.from({ length: 20 }).map((_, idx) => `Lesson ${idx + 1}: Advanced Concepts & Overview Part ${idx + 1}`)
+                        ).map((title, idx) => {
                           const lessonIndex = idx + 1;
-                          const lessonTitle = `Lesson ${lessonIndex}: Advanced Concepts & Overview Part ${lessonIndex}`;
+                          const lessonTitle = title;
                           const isDone = course.progressData?.completedLessons.includes(lessonIndex) || false;
-
+ 
                           return (
                             <div
                               key={lessonIndex}
