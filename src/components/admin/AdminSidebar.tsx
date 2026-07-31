@@ -46,7 +46,7 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
     { name: "Payments", href: "/admin/dashboard/payments", icon: CreditCard },
     { name: "Messages", href: "/admin/dashboard/messages", icon: MessageCircle },
     { name: "Reports", href: "/admin/dashboard/reports", icon: BarChart3 },
-    { name: "Settings", href: "/admin/admin-settings", icon: Settings }, // Will redirect/render Settings page
+    { name: "Settings", href: "/admin/dashboard/settings", icon: Settings },
     { name: "Main Website", href: "/", icon: Globe },
   ];
 

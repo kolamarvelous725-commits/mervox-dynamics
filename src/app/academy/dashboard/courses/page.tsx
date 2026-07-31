@@ -339,13 +339,13 @@ export default function CoursesPage() {
 
                       {/* Quiz Form Questions */}
                       <div className="space-y-5">
-                        {quizQuestions[course.id].map((qObj, qIdx) => (
+                        {((quizQuestions[course.id] as any[]) || []).map((qObj: any, qIdx: number) => (
                           <div key={qIdx} className="space-y-2 p-4 rounded-xl border border-card-border bg-white dark:bg-[#18181c] shadow-xs">
                             <p className="text-xs font-bold text-slate-800 dark:text-white leading-relaxed">
                               {qIdx + 1}. {qObj.q}
                             </p>
                             <div className="space-y-2 pl-1">
-                              {qObj.options.map((opt, oIdx) => (
+                              {(qObj.options as string[]).map((opt: string, oIdx: number) => (
                                 <label
                                   key={oIdx}
                                   className="flex items-center gap-2.5 text-xs text-slate-600 dark:text-slate-350 cursor-pointer select-none font-semibold"

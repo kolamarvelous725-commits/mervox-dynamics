@@ -13,46 +13,15 @@ export default function LiveClassesPage() {
   const router = useRouter();
 
   const [coursesEnrolled, setCoursesEnrolled] = useState(0);
+  const [liveSessions, setLiveSessions] = useState<any[]>([]);
 
   useEffect(() => {
     if (userId) {
       const progress = AcademyDB.getProgress(userId);
       setCoursesEnrolled(progress.length);
+      setLiveSessions(AcademyDB.getLiveClasses());
     }
   }, [userId]);
-
-  const liveSessions = [
-    {
-      id: "live-forex",
-      courseId: "forex-trading",
-      title: "Live Forex Market Review & Trade setups",
-      instructor: "JPForex Mentor",
-      date: "July 31, 2026",
-      time: "16:00 BST",
-      status: "Upcoming",
-      thumbnail: "/course-forex-v3.webp",
-    },
-    {
-      id: "live-ai",
-      courseId: "ai-automation",
-      title: "ChatGPT Prompts Deep Dive & Make.com workflows",
-      instructor: "AI Automation Specialist",
-      date: "August 2, 2026",
-      time: "18:00 BST",
-      status: "Upcoming",
-      thumbnail: "/course-ai-v3.webp",
-    },
-    {
-      id: "live-web",
-      courseId: "web-dev",
-      title: "React Server Components & Next.js 16 APIs",
-      instructor: "Lead Web Developer",
-      date: "August 5, 2026",
-      time: "17:00 BST",
-      status: "Scheduled",
-      thumbnail: "/course-webdev-v3.webp",
-    },
-  ];
 
   const pastRecordings = [
     {

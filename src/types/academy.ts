@@ -26,6 +26,8 @@ export interface Course {
   status: 'Not Started' | 'In Progress' | 'Completed';
   lessonsCompleted: number;
   totalLessons: number;
+  lessons?: string[];
+  published?: boolean;
 }
 
 export interface UserCourseProgress {
