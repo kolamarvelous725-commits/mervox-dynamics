@@ -87,7 +87,8 @@ export default function AdminLiveClassesPage() {
       });
 
       if (error) {
-        alert(`Failed to create live class: ${error.message}`);
+        console.error("Supabase Live Classes INSERT error:", error);
+        alert(`Failed to create live class (INSERT error): ${error.message}`);
       } else {
         loadData();
         // Reset and close
@@ -122,7 +123,8 @@ export default function AdminLiveClassesPage() {
         .eq("id", selectedClass.id);
 
       if (error) {
-        alert(`Failed to update live class: ${error.message}`);
+        console.error("Supabase Live Classes UPDATE error:", error);
+        alert(`Failed to update live class (UPDATE error): ${error.message}`);
       } else {
         loadData();
         alert("Live class details updated and broadcasted to students.");
@@ -142,7 +144,8 @@ export default function AdminLiveClassesPage() {
           .eq("id", id);
 
         if (error) {
-          alert(`Failed to delete live class: ${error.message}`);
+          console.error("Supabase Live Classes DELETE error:", error);
+          alert(`Failed to delete live class (DELETE error): ${error.message}`);
         } else {
           loadData();
           if (selectedClass?.id === id) {

@@ -83,7 +83,8 @@ export default function AdminCoursesPage() {
       });
 
       if (error) {
-        alert(`Failed to create course: ${error.message}`);
+        console.error("Supabase Courses INSERT error:", error);
+        alert(`Failed to create course (INSERT error): ${error.message}`);
       } else {
         loadData();
         // Reset fields
@@ -115,7 +116,8 @@ export default function AdminCoursesPage() {
         .eq("id", selectedCourse.id);
 
       if (error) {
-        alert(`Failed to save course updates: ${error.message}`);
+        console.error("Supabase Courses UPDATE error:", error);
+        alert(`Failed to save course updates (UPDATE error): ${error.message}`);
       } else {
         loadData();
         alert("Course updates saved and synced successfully!");
@@ -135,7 +137,8 @@ export default function AdminCoursesPage() {
           .eq("id", id);
 
         if (error) {
-          alert(`Failed to delete course: ${error.message}`);
+          console.error("Supabase Courses DELETE error:", error);
+          alert(`Failed to delete course (DELETE error): ${error.message}`);
         } else {
           loadData();
           if (selectedCourse?.id === id) {

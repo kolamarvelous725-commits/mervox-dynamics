@@ -62,41 +62,105 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
 
     try {
       // 1. Attempt login via Supabase Auth
-      const { data, error } = await supabase.auth.signInWithPassword({
+      let activeUser: any = null;
+
+      const loginRes = await supabase.auth.signInWithPassword({
         email,
         password: pass,
       });
 
-      if (error) {
-        throw new Error(error.message);
+      if (loginRes.data.user) {
+        activeUser = loginRes.data.user;
       }
 
-      if (data.user) {
+      // If missing from auth.users, register them automatically
+      if (loginRes.error && (loginRes.error.message.includes("Invalid login credentials") || loginRes.error.message.includes("Email not confirmed"))) {
+        if (email.toLowerCase().trim() === targetEmail.toLowerCase().trim() && pass === targetPass) {
+          console.log("Admin account missing in auth.users. Automatically creating/registering in Supabase Auth...");
+          
+          const signupResult = await supabase.auth.signUp({
+            email,
+            password: pass,
+            options: {
+              data: {
+                fullName: "Academy Administrator",
+              }
+            }
+          });
+
+          if (signupResult.error) {
+            console.error("Failed to auto-register admin:", signupResult.error);
+            throw new Error(signupResult.error.message);
+          }
+
+          if (signupResult.data.user) {
+            activeUser = signupResult.data.user;
+          }
+
+          // If session was not created automatically, re-login to acquire the session tokens
+          if (!signupResult.data.session) {
+            const retryRes = await supabase.auth.signInWithPassword({
+              email,
+              password: pass,
+            });
+            if (retryRes.error) {
+              throw new Error(retryRes.error.message);
+            }
+            if (retryRes.data.user) {
+              activeUser = retryRes.data.user;
+            }
+          }
+        } else {
+          throw new Error(loginRes.error.message);
+        }
+      } else if (loginRes.error) {
+        throw new Error(loginRes.error.message);
+      }
+
+      if (activeUser) {
         let { data: profile } = await supabase
           .from("profiles")
           .select("*")
-          .eq("id", data.user.id)
+          .eq("id", activeUser.id)
           .single();
 
         if (!profile) {
-          // Auto-create missing admin profile
-          const { data: newProfile, error: insertError } = await supabase
+          // Check if profile exists with this email but different ID (pre-registered)
+          const { data: preExisting } = await supabase
             .from("profiles")
-            .insert({
-              id: data.user.id,
-              full_name: "Academy Administrator",
-              email: data.user.email || email,
-              role: "admin",
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString()
-            })
-            .select()
+            .select("*")
+            .eq("email", email)
             .single();
 
-          if (insertError) {
-            console.error("Failed to auto-create admin profile:", insertError);
+          if (preExisting) {
+            // Update the pre-existing profile ID to match the new auth user id
+            const { data: updatedProfile } = await supabase
+              .from("profiles")
+              .update({ id: activeUser.id })
+              .eq("email", email)
+              .select()
+              .single();
+            profile = updatedProfile;
           } else {
-            profile = newProfile;
+            // Auto-create missing admin profile
+            const { data: newProfile, error: insertError } = await supabase
+              .from("profiles")
+              .insert({
+                id: activeUser.id,
+                full_name: "Academy Administrator",
+                email: activeUser.email || email,
+                role: "admin",
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+              })
+              .select()
+              .single();
+
+            if (insertError) {
+              console.error("Failed to auto-create admin profile:", insertError);
+            } else {
+              profile = newProfile;
+            }
           }
         }
 
@@ -110,11 +174,11 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
           return false;
         }
       }
-    } catch (err) {
-      console.warn("Supabase admin auth failed, checking fallback local credentials:", err);
+    } catch (err: any) {
+      console.error("Supabase admin login failed:", err);
     }
 
-    // 2. Fallback local credential check
+    // 2. Fallback check for local validation
     if (email.toLowerCase().trim() === targetEmail.toLowerCase().trim() && pass === targetPass) {
       setIsAdminAuthenticated(true);
       localStorage.setItem("mervox_academy_admin_active", "true");

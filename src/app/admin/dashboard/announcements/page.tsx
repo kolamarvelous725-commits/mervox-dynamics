@@ -70,7 +70,8 @@ export default function AdminAnnouncementsPage() {
       });
 
       if (error) {
-        alert(`Failed to broadcast announcement: ${error.message}`);
+        console.error("Supabase Announcements INSERT error:", error);
+        alert(`Failed to broadcast announcement (INSERT error): ${error.message}`);
       } else {
         loadData();
         // Reset and close
@@ -98,7 +99,8 @@ export default function AdminAnnouncementsPage() {
         .eq("id", selectedAnnouncement.id);
 
       if (error) {
-        alert(`Failed to update announcement: ${error.message}`);
+        console.error("Supabase Announcements UPDATE error:", error);
+        alert(`Failed to update announcement (UPDATE error): ${error.message}`);
       } else {
         loadData();
         alert("Announcement updated successfully!");
@@ -118,7 +120,8 @@ export default function AdminAnnouncementsPage() {
           .eq("id", id);
 
         if (error) {
-          alert(`Failed to delete announcement: ${error.message}`);
+          console.error("Supabase Announcements DELETE error:", error);
+          alert(`Failed to delete announcement (DELETE error): ${error.message}`);
         } else {
           loadData();
           if (selectedAnnouncement?.id === id) {

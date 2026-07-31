@@ -1,8 +1,8 @@
 "use client";
 
-import { AcademyDB } from "@/utils/academyDb";
 import { useState, useEffect } from "react";
 import { CreditCard, DollarSign, Search, Calendar, UserCheck } from "lucide-react";
+import { supabase } from "@/utils/supabaseClient";
 
 interface PaymentItem {
   id: string;
@@ -20,37 +20,50 @@ export default function AdminPaymentsPage() {
   const [totalRevenue, setTotalRevenue] = useState(0);
 
   useEffect(() => {
-    const students = AcademyDB.getStudents();
-    const courses = AcademyDB.getCourses();
+    const loadPayments = async () => {
+      try {
+        const { data: payData, error: payError } = await supabase
+          .from("payments")
+          .select("*, profiles(full_name, email)")
+          .order("created_at", { ascending: false });
 
-    const list: PaymentItem[] = [];
-    let revenue = 0;
+        if (payError) {
+          console.error("Failed to query payments roster:", payError);
+        } else if (payData) {
+          let revenue = 0;
+          const list: PaymentItem[] = payData.map((p: any) => {
+            const amt = Number(p.amount) || 0;
+            revenue += amt;
 
-    students.forEach((student: any) => {
-      const progress = student.progress || [];
-      progress.forEach((p: any, idx: number) => {
-        const course = courses.find((c) => c.id === p.courseId);
-        
-        let cost = 199;
-        if (p.courseId === "forex-trading") cost = 299;
-        if (p.courseId === "ai-automation") cost = 249;
+            let courseTitle = "Academy Course Fee";
+            if (amt === 299) courseTitle = "Forex Trading Masterclass Access";
+            else if (amt === 249) courseTitle = "AI & Business Automation Access";
+            else if (amt === 199) courseTitle = "Web & Software Development Access";
 
-        revenue += cost;
-        
-        list.push({
-          id: `TXN-${student.id.substring(0, 4).toUpperCase()}-${idx}584`,
-          studentName: `${student.firstName} ${student.lastName}`,
-          studentEmail: student.email,
-          courseTitle: course ? course.title : p.courseId,
-          amount: cost,
-          status: "Paid",
-          date: student.memberSince || "July 2026",
-        });
-      });
-    });
+            return {
+              id: p.transaction_id || `TXN-${p.id.slice(0, 8).toUpperCase()}`,
+              studentName: p.profiles?.full_name || "Anonymous Student",
+              studentEmail: p.profiles?.email || "",
+              courseTitle,
+              amount: amt,
+              status: p.status || "Paid",
+              date: new Date(p.created_at).toLocaleDateString("en-US", {
+                month: "short",
+                day: "numeric",
+                year: "numeric",
+              }),
+            };
+          });
 
-    setPayments(list);
-    setTotalRevenue(revenue);
+          setPayments(list);
+          setTotalRevenue(revenue);
+        }
+      } catch (err) {
+        console.error("Exception loading payments:", err);
+      }
+    };
+
+    loadPayments();
   }, []);
 
   const filteredPayments = payments.filter(
