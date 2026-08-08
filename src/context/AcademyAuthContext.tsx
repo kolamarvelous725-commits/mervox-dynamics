@@ -92,7 +92,10 @@ export function AcademyAuthProvider({ children }: { children: React.ReactNode })
           }
 
           if (profile) {
-            if (profile.suspended) {
+            if (profile.role === "admin") {
+              localStorage.removeItem("mervox_academy_current_user");
+              setStudent(null);
+            } else if (profile.suspended) {
               localStorage.removeItem("mervox_academy_current_user");
               setStudent(null);
               await supabase.auth.signOut();
@@ -172,7 +175,10 @@ export function AcademyAuthProvider({ children }: { children: React.ReactNode })
           }
 
           if (profile) {
-            if (profile.suspended) {
+            if (profile.role === "admin") {
+              setStudent(null);
+              localStorage.removeItem("mervox_academy_current_user");
+            } else if (profile.suspended) {
               setStudent(null);
               localStorage.removeItem("mervox_academy_current_user");
               await supabase.auth.signOut();
