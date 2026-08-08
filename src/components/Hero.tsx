@@ -128,16 +128,16 @@ export function Hero() {
             >
               <div className="flex -space-x-2 select-none">
                 <div className="w-7 h-7 rounded-full border-2 border-background overflow-hidden bg-muted/10 relative">
-                  <Image src="/avatar1.png" alt="Client 1" fill sizes="28px" className="object-cover" />
+                  <Image src="/avatar1.png" alt="Client 1" fill sizes="28px" className="object-cover" priority />
                 </div>
                 <div className="w-7 h-7 rounded-full border-2 border-background overflow-hidden bg-muted/10 relative">
-                  <Image src="/avatar2.png" alt="Client 2" fill sizes="28px" className="object-cover" />
+                  <Image src="/avatar2.png" alt="Client 2" fill sizes="28px" className="object-cover" priority />
                 </div>
                 <div className="w-7 h-7 rounded-full border-2 border-background overflow-hidden bg-muted/10 relative">
-                  <Image src="/avatar3.png" alt="Client 3" fill sizes="28px" className="object-cover" />
+                  <Image src="/avatar3.png" alt="Client 3" fill sizes="28px" className="object-cover" priority />
                 </div>
                 <div className="w-7 h-7 rounded-full border-2 border-background overflow-hidden bg-muted/10 relative">
-                  <Image src="/avatar4.png" alt="Client 4" fill sizes="28px" className="object-cover" />
+                  <Image src="/avatar4.png" alt="Client 4" fill sizes="28px" className="object-cover" priority />
                 </div>
               </div>
 

@@ -1,5 +1,5 @@
 import { UserCourseProgress, QuizAttempt, RecentActivity, Notification } from "@/types/academy";
-import { supabase } from "@/utils/supabaseClient";
+import { supabase, isSupabaseConfigured } from "@/utils/supabaseClient";
 
 const getStorageKey = (key: string, userId: string) => `mervox_academy_${key}_${userId}`;
 
@@ -313,19 +313,83 @@ export const AcademyDB = {
     return data ? JSON.parse(data) : [];
   },
 
-  addNotification(userId: string, title: string) {
+  async addNotification(userId: string, title: string) {
     if (typeof window === "undefined") return;
-    const notifications = this.getNotifications(userId);
+    let notifications = this.getNotifications(userId);
+
+    // Fetch existing notifications from Supabase profile if online
+    if (isSupabaseConfigured) {
+      try {
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("notifications")
+          .eq("id", userId)
+          .single();
+        
+        if (profile?.notifications) {
+          const cloudNotifs = Array.isArray(profile.notifications)
+            ? profile.notifications
+            : JSON.parse(profile.notifications as any);
+          
+          if (Array.isArray(cloudNotifs) && cloudNotifs.length > 0) {
+            notifications = cloudNotifs;
+          }
+        }
+      } catch (e) {
+        console.warn("Failed to fetch cloud notifications base:", e);
+      }
+    }
+
+    let timezone = undefined;
+    let tzName = "";
+    try {
+      const usersJson = localStorage.getItem("mervox_academy_users");
+      const users = usersJson ? JSON.parse(usersJson) : [];
+      const user = users.find((u: any) => u.id === userId);
+      const country = user?.country || "";
+      
+      const countryTimezones: Record<string, string> = {
+        "Nigeria": "Africa/Lagos",
+        "United Kingdom": "Europe/London",
+        "United States": "America/New_York",
+        "Canada": "America/Toronto",
+        "Germany": "Europe/Berlin",
+        "South Africa": "Africa/Johannesburg",
+        "Ghana": "Africa/Accra",
+        "Kenya": "Africa/Nairobi",
+        "India": "Asia/Kolkata",
+        "Australia": "Australia/Sydney",
+        "United Arab Emirates": "Asia/Dubai",
+        "Saudi Arabia": "Asia/Riyadh",
+      };
+
+      if (countryTimezones[country]) {
+        timezone = countryTimezones[country];
+        tzName = countryTimezones[country].split("/")[1].replace("_", " ") + " Time";
+      }
+    } catch (e) {
+      console.error("Error formatting notification time for country:", e);
+    }
+
+    const timeFormatted = new Intl.DateTimeFormat("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+      timeZone: timezone,
+    }).format(new Date());
+
+    const timeStr = tzName ? `${timeFormatted} (${tzName})` : `${timeFormatted} (Local Time)`;
+
     const newNotif: Notification = {
       id: Math.random().toString(36).substring(2, 9),
       title,
-      time: "Just now",
+      time: timeStr,
       unread: true,
     };
     notifications.unshift(newNotif);
     if (notifications.length > 30) notifications.pop();
     localStorage.setItem(getStorageKey("notifications", userId), JSON.stringify(notifications));
-    this.syncUserData(userId);
+    await this.syncUserData(userId);
   },
 
   markNotificationsRead(userId: string) {

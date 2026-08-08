@@ -6,7 +6,7 @@ import { AdminTopBar } from "@/components/admin/AdminTopBar";
 import { AcademyDB } from "@/utils/academyDb";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { supabase } from "@/utils/supabaseClient";
+import { supabase, isSupabaseConfigured } from "@/utils/supabaseClient";
 
 export default function AdminDashboardClientWrapper({ children }: { children: React.ReactNode }) {
   const { isAdminAuthenticated, loading } = useAdminAuth();
@@ -19,6 +19,10 @@ export default function AdminDashboardClientWrapper({ children }: { children: Re
     if (!loading && !isAdminAuthenticated) {
       router.push("/admin/login");
     } else if (isAdminAuthenticated) {
+      if (!isSupabaseConfigured) {
+        return;
+      }
+
       // 1. Initial background sync
       const syncData = async () => {
         setSyncing(true);

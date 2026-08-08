@@ -2,6 +2,8 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useAcademyAuth } from "@/context/AcademyAuthContext";
+import { useState, useEffect } from "react";
+import { AcademyDB } from "@/utils/academyDb";
 import {
   LayoutDashboard,
   BookOpen,
@@ -31,7 +33,74 @@ interface SidebarProps {
 export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const { student } = useAcademyAuth();
+  const userId = student?.id || "";
   const { logout } = useAcademyAuth();
+
+  const [unreadLiveCount, setUnreadLiveCount] = useState(0);
+  const [unreadAsgCount, setUnreadAsgCount] = useState(0);
+  const [unreadCommCount, setUnreadCommCount] = useState(0);
+
+  useEffect(() => {
+    if (!userId) return;
+
+    // 1. Live Classes unread count
+    const progress = AcademyDB.getProgress(userId);
+    const enrolledCourseIds = progress.map((p) => p.courseId);
+    const liveClasses = AcademyDB.getLiveClasses().filter((s: any) => {
+      const cId = s.course_id || s.courseId;
+      return enrolledCourseIds.includes(cId);
+    });
+    
+    let viewedLiveIds: string[] = [];
+    try {
+      const stored = localStorage.getItem(`mervox_academy_viewed_live_${userId}`);
+      viewedLiveIds = stored ? JSON.parse(stored) : [];
+    } catch {}
+    const unreadLive = liveClasses.filter((lc: any) => !viewedLiveIds.includes(lc.id)).length;
+    setUnreadLiveCount(unreadLive);
+
+    // 2. Assignments unread count
+    let assignmentsList: any[] = [];
+    try {
+      const stored = localStorage.getItem("mervox_academy_assignments_list");
+      if (stored) {
+        assignmentsList = JSON.parse(stored);
+      }
+    } catch {}
+    
+    if (assignmentsList.length === 0) {
+      progress.forEach((p) => {
+        assignmentsList.push({ id: `asg-${p.courseId}-1`, courseId: p.courseId });
+        assignmentsList.push({ id: `asg-${p.courseId}-2`, courseId: p.courseId });
+      });
+    }
+    
+    const filteredAsgs = assignmentsList.filter((a) => enrolledCourseIds.includes(a.courseId || a.course_id));
+    let viewedAsgIds: string[] = [];
+    try {
+      const stored = localStorage.getItem(`mervox_academy_viewed_asg_${userId}`);
+      viewedAsgIds = stored ? JSON.parse(stored) : [];
+    } catch {}
+    const unreadAsg = filteredAsgs.filter((a: any) => !viewedAsgIds.includes(a.id)).length;
+    setUnreadAsgCount(unreadAsg);
+
+    // 3. Community forum unread count
+    let forumPosts: any[] = [];
+    try {
+      const stored = localStorage.getItem("mervox_academy_posts");
+      forumPosts = stored ? JSON.parse(stored) : [];
+    } catch {}
+    
+    let viewedPostIds: string[] = [];
+    try {
+      const stored = localStorage.getItem(`mervox_academy_viewed_post_${userId}`);
+      viewedPostIds = stored ? JSON.parse(stored) : [];
+    } catch {}
+    const unreadComm = forumPosts.filter((post: any) => !viewedPostIds.includes(post.id)).length;
+    setUnreadCommCount(unreadComm);
+
+  }, [userId, pathname]);
 
   const menuItems = [
     { name: "Dashboard", href: "/academy/dashboard", icon: LayoutDashboard },
@@ -108,19 +177,31 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             // Exact path match or starting subpaths
             const isActive = pathname === item.href;
 
+            let badgeCount = 0;
+            if (item.name === "Live Classes") badgeCount = unreadLiveCount;
+            if (item.name === "Assignments") badgeCount = unreadAsgCount;
+            if (item.name === "Community") badgeCount = unreadCommCount;
+
             return (
               <Link
                 key={item.name}
                 href={item.href}
                 onClick={onClose}
-                className={`flex items-center gap-3.5 px-4 py-3 rounded-xl text-xs font-semibold tracking-wide transition-all duration-200 cursor-pointer ${
+                className={`flex items-center justify-between gap-3.5 px-4 py-3 rounded-xl text-xs font-semibold tracking-wide transition-all duration-200 cursor-pointer ${
                   isActive
                     ? "bg-[#0055ff] text-white shadow-xs shadow-blue-500/10"
                     : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
-                <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-white" : "text-slate-400 dark:text-slate-400"}`} />
-                <span>{item.name}</span>
+                <div className="flex items-center gap-3.5">
+                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-white" : "text-slate-400 dark:text-slate-400"}`} />
+                  <span>{item.name}</span>
+                </div>
+                {badgeCount > 0 && (
+                  <span className="bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full leading-none shrink-0 min-w-[15px] text-center">
+                    {badgeCount}
+                  </span>
+                )}
               </Link>
             );
           })}

@@ -6,7 +6,7 @@ import { TopBar } from "@/components/academy/TopBar";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { AcademyDB } from "@/utils/academyDb";
-import { supabase } from "@/utils/supabaseClient";
+import { supabase, isSupabaseConfigured } from "@/utils/supabaseClient";
 
 export default function DashboardClientWrapper({ children }: { children: React.ReactNode }) {
   const { student, loading } = useAcademyAuth();
@@ -18,6 +18,10 @@ export default function DashboardClientWrapper({ children }: { children: React.R
     if (!loading && !student) {
       router.push("/academy/login");
     } else if (student) {
+      if (!isSupabaseConfigured) {
+        return;
+      }
+
       // 1. Initial background sync
       const runSync = async () => {
         try {

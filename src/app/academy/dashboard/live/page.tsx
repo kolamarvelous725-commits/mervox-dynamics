@@ -28,7 +28,11 @@ export default function LiveClassesPage() {
       const progress = AcademyDB.getProgress(userId);
       setCoursesEnrolled(progress.length);
       
-      const allSessions = AcademyDB.getLiveClasses();
+      const enrolledCourseIds = progress.map((p) => p.courseId);
+      const allSessions = AcademyDB.getLiveClasses().filter((s: any) => {
+        const cId = s.course_id || s.courseId;
+        return enrolledCourseIds.includes(cId);
+      });
       const now = new Date();
       
       const upcoming: any[] = [];
@@ -77,6 +81,10 @@ export default function LiveClassesPage() {
         thumbnail: getThumbnailForCourse(s.course_id || s.courseId),
         duration: "1h 30m"
       })));
+
+      const viewedLiveKey = `mervox_academy_viewed_live_${userId}`;
+      const activeIds = allSessions.map((s: any) => s.id);
+      localStorage.setItem(viewedLiveKey, JSON.stringify(activeIds));
     }
   }, [userId]);
 

@@ -1,10 +1,14 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { UserCheck, BookOpen, Clock, Calendar, Search } from "lucide-react";
-import { supabase } from "@/utils/supabaseClient";
+import { UserCheck, BookOpen, Clock, Calendar, Search, Plus, X, Trash2 } from "lucide-react";
+import { supabase, isSupabaseConfigured } from "@/utils/supabaseClient";
+import { AcademyDB } from "@/utils/academyDb";
 
 interface EnrollmentItem {
+  id: string;
+  userId: string;
+  courseId: string;
   studentName: string;
   studentEmail: string;
   courseTitle: string;
@@ -16,47 +20,238 @@ interface EnrollmentItem {
 export default function AdminEnrollmentsPage() {
   const [enrollments, setEnrollments] = useState<EnrollmentItem[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [courses, setCourses] = useState<any[]>([]);
+  const [showModal, setShowModal] = useState(false);
+
+  // Lists for modal selections
+  const [studentsList, setStudentsList] = useState<any[]>([]);
+  const [coursesList, setCoursesList] = useState<any[]>([]);
+  
+  const [selectedStudentId, setSelectedStudentId] = useState("");
+  const [selectedCourseId, setSelectedCourseId] = useState("");
+  const [loadingModalSubmit, setLoadingModalSubmit] = useState(false);
+
+  const loadEnrollmentsData = async () => {
+    try {
+      if (!isSupabaseConfigured) {
+        // Sandbox fallback loading from local storage
+        const usersJson = localStorage.getItem("mervox_academy_users");
+        const users = usersJson ? JSON.parse(usersJson) : [];
+        const localCourses = AcademyDB.getCourses();
+        const list: EnrollmentItem[] = [];
+
+        users.forEach((user: any) => {
+          const progressList = AcademyDB.getProgress(user.id);
+          progressList.forEach((prog: any) => {
+            const courseObj = localCourses.find((c) => c.id === prog.courseId);
+            list.push({
+              id: `${user.id}_${prog.courseId}`,
+              userId: user.id,
+              courseId: prog.courseId,
+              studentName: `${user.firstName} ${user.lastName}`,
+              studentEmail: user.email,
+              courseTitle: courseObj ? courseObj.title : prog.courseId,
+              progress: prog.progress,
+              status: prog.status,
+              studyMinutes: prog.studyMinutes,
+            });
+          });
+        });
+        
+        setEnrollments(list);
+        setStudentsList(users);
+        setCoursesList(localCourses);
+        return;
+      }
+
+      // Online Supabase loading
+      const { data: enrollData } = await supabase
+        .from("enrollments")
+        .select("*, profiles(id, full_name, email)")
+        .order("enrolled_at", { ascending: false });
+
+      const { data: lessonProgressData } = await supabase
+        .from("lesson_progress")
+        .select("user_id, lesson_id");
+
+      const { data: courseLessonsData } = await supabase
+        .from("course_lessons")
+        .select("id, course_id");
+
+      const { data: courseData } = await supabase
+        .from("courses")
+        .select("*");
+
+      const { data: studentsData } = await supabase
+        .from("profiles")
+        .select("id, full_name, email")
+        .eq("role", "student");
+
+      if (enrollData && courseLessonsData && lessonProgressData && courseData) {
+        setCoursesList(courseData);
+        if (studentsData) setStudentsList(studentsData);
+
+        const list: EnrollmentItem[] = enrollData.map((e: any) => {
+          const courseObj = courseData.find((c) => c.id === e.course_id);
+          
+          // Get total lessons for this course
+          const cLessons = courseLessonsData.filter((l: any) => l.course_id === e.course_id);
+          const totalLessons = cLessons.length;
+
+          // Get completed lessons for this user in this course
+          const userCompletedIds = new Set(
+            lessonProgressData
+              .filter((p: any) => p.user_id === e.user_id)
+              .map((p: any) => p.lesson_id)
+          );
+          
+          const completedCount = cLessons.filter((l: any) => userCompletedIds.has(l.id)).length;
+          const progressPercent = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
+          const studyMinutes = completedCount * 25;
+
+          return {
+            id: e.id,
+            userId: e.user_id,
+            courseId: e.course_id,
+            studentName: e.profiles?.full_name || "Anonymous Student",
+            studentEmail: e.profiles?.email || "",
+            courseTitle: courseObj ? courseObj.title : e.course_id,
+            progress: progressPercent,
+            status: progressPercent === 100 ? "Completed" : progressPercent > 0 ? "In Progress" : "Not Started",
+            studyMinutes: studyMinutes,
+          };
+        });
+        setEnrollments(list);
+      }
+    } catch (err) {
+      console.error("Failed to load enrollments data:", err);
+    }
+  };
 
   useEffect(() => {
-    const loadEnrollments = async () => {
-      try {
-        const { data: enrollData } = await supabase
-          .from("enrollments")
-          .select("*, profiles(full_name, email)");
-
-        const { data: progressData } = await supabase
-          .from("progress")
-          .select("*");
-
-        const { data: courseData } = await supabase
-          .from("courses")
-          .select("*");
-
-        if (enrollData && progressData && courseData) {
-          setCourses(courseData);
-          const list: EnrollmentItem[] = enrollData.map((e: any) => {
-            const courseObj = courseData.find((c) => c.id === e.course_id);
-            const progObj = progressData.find((p) => p.user_id === e.user_id && p.course_id === e.course_id);
-
-            return {
-              studentName: e.profiles?.full_name || "Anonymous Student",
-              studentEmail: e.profiles?.email || "",
-              courseTitle: courseObj ? courseObj.title : e.course_id,
-              progress: progObj ? progObj.progress_percent : 0,
-              status: e.status || "In Progress",
-              studyMinutes: progObj?.lessons_completed?.study_minutes || 0,
-            };
-          });
-          setEnrollments(list);
-        }
-      } catch (err) {
-        console.error("Failed to load enrollments from Supabase:", err);
-      }
-    };
-
-    loadEnrollments();
+    loadEnrollmentsData();
   }, []);
+
+  const handleStopEnrollment = async (uId: string, cId: string) => {
+    if (!confirm("Are you sure you want to stop/cancel this student's enrollment?")) return;
+    try {
+      if (!isSupabaseConfigured) {
+        // Offline: remove course record from progress array inside localStorage
+        const progress = AcademyDB.getProgress(uId);
+        const updated = progress.filter((p) => p.courseId !== cId);
+        AcademyDB.saveProgress(uId, updated);
+        alert("Enrollment stopped successfully.");
+        loadEnrollmentsData();
+      } else {
+        // Online: Delete record from Supabase table
+        const { error } = await supabase
+          .from("enrollments")
+          .delete()
+          .eq("user_id", uId)
+          .eq("course_id", cId);
+        
+        if (error) {
+          alert(`Failed to delete enrollment: ${error.message}`);
+          return;
+        }
+
+        // Also delete progress record
+        await supabase
+          .from("progress")
+          .delete()
+          .eq("user_id", uId)
+          .eq("course_id", cId);
+
+        alert("Enrollment stopped and deleted successfully.");
+        loadEnrollmentsData();
+      }
+    } catch (err) {
+      console.error(err);
+      alert("Error stopping enrollment.");
+    }
+  };
+
+  const handleOfferFreeEnrollment = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedStudentId || !selectedCourseId) {
+      alert("Please select both a student and a course.");
+      return;
+    }
+
+    setLoadingModalSubmit(true);
+    try {
+      const courseObj = coursesList.find((c) => c.id === selectedCourseId);
+      const courseTitle = courseObj?.title || "Academy Program";
+
+      if (!isSupabaseConfigured) {
+        // Sandbox: Add course to local storage progress array
+        AcademyDB.enroll(selectedStudentId, selectedCourseId, courseTitle);
+        alert("Free enrollment granted successfully!");
+        setShowModal(false);
+        setSelectedStudentId("");
+        setSelectedCourseId("");
+        loadEnrollmentsData();
+      } else {
+        // Supabase: Check duplicate enrollment record
+        const { data: existing } = await supabase
+          .from("enrollments")
+          .select("*")
+          .eq("user_id", selectedStudentId)
+          .eq("course_id", selectedCourseId)
+          .maybeSingle();
+
+        if (existing) {
+          alert("Student is already enrolled in this course program.");
+          setLoadingModalSubmit(false);
+          return;
+        }
+
+        // Insert enrollment record
+        const { error: enrollError } = await supabase
+          .from("enrollments")
+          .insert({
+            user_id: selectedStudentId,
+            course_id: selectedCourseId,
+            status: "In Progress",
+          });
+
+        if (enrollError) {
+          alert(`Failed to grant enrollment: ${enrollError.message}`);
+          setLoadingModalSubmit(false);
+          return;
+        }
+
+        // Insert initial progress record
+        await supabase
+          .from("progress")
+          .upsert({
+            user_id: selectedStudentId,
+            course_id: selectedCourseId,
+            progress_percent: 0,
+            lessons_completed: [],
+            updated_at: new Date().toISOString()
+          }, {
+            onConflict: "user_id,course_id"
+          });
+
+        // Send notification to the student account
+        await AcademyDB.addNotification(
+          selectedStudentId,
+          `🎉 The administrator has offered you free enrollment access to "${courseTitle}". Start learning now!`
+        );
+
+        alert("Free enrollment granted successfully!");
+        setShowModal(false);
+        setSelectedStudentId("");
+        setSelectedCourseId("");
+        loadEnrollmentsData();
+      }
+    } catch (err) {
+      console.error(err);
+      alert(`Enrollment operation error: ${err}`);
+    } finally {
+      setLoadingModalSubmit(false);
+    }
+  };
 
   const filteredEnrollments = enrollments.filter(
     (e) =>
@@ -72,11 +267,15 @@ export default function AdminEnrollmentsPage() {
       <div className="flex flex-col md:flex-row md:items-end justify-between border-b border-card-border/40 pb-4 text-left">
         <div>
           <span className="text-[10px] font-bold uppercase tracking-widest text-[#0055ff]">Course Slots</span>
-          <h2 className="text-2xl font-heading font-black text-slate-800 dark:text-white mt-1">Enrollments registry</h2>
+          <h2 className="text-2xl font-heading font-black text-slate-800 dark:text-white mt-1">Enrollments Registry</h2>
         </div>
-        <p className="text-xs text-slate-500 dark:text-slate-400 max-w-sm mt-2 md:mt-0 leading-relaxed font-semibold">
-          Review active course enrollments, track progress percentages, and check study minutes logs.
-        </p>
+        <button
+          onClick={() => setShowModal(true)}
+          className="flex items-center gap-1.5 px-4.5 py-2.5 bg-[#0055ff] hover:bg-[#0044dd] text-white text-xs font-bold rounded-xl shadow-xs transition-all duration-200 cursor-pointer border-none mt-4 md:mt-0"
+        >
+          <Plus className="w-4 h-4" />
+          <span>Offer Free Enrollment</span>
+        </button>
       </div>
 
       {/* Search and Registry */}
@@ -96,7 +295,7 @@ export default function AdminEnrollmentsPage() {
           />
         </div>
 
-        {/* Registry table */}
+        {/* Registry Table */}
         <div className="rounded-2xl border border-card-border bg-white dark:bg-[#18181c] shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full border-collapse">
@@ -106,13 +305,14 @@ export default function AdminEnrollmentsPage() {
                   <th className="px-6 py-4">Course Enrolled</th>
                   <th className="px-6 py-4">Status</th>
                   <th className="px-6 py-4">Progress</th>
-                  <th className="px-6 py-4 text-right">Study Minutes</th>
+                  <th className="px-6 py-4">Study Logs</th>
+                  <th className="px-6 py-4 text-right">Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-card-border/40 text-xs font-semibold">
                 {filteredEnrollments.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="px-6 py-8 text-center text-slate-450">
+                    <td colSpan={6} className="px-6 py-8 text-center text-slate-450">
                       No active program enrollments found matching search query.
                     </td>
                   </tr>
@@ -149,8 +349,17 @@ export default function AdminEnrollmentsPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="px-6 py-4 text-right text-slate-500 font-bold">
+                      <td className="px-6 py-4 text-slate-550 dark:text-slate-400 font-bold">
                         {item.studyMinutes} mins
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <button
+                          onClick={() => handleStopEnrollment(item.userId, item.courseId)}
+                          className="p-2 text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950/30 rounded-xl transition-all cursor-pointer bg-transparent border-none"
+                          title="Stop/Cancel Student Enrollment"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </button>
                       </td>
                     </tr>
                   ))
@@ -161,6 +370,71 @@ export default function AdminEnrollmentsPage() {
         </div>
 
       </div>
+
+      {/* Offer Free Enrollment Modal */}
+      {showModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-xs">
+          <div className="w-full max-w-md rounded-3xl bg-white dark:bg-[#18181c] border border-card-border shadow-xl p-6 relative text-left">
+            <button
+              onClick={() => setShowModal(false)}
+              className="absolute top-4 right-4 p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer bg-transparent border-none"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="space-y-4">
+              <h3 className="text-base font-heading font-black text-slate-800 dark:text-white">Offer Free Enrollment</h3>
+              
+              <form onSubmit={handleOfferFreeEnrollment} className="space-y-4">
+                {/* Select Student */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Select Student</label>
+                  <select
+                    value={selectedStudentId}
+                    onChange={(e) => setSelectedStudentId(e.target.value)}
+                    required
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border border-card-border text-slate-800 dark:text-slate-200 focus:outline-none"
+                  >
+                    <option value="">-- Choose a student --</option>
+                    {studentsList.map((stud) => (
+                      <option key={stud.id} value={stud.id}>
+                        {stud.full_name || `${stud.firstName} ${stud.lastName}`} ({stud.email})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Select Course */}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Select Course Program</label>
+                  <select
+                    value={selectedCourseId}
+                    onChange={(e) => setSelectedCourseId(e.target.value)}
+                    required
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border border-card-border text-slate-800 dark:text-slate-200 focus:outline-none"
+                  >
+                    <option value="">-- Choose a course program --</option>
+                    {coursesList.map((course) => (
+                      <option key={course.id} value={course.id}>
+                        {course.title}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Submit button */}
+                <button
+                  type="submit"
+                  disabled={loadingModalSubmit}
+                  className="w-full py-3 text-xs font-bold text-white bg-[#0055ff] hover:bg-[#0044dd] rounded-xl shadow-xs transition-all cursor-pointer border-none block mt-2 text-center"
+                >
+                  {loadingModalSubmit ? "Granting access..." : "Grant Free Enrollment"}
+                </button>
+              </form>
+            </div>
+          </div>
+        </div>
+      )}
 
     </div>
   );

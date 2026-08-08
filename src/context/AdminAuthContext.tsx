@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/utils/supabaseClient";
+import { supabase, isSupabaseConfigured } from "@/utils/supabaseClient";
 
 interface AdminAuthContextType {
   isAdminAuthenticated: boolean;
@@ -21,6 +21,12 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     const checkAdminSession = async () => {
       setLoading(true);
+      if (!isSupabaseConfigured) {
+        const active = localStorage.getItem("mervox_academy_admin_active");
+        setIsAdminAuthenticated(active === "true");
+        setLoading(false);
+        return;
+      }
       try {
         const { data: { session } } = await supabase.auth.getSession();
         
@@ -60,6 +66,16 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
     const targetEmail = process.env.NEXT_PUBLIC_ADMIN_EMAIL || "marvelousotugalu012@gmail.com";
     const targetPass = process.env.NEXT_PUBLIC_ADMIN_PASSWORD || "Marv224.";
 
+    if (!isSupabaseConfigured) {
+      if (email.toLowerCase().trim() === targetEmail.toLowerCase().trim() && pass === targetPass) {
+        setIsAdminAuthenticated(true);
+        localStorage.setItem("mervox_academy_admin_active", "true");
+        return true;
+      }
+      return false;
+    }
+
+    let networkFailed = false;
     try {
       // 1. Attempt login via Supabase Auth
       let activeUser: any = null;
@@ -145,7 +161,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
             // Auto-create missing admin profile
             const { data: newProfile, error: insertError } = await supabase
               .from("profiles")
-              .insert({
+              .upsert({
                 id: activeUser.id,
                 full_name: "Academy Administrator",
                 email: activeUser.email || email,
@@ -157,7 +173,8 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
               .single();
 
             if (insertError) {
-              console.error("Failed to auto-create admin profile:", insertError);
+              console.error("Failed to auto-create admin profile:", insertError.message, insertError.details, insertError.hint);
+              alert(`Failed to auto-create admin profile: ${insertError.message} (${insertError.details || ""})`);
             } else {
               profile = newProfile;
             }
@@ -176,13 +193,21 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
       }
     } catch (err: any) {
       console.error("Supabase admin login failed:", err);
+      if (err.message?.includes("Failed to fetch") || String(err).includes("Failed to fetch") || err.message?.includes("network error")) {
+        networkFailed = true;
+      } else {
+        alert(`Supabase admin login failed: ${err.message || err}`);
+      }
     }
 
-    // 2. Fallback check for local validation
-    if (email.toLowerCase().trim() === targetEmail.toLowerCase().trim() && pass === targetPass) {
-      setIsAdminAuthenticated(true);
-      localStorage.setItem("mervox_academy_admin_active", "true");
-      return true;
+    // 2. Fallback check for local validation (if Supabase is offline OR if the network request failed)
+    if (!isSupabaseConfigured || networkFailed) {
+      if (email.toLowerCase().trim() === targetEmail.toLowerCase().trim() && pass === targetPass) {
+        setIsAdminAuthenticated(true);
+        localStorage.setItem("mervox_academy_admin_active", "true");
+        alert("⚠️ Note: Supabase database connection failed. Running in Offline Sandbox Mode.");
+        return true;
+      }
     }
 
     return false;

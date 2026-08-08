@@ -1,24 +1,23 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Trash2, Edit2, Play, FileText, Upload, Save, ArrowRight, Eye, EyeOff, X, HelpCircle, Layers } from "lucide-react";
+import { Plus, Trash2, Edit2, Play, FileText, Upload, Save, ArrowRight, Eye, EyeOff, X, HelpCircle, Layers, ArrowUp, ArrowDown } from "lucide-react";
 import Image from "next/image";
-import { supabase } from "@/utils/supabaseClient";
+import { supabase, isSupabaseConfigured } from "@/utils/supabaseClient";
+import AcademyDB from "@/utils/academyDb";
 
 interface Course {
   id: string;
   title: string;
   description: string;
   thumbnail: string;
-  lessons: string[];
   published: boolean;
-  videos?: string[];
-  pdfs?: string[];
 }
 
 export default function AdminCoursesPage() {
   const [courses, setCourses] = useState<Course[]>([]);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [lessons, setLessons] = useState<any[]>([]);
   
   // Creation form states
   const [isCreating, setIsCreating] = useState(false);
@@ -26,14 +25,25 @@ export default function AdminCoursesPage() {
   const [newDesc, setNewDesc] = useState("");
   const [newThumb, setNewThumb] = useState("/course-forex-v3.webp");
 
-  // Lesson form state
-  const [newLessonName, setNewLessonName] = useState("");
-  // Media uploads states
-  const [uploadedVideo, setUploadedVideo] = useState("");
-  const [uploadedPdf, setUploadedPdf] = useState("");
+  // Lesson CRUD states
+  const [isCreatingLesson, setIsCreatingLesson] = useState(false);
+  const [isEditingLesson, setIsEditingLesson] = useState(false);
+  const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
+  
+  const [lessonTitle, setLessonTitle] = useState("");
+  const [lessonDesc, setLessonDesc] = useState("");
+  const [lessonVideoUrl, setLessonVideoUrl] = useState("");
+  const [lessonPdfUrl, setLessonPdfUrl] = useState("");
+  const [lessonDuration, setLessonDuration] = useState("");
 
   const loadData = async () => {
     try {
+      if (!isSupabaseConfigured) {
+        const list = AcademyDB.getCourses();
+        setCourses(list);
+        return;
+      }
+
       const { data, error } = await supabase
         .from("courses")
         .select("*")
@@ -48,10 +58,7 @@ export default function AdminCoursesPage() {
             title: c.title,
             description: c.description || "",
             thumbnail: c.thumbnail || "/course-forex-v3.webp",
-            lessons: c.lessons || [],
             published: c.published,
-            videos: c.videos || [],
-            pdfs: c.pdfs || [],
           }))
         );
       }
@@ -60,9 +67,70 @@ export default function AdminCoursesPage() {
     }
   };
 
+  const fetchLessons = async (courseId: string) => {
+    try {
+      if (!isSupabaseConfigured) {
+        const key = `mervox_academy_lessons_${courseId}`;
+        const stored = localStorage.getItem(key);
+        if (stored) {
+          setLessons(JSON.parse(stored));
+        } else {
+          const course = AcademyDB.getCourses().find((c) => c.id === courseId);
+          const defaultLessons = course?.lessons?.map((lesTitle: string, idx: number) => ({
+            id: `les-${courseId}-${idx}`,
+            course_id: courseId,
+            title: lesTitle,
+            description: "Sandbox Course Lesson. Master high-yield digital skills step-by-step.",
+            video_url: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            pdf_url: "",
+            duration: "15:00",
+            sort_order: idx + 1,
+          })) || [];
+          localStorage.setItem(key, JSON.stringify(defaultLessons));
+          setLessons(defaultLessons);
+        }
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("course_lessons")
+        .select("*")
+        .eq("course_id", courseId)
+        .order("sort_order", { ascending: true });
+
+      if (error) {
+        console.warn("Database course_lessons table not yet created in Supabase. Falling back to local templates.", error);
+        const course = AcademyDB.getCourses().find((c) => c.id === courseId);
+        const defaultLessons = course?.lessons?.map((lesTitle: string, idx: number) => ({
+          id: `les-${courseId}-${idx}`,
+          course_id: courseId,
+          title: lesTitle,
+          description: "Sandbox Course Lesson. Master high-yield digital skills step-by-step.",
+          video_url: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+          pdf_url: "",
+          duration: "15:00",
+          sort_order: idx + 1,
+        })) || [];
+        setLessons(defaultLessons);
+      } else {
+        setLessons(data || []);
+      }
+    } catch (err) {
+      console.error("Exception fetching lessons:", err);
+    }
+  };
+
   useEffect(() => {
     loadData();
   }, []);
+
+  useEffect(() => {
+    if (selectedCourse) {
+      fetchLessons(selectedCourse.id);
+    } else {
+      setLessons([]);
+    }
+  }, [selectedCourse?.id]);
 
   const handleCreateCourse = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,24 +138,37 @@ export default function AdminCoursesPage() {
 
     const newId = newTitle.toLowerCase().replace(/\s+/g, "-");
     try {
+      if (!isSupabaseConfigured) {
+        const list = AcademyDB.getCourses();
+        const newCourse: Course = {
+          id: newId,
+          title: newTitle.trim(),
+          description: newDesc.trim(),
+          thumbnail: newThumb,
+          published: false,
+        };
+        list.unshift(newCourse);
+        localStorage.setItem("mervox_academy_courses", JSON.stringify(list));
+        loadData();
+        setNewTitle("");
+        setNewDesc("");
+        setIsCreating(false);
+        return;
+      }
+
       const { error } = await supabase.from("courses").insert({
         id: newId,
         title: newTitle.trim(),
         description: newDesc.trim(),
         thumbnail: newThumb,
-        lessons: ["Lesson 1: Introduction to Program Foundations"],
         published: false,
-        total_lessons: 1,
-        videos: [],
-        pdfs: [],
       });
 
       if (error) {
         console.error("Supabase Courses INSERT error:", error);
-        alert(`Failed to create course (INSERT error): ${error.message}`);
+        alert(`Failed to create course: ${error.message}`);
       } else {
         loadData();
-        // Reset fields
         setNewTitle("");
         setNewDesc("");
         setIsCreating(false);
@@ -101,26 +182,36 @@ export default function AdminCoursesPage() {
     if (!selectedCourse) return;
 
     try {
+      if (!isSupabaseConfigured) {
+        const list = AcademyDB.getCourses();
+        const updated = list.map((c) => {
+          if (c.id === selectedCourse.id) {
+            return selectedCourse;
+          }
+          return c;
+        });
+        localStorage.setItem("mervox_academy_courses", JSON.stringify(updated));
+        loadData();
+        alert("Course updates saved successfully!");
+        return;
+      }
+
       const { error } = await supabase
         .from("courses")
         .update({
           title: selectedCourse.title.trim(),
           description: selectedCourse.description.trim(),
           thumbnail: selectedCourse.thumbnail,
-          lessons: selectedCourse.lessons,
           published: selectedCourse.published,
-          total_lessons: selectedCourse.lessons?.length || 0,
-          videos: selectedCourse.videos || [],
-          pdfs: selectedCourse.pdfs || [],
         })
         .eq("id", selectedCourse.id);
 
       if (error) {
         console.error("Supabase Courses UPDATE error:", error);
-        alert(`Failed to save course updates (UPDATE error): ${error.message}`);
+        alert(`Failed to save course updates: ${error.message}`);
       } else {
         loadData();
-        alert("Course updates saved and synced successfully!");
+        alert("Course updates saved successfully!");
       }
     } catch (err) {
       console.error("Exception updating course:", err);
@@ -128,9 +219,20 @@ export default function AdminCoursesPage() {
   };
 
   const handleDeleteCourse = async (id: string, name: string) => {
-    const confirmAct = confirm(`WARNING: Are you sure you want to permanently DELETE course "${name}"?\nAll student enrollments progress will be affected.`);
+    const confirmAct = confirm(`WARNING: Are you sure you want to permanently DELETE course "${name}"?\nAll lessons and student enrollments will be deleted.`);
     if (confirmAct) {
       try {
+        if (!isSupabaseConfigured) {
+          const list = AcademyDB.getCourses();
+          const filtered = list.filter((c) => c.id !== id);
+          localStorage.setItem("mervox_academy_courses", JSON.stringify(filtered));
+          loadData();
+          if (selectedCourse?.id === id) {
+            setSelectedCourse(null);
+          }
+          return;
+        }
+
         const { error } = await supabase
           .from("courses")
           .delete()
@@ -138,7 +240,7 @@ export default function AdminCoursesPage() {
 
         if (error) {
           console.error("Supabase Courses DELETE error:", error);
-          alert(`Failed to delete course (DELETE error): ${error.message}`);
+          alert(`Failed to delete course: ${error.message}`);
         } else {
           loadData();
           if (selectedCourse?.id === id) {
@@ -151,43 +253,205 @@ export default function AdminCoursesPage() {
     }
   };
 
-  const handleAddLesson = () => {
-    if (!selectedCourse || !newLessonName.trim()) return;
+  const handleCreateLesson = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCourse || !lessonTitle.trim()) return;
 
-    const lessons = [...(selectedCourse.lessons || [])];
-    lessons.push(newLessonName.trim());
+    const maxOrder = lessons.reduce((max, l) => Math.max(max, l.sort_order || 0), 0);
+    try {
+      if (!isSupabaseConfigured) {
+        const key = `mervox_academy_lessons_${selectedCourse.id}`;
+        const newLesson = {
+          id: `les-${selectedCourse.id}-${Math.random().toString(36).substring(2, 9)}`,
+          course_id: selectedCourse.id,
+          title: lessonTitle.trim(),
+          description: lessonDesc.trim() || null,
+          video_url: lessonVideoUrl.trim() || null,
+          pdf_url: lessonPdfUrl.trim() || null,
+          duration: lessonDuration.trim() || null,
+          sort_order: maxOrder + 1,
+        };
+        const updated = [...lessons, newLesson];
+        localStorage.setItem(key, JSON.stringify(updated));
+        fetchLessons(selectedCourse.id);
+        setLessonTitle("");
+        setLessonDesc("");
+        setLessonVideoUrl("");
+        setLessonPdfUrl("");
+        setLessonDuration("");
+        setIsCreatingLesson(false);
+        return;
+      }
 
-    setSelectedCourse({
-      ...selectedCourse,
-      lessons,
-    });
-    setNewLessonName("");
+      const { error } = await supabase.from("course_lessons").insert({
+        course_id: selectedCourse.id,
+        title: lessonTitle.trim(),
+        description: lessonDesc.trim() || null,
+        video_url: lessonVideoUrl.trim() || null,
+        pdf_url: lessonPdfUrl.trim() || null,
+        duration: lessonDuration.trim() || null,
+        sort_order: maxOrder + 1,
+      });
+
+      if (error) {
+        console.error("Error creating lesson:", error);
+        alert("Failed to add lesson: " + error.message);
+      } else {
+        fetchLessons(selectedCourse.id);
+        setLessonTitle("");
+        setLessonDesc("");
+        setLessonVideoUrl("");
+        setLessonPdfUrl("");
+        setLessonDuration("");
+        setIsCreatingLesson(false);
+      }
+    } catch (err) {
+      console.error(err);
+    }
   };
 
-  const handleDeleteLesson = (index: number) => {
+  const handleStartEditLesson = (lesson: any) => {
+    setEditingLessonId(lesson.id);
+    setLessonTitle(lesson.title || "");
+    setLessonDesc(lesson.description || "");
+    setLessonVideoUrl(lesson.video_url || "");
+    setLessonPdfUrl(lesson.pdf_url || "");
+    setLessonDuration(lesson.duration || "");
+    setIsEditingLesson(true);
+    setIsCreatingLesson(false);
+  };
+
+  const handleSaveEditedLesson = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedCourse || !editingLessonId || !lessonTitle.trim()) return;
+
+    try {
+      if (!isSupabaseConfigured) {
+        const key = `mervox_academy_lessons_${selectedCourse.id}`;
+        const updated = lessons.map((l) => {
+          if (l.id === editingLessonId) {
+            return {
+              ...l,
+              title: lessonTitle.trim(),
+              description: lessonDesc.trim() || null,
+              video_url: lessonVideoUrl.trim() || null,
+              pdf_url: lessonPdfUrl.trim() || null,
+              duration: lessonDuration.trim() || null,
+            };
+          }
+          return l;
+        });
+        localStorage.setItem(key, JSON.stringify(updated));
+        fetchLessons(selectedCourse.id);
+        setLessonTitle("");
+        setLessonDesc("");
+        setLessonVideoUrl("");
+        setLessonPdfUrl("");
+        setLessonDuration("");
+        setEditingLessonId(null);
+        setIsEditingLesson(false);
+        return;
+      }
+
+      const { error } = await supabase
+        .from("course_lessons")
+        .update({
+          title: lessonTitle.trim(),
+          description: lessonDesc.trim() || null,
+          video_url: lessonVideoUrl.trim() || null,
+          pdf_url: lessonPdfUrl.trim() || null,
+          duration: lessonDuration.trim() || null,
+        })
+        .eq("id", editingLessonId);
+
+      if (error) {
+        console.error("Error updating lesson:", error);
+        alert("Failed to save lesson details: " + error.message);
+      } else {
+        fetchLessons(selectedCourse.id);
+        setLessonTitle("");
+        setLessonDesc("");
+        setLessonVideoUrl("");
+        setLessonPdfUrl("");
+        setLessonDuration("");
+        setEditingLessonId(null);
+        setIsEditingLesson(false);
+      }
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
+  const handleDeleteLesson = async (lessonId: string) => {
+    const confirmAct = confirm("Are you sure you want to permanently delete this lesson from the database?");
+    if (confirmAct && selectedCourse) {
+      try {
+        if (!isSupabaseConfigured) {
+          const key = `mervox_academy_lessons_${selectedCourse.id}`;
+          const filtered = lessons.filter((l) => l.id !== lessonId);
+          localStorage.setItem(key, JSON.stringify(filtered));
+          fetchLessons(selectedCourse.id);
+          return;
+        }
+
+        const { error } = await supabase
+          .from("course_lessons")
+          .delete()
+          .eq("id", lessonId);
+
+        if (error) {
+          console.error("Error deleting lesson:", error);
+          alert("Failed to delete lesson: " + error.message);
+        } else {
+          fetchLessons(selectedCourse.id);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  };
+
+  const handleMoveLesson = async (index: number, direction: "up" | "down") => {
     if (!selectedCourse) return;
+    const targetIndex = direction === "up" ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= lessons.length) return;
 
-    const lessons = (selectedCourse.lessons || []).filter((_, idx) => idx !== index);
-    setSelectedCourse({
-      ...selectedCourse,
-      lessons,
-    });
-  };
+    const currentLesson = lessons[index];
+    const otherLesson = lessons[targetIndex];
 
-  const handleUploadVideo = () => {
-    if (!selectedCourse || !uploadedVideo.trim()) return;
-    const videos = [...(selectedCourse.videos || [])];
-    videos.push(uploadedVideo.trim());
-    setSelectedCourse({ ...selectedCourse, videos });
-    setUploadedVideo("");
-  };
+    const currentOrder = currentLesson.sort_order;
+    const otherOrder = otherLesson.sort_order;
 
-  const handleUploadPdf = () => {
-    if (!selectedCourse || !uploadedPdf.trim()) return;
-    const pdfs = [...(selectedCourse.pdfs || [])];
-    pdfs.push(uploadedPdf.trim());
-    setSelectedCourse({ ...selectedCourse, pdfs });
-    setUploadedPdf("");
+    try {
+      if (!isSupabaseConfigured) {
+        const key = `mervox_academy_lessons_${selectedCourse.id}`;
+        const reordered = [...lessons];
+        reordered[index] = { ...currentLesson, sort_order: otherOrder };
+        reordered[targetIndex] = { ...otherLesson, sort_order: currentOrder };
+        reordered.sort((a, b) => (a.sort_order || 0) - (b.sort_order || 0));
+        localStorage.setItem(key, JSON.stringify(reordered));
+        fetchLessons(selectedCourse.id);
+        return;
+      }
+
+      const { error: err1 } = await supabase
+        .from("course_lessons")
+        .update({ sort_order: otherOrder })
+        .eq("id", currentLesson.id);
+
+      const { error: err2 } = await supabase
+        .from("course_lessons")
+        .update({ sort_order: currentOrder })
+        .eq("id", otherLesson.id);
+
+      if (err1 || err2) {
+        console.error("Error reordering lessons:", err1 || err2);
+      } else {
+        fetchLessons(selectedCourse.id);
+      }
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   return (
@@ -286,7 +550,7 @@ export default function AdminCoursesPage() {
                 key={course.id}
                 onClick={() => {
                   setSelectedCourse(course);
-                  setNewLessonName("");
+                  setLessonTitle("");
                 }}
                 className={`p-4 rounded-2xl border bg-white dark:bg-[#18181c] flex gap-4 cursor-pointer transition-all hover:border-slate-350 dark:hover:border-slate-800 shadow-xs ${
                   selectedCourse?.id === course.id ? "border-[#0055ff] ring-1 ring-[#0055ff]/10" : "border-card-border"
@@ -364,110 +628,200 @@ export default function AdminCoursesPage() {
                 </div>
               </div>
 
-              {/* Lesson checklists manager */}
-              <div className="space-y-3">
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block">Lessons List</span>
-                
-                <div className="flex items-center gap-2">
+              {/* Course Info Fields */}
+              <div className="space-y-4 pt-1">
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block">Edit Title</label>
                   <input
                     type="text"
-                    placeholder="Enter lesson title..."
-                    value={newLessonName}
-                    onChange={(e) => setNewLessonName(e.target.value)}
+                    value={selectedCourse.title}
+                    onChange={(e) => setSelectedCourse({ ...selectedCourse, title: e.target.value })}
                     className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border border-card-border text-slate-800 dark:text-slate-200 focus:outline-none"
                   />
-                  <button
-                    onClick={handleAddLesson}
-                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl cursor-pointer shrink-0"
-                  >
-                    Add
-                  </button>
                 </div>
-
-                <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1 scrollbar-thin divide-y divide-card-border/30">
-                  {(!selectedCourse.lessons || selectedCourse.lessons.length === 0) ? (
-                    <p className="text-[10px] text-slate-400 font-semibold py-4 text-center">No lessons added yet.</p>
-                  ) : (
-                    selectedCourse.lessons.map((lesson, idx) => (
-                      <div key={idx} className="py-2.5 flex justify-between items-center gap-3 first:pt-0">
-                        <span className="text-[11px] font-semibold text-slate-700 dark:text-slate-350 truncate">
-                          {lesson}
-                        </span>
-                        <button
-                          onClick={() => handleDeleteLesson(idx)}
-                          className="p-1 rounded text-red-500 hover:bg-red-50 dark:hover:bg-red-950/20 cursor-pointer shrink-0 border-none bg-transparent"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    ))
-                  )}
+                <div className="space-y-1.5">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block">Edit Description</label>
+                  <textarea
+                    value={selectedCourse.description}
+                    onChange={(e) => setSelectedCourse({ ...selectedCourse, description: e.target.value })}
+                    rows={3}
+                    className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border border-card-border text-slate-800 dark:text-slate-200 focus:outline-none resize-none"
+                  />
                 </div>
               </div>
 
-              {/* Simulated media uploads: Videos and PDFs */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-card-border/40 pt-4">
-                
-                {/* Videos */}
-                <div className="space-y-3">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block">Videos List</span>
-                  
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="Video URL or Name"
-                      value={uploadedVideo}
-                      onChange={(e) => setUploadedVideo(e.target.value)}
-                      className="w-full px-2.5 py-1.5 text-[10px] rounded-lg bg-slate-50 dark:bg-slate-900 border border-card-border text-slate-850 dark:text-slate-200 focus:outline-none"
-                    />
+              {/* Lesson checklists manager */}
+              <div className="space-y-4 border-t border-card-border/40 pt-5">
+                <div className="flex justify-between items-center">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block">Course Curriculum</span>
+                  {!isCreatingLesson && !isEditingLesson && (
                     <button
-                      onClick={handleUploadVideo}
-                      className="p-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 rounded-lg text-slate-655 cursor-pointer shrink-0 border-none"
+                      onClick={() => {
+                        setLessonTitle("");
+                        setLessonDesc("");
+                        setLessonVideoUrl("");
+                        setLessonPdfUrl("");
+                        setLessonDuration("");
+                        setIsCreatingLesson(true);
+                      }}
+                      className="px-3 py-1.5 bg-[#0055ff] hover:bg-[#0044dd] text-white text-[10px] font-bold rounded-lg cursor-pointer"
                     >
-                      <Plus className="w-4 h-4" />
+                      + Add New Lesson
                     </button>
-                  </div>
-
-                  <div className="space-y-1 text-[10px] max-h-24 overflow-y-auto scrollbar-thin">
-                    {selectedCourse.videos?.map((v, i) => (
-                      <div key={i} className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400 font-semibold py-1">
-                        <Play className="w-3 h-3 text-slate-400 shrink-0" />
-                        <span className="truncate">{v}</span>
-                      </div>
-                    )) || <p className="text-[9px] text-slate-400 py-1 font-semibold">No videos loaded.</p>}
-                  </div>
+                  )}
                 </div>
 
-                {/* PDFs */}
-                <div className="space-y-3">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide block">PDF Resources</span>
-                  
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="PDF Guide URL/Name"
-                      value={uploadedPdf}
-                      onChange={(e) => setUploadedPdf(e.target.value)}
-                      className="w-full px-2.5 py-1.5 text-[10px] rounded-lg bg-slate-50 dark:bg-slate-900 border border-card-border text-slate-855 dark:text-slate-200 focus:outline-none"
-                    />
-                    <button
-                      onClick={handleUploadPdf}
-                      className="p-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 rounded-lg text-slate-655 cursor-pointer shrink-0 border-none"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
-                  </div>
+                {/* Create/Edit Lesson form inline container */}
+                {(isCreatingLesson || isEditingLesson) && (
+                  <form onSubmit={isEditingLesson ? handleSaveEditedLesson : handleCreateLesson} className="p-4 rounded-xl border border-card-border/60 bg-slate-50/50 dark:bg-slate-900/30 space-y-3">
+                    <h4 className="text-[11px] font-black text-slate-800 dark:text-white uppercase tracking-wider">
+                      {isEditingLesson ? "Modify Lesson Details" : "Add New Course Lesson"}
+                    </h4>
+                    
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-bold text-slate-400 uppercase">Lesson Title</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. Lesson 1: Introduction to Mechanics"
+                        value={lessonTitle}
+                        onChange={(e) => setLessonTitle(e.target.value)}
+                        className="w-full px-2.5 py-1.5 text-xs rounded-lg bg-white dark:bg-[#18181c] border border-card-border text-slate-800 dark:text-slate-250 focus:outline-none"
+                        required
+                      />
+                    </div>
 
-                  <div className="space-y-1 text-[10px] max-h-24 overflow-y-auto scrollbar-thin">
-                    {selectedCourse.pdfs?.map((p, i) => (
-                      <div key={i} className="flex items-center gap-1.5 text-slate-600 dark:text-slate-400 font-semibold py-1">
-                        <FileText className="w-3 h-3 text-slate-400 shrink-0" />
-                        <span className="truncate">{p}</span>
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-bold text-slate-400 uppercase">Description (Optional)</label>
+                      <textarea
+                        placeholder="Provide details about what students will learn..."
+                        value={lessonDesc}
+                        onChange={(e) => setLessonDesc(e.target.value)}
+                        rows={2}
+                        className="w-full px-2.5 py-1.5 text-xs rounded-lg bg-white dark:bg-[#18181c] border border-card-border text-slate-800 dark:text-slate-250 focus:outline-none resize-none"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-bold text-slate-400 uppercase">Video URL (YouTube/Vimeo/Loom/MP4)</label>
+                        <input
+                          type="url"
+                          placeholder="https://..."
+                          value={lessonVideoUrl}
+                          onChange={(e) => setLessonVideoUrl(e.target.value)}
+                          className="w-full px-2.5 py-1.5 text-xs rounded-lg bg-white dark:bg-[#18181c] border border-card-border text-slate-800 dark:text-slate-250 focus:outline-none"
+                        />
                       </div>
-                    )) || <p className="text-[9px] text-slate-400 py-1 font-semibold">No PDFs loaded.</p>}
-                  </div>
-                </div>
+                      <div className="space-y-1">
+                        <label className="text-[9px] font-bold text-slate-400 uppercase">PDF Slides / Guides Link</label>
+                        <input
+                          type="url"
+                          placeholder="https://..."
+                          value={lessonPdfUrl}
+                          onChange={(e) => setLessonPdfUrl(e.target.value)}
+                          className="w-full px-2.5 py-1.5 text-xs rounded-lg bg-white dark:bg-[#18181c] border border-card-border text-slate-800 dark:text-slate-250 focus:outline-none"
+                        />
+                      </div>
+                    </div>
 
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-bold text-slate-400 uppercase">Estimated Duration (Optional)</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 15 mins"
+                        value={lessonDuration}
+                        onChange={(e) => setLessonDuration(e.target.value)}
+                        className="w-full px-2.5 py-1.5 text-xs rounded-lg bg-white dark:bg-[#18181c] border border-card-border text-slate-800 dark:text-slate-250 focus:outline-none"
+                      />
+                    </div>
+
+                    <div className="flex gap-2 pt-2">
+                      <button
+                        type="submit"
+                        className="px-4 py-2 bg-[#0055ff] hover:bg-[#0044dd] text-white text-[10px] font-bold rounded-lg cursor-pointer"
+                      >
+                        {isEditingLesson ? "Save Changes" : "Create Lesson"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsCreatingLesson(false);
+                          setIsEditingLesson(false);
+                          setEditingLessonId(null);
+                        }}
+                        className="px-4 py-2 border border-card-border hover:bg-slate-100 rounded-lg text-[10px] font-bold text-slate-500 cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                )}
+
+                {/* Lesson rows list */}
+                {!isCreatingLesson && !isEditingLesson && (
+                  <div className="space-y-2 max-h-96 overflow-y-auto pr-1 scrollbar-thin divide-y divide-card-border/30">
+                    {lessons.length === 0 ? (
+                      <p className="text-[10px] text-slate-400 font-semibold py-8 text-center">No lessons added yet. Click &quot;+ Add New Lesson&quot; to begin building this course.</p>
+                    ) : (
+                      lessons.map((lesson, idx) => (
+                        <div key={lesson.id} className="py-3 flex justify-between items-center gap-3 first:pt-0 text-left">
+                          <div className="min-w-0 flex-grow">
+                            <h5 className="text-xs font-bold text-slate-800 dark:text-white truncate">
+                              {idx + 1}. {lesson.title}
+                            </h5>
+                            <div className="flex items-center gap-2 mt-1 text-[9px] font-medium text-slate-400">
+                              {lesson.duration && <span>⏱ {lesson.duration}</span>}
+                              {lesson.video_url && <span className="text-[#0055ff]">▶ Video loaded</span>}
+                              {lesson.pdf_url && <span className="text-emerald-500">📄 PDF loaded</span>}
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1 shrink-0">
+                            {/* Reordering buttons */}
+                            <button
+                              type="button"
+                              disabled={idx === 0}
+                              onClick={() => handleMoveLesson(idx, "up")}
+                              className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 cursor-pointer"
+                              title="Move lesson up"
+                            >
+                              <ArrowUp className="w-3.5 h-3.5 text-slate-500" />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={idx === lessons.length - 1}
+                              onClick={() => handleMoveLesson(idx, "down")}
+                              className="p-1.5 rounded hover:bg-slate-100 dark:hover:bg-slate-800 disabled:opacity-30 cursor-pointer"
+                              title="Move lesson down"
+                            >
+                              <ArrowDown className="w-3.5 h-3.5 text-slate-500" />
+                            </button>
+
+                            {/* Edit button */}
+                            <button
+                              type="button"
+                              onClick={() => handleStartEditLesson(lesson)}
+                              className="p-1.5 rounded hover:bg-blue-50 dark:hover:bg-blue-950/20 text-[#0055ff] cursor-pointer"
+                              title="Edit lesson details"
+                            >
+                              <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+
+                            {/* Delete button */}
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteLesson(lesson.id)}
+                              className="p-1.5 rounded hover:bg-red-50 dark:hover:bg-red-950/20 text-red-500 cursor-pointer"
+                              title="Delete lesson"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                )}
               </div>
 
             </div>

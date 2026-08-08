@@ -6,7 +6,7 @@ import { useState, useEffect, useRef } from "react";
 import { Send, User, ShieldAlert, Sparkles, MessageCircle, AlertCircle, BookOpen } from "lucide-react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { supabase } from "@/utils/supabaseClient";
+import { supabase, isSupabaseConfigured } from "@/utils/supabaseClient";
 
 interface ChatMessage {
   id: string;
@@ -71,9 +71,30 @@ export default function MessagesPage() {
       const progress = AcademyDB.getProgress(userId);
       setCoursesEnrolled(progress.length);
 
-      // Load thread messages from Supabase
+      // Load thread messages from Supabase or LocalStorage
       const fetchMessages = async () => {
         try {
+          if (!isSupabaseConfigured) {
+            const key = `mervox_academy_chat_messages_${userId}_${activeChannelId}`;
+            const stored = localStorage.getItem(key);
+            if (stored) {
+              setMessages(JSON.parse(stored));
+            } else {
+              const activeChan = channels.find((c) => c.id === activeChannelId);
+              const defaultMsg: ChatMessage[] = [
+                {
+                  id: `welcome-${activeChannelId}-1`,
+                  sender: "mentor",
+                  text: `Welcome to the ${activeChan?.name || "Support"} channel! How can I assist you today?`,
+                  time: "10:00 AM",
+                }
+              ];
+              localStorage.setItem(key, JSON.stringify(defaultMsg));
+              setMessages(defaultMsg);
+            }
+            return;
+          }
+
           const { data, error } = await supabase
             .from("messages")
             .select("*")
@@ -99,6 +120,10 @@ export default function MessagesPage() {
       };
 
       fetchMessages();
+
+      if (!isSupabaseConfigured) {
+        return;
+      }
 
       // Realtime subscription for incoming replies
       const channel = supabase
@@ -152,15 +177,42 @@ export default function MessagesPage() {
 
     // Optimistic update
     const tempId = Math.random().toString(36).substring(2, 9);
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: tempId,
-        sender: "student",
-        text: msgText,
-        time: timestamp,
-      },
-    ]);
+    const newMsg: ChatMessage = {
+      id: tempId,
+      sender: "student",
+      text: msgText,
+      time: timestamp,
+    };
+
+    if (!isSupabaseConfigured) {
+      const key = `mervox_academy_chat_messages_${userId}_${activeChannelId}`;
+      const stored = localStorage.getItem(key);
+      const current = stored ? JSON.parse(stored) : [];
+      const updated = [...current, newMsg];
+      
+      localStorage.setItem(key, JSON.stringify(updated));
+      setMessages(updated);
+
+      // Auto reply simulation after 1.5 seconds
+      setTimeout(() => {
+        const activeChan = channels.find((c) => c.id === activeChannelId);
+        const replyMsg: ChatMessage = {
+          id: `reply-${Math.random().toString(36).substring(2, 9)}`,
+          sender: "mentor",
+          text: activeChan?.autoResponse || "Got your message! I'm reviewing it and will get back to you shortly.",
+          time: new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }),
+        };
+        const storedLatest = localStorage.getItem(key);
+        const latestCurrent = storedLatest ? JSON.parse(storedLatest) : updated;
+        const withReply = [...latestCurrent, replyMsg];
+        localStorage.setItem(key, JSON.stringify(withReply));
+        setMessages(withReply);
+      }, 1500);
+
+      return;
+    }
+
+    setMessages((prev) => [...prev, newMsg]);
 
     try {
       const { error } = await supabase.from("messages").insert({

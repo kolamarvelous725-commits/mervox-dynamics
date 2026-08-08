@@ -1,8 +1,8 @@
 "use client";
 
-import { AcademyDB } from "@/utils/academyDb";
 import { useState, useEffect } from "react";
 import { BarChart3, TrendingUp, DollarSign, Award, BookOpen, Users, ArrowUpRight, GraduationCap } from "lucide-react";
+import { supabase } from "@/utils/supabaseClient";
 
 interface PopularCourse {
   title: string;
@@ -20,78 +20,116 @@ export default function AdminReportsPage() {
   });
 
   const [popularCourses, setPopularCourses] = useState<PopularCourse[]>([]);
+  const [studentProgressList, setStudentProgressList] = useState<any[]>([]);
   const [monthlyGrowth, setMonthlyGrowth] = useState<any[]>([]);
 
+  const loadReportData = async () => {
+    try {
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("*");
+
+      const { data: courses } = await supabase
+        .from("courses")
+        .select("*");
+
+      const { data: lessons } = await supabase
+        .from("course_lessons")
+        .select("*");
+
+      const { data: enrollments } = await supabase
+        .from("enrollments")
+        .select("*, profiles(*)");
+
+      const { data: lessonProgress } = await supabase
+        .from("lesson_progress")
+        .select("*")
+        .eq("completed", true);
+
+      if (!profiles || !courses || !lessons || !enrollments || !lessonProgress) return;
+
+      const totalStudents = profiles.length;
+      const activeEnrollments = enrollments.length;
+      
+      const lessonsByCourse: Record<string, any[]> = {};
+      lessons.forEach((l) => {
+        if (!lessonsByCourse[l.course_id]) lessonsByCourse[l.course_id] = [];
+        lessonsByCourse[l.course_id].push(l);
+      });
+
+      const studentProgressListMapped = enrollments.map((e: any) => {
+        const profile = e.profiles;
+        const courseObj = courses.find((c) => c.id === e.course_id);
+        const cLessons = lessonsByCourse[e.course_id] || [];
+        const total = cLessons.length;
+        
+        const completedCount = cLessons.filter((l) => 
+          lessonProgress.some((lp) => lp.user_id === e.user_id && lp.lesson_id === l.id && lp.completed)
+        ).length;
+
+        const progressPercent = total > 0 ? Math.round((completedCount / total) * 100) : 0;
+
+        return {
+          studentName: profile ? profile.full_name || profile.email : "Unknown Student",
+          courseTitle: courseObj ? courseObj.title : e.course_id,
+          completedLessons: completedCount,
+          totalLessons: total,
+          progressPercent,
+        };
+      });
+
+      const completionsCount = studentProgressListMapped.filter((sp) => sp.progressPercent === 100).length;
+
+      let totalRevenue = 0;
+      enrollments.forEach((e: any) => {
+        let price = 199;
+        if (e.course_id === "forex-trading") price = 299;
+        if (e.course_id === "ai-automation") price = 249;
+        totalRevenue += price;
+      });
+
+      const popular: PopularCourse[] = courses.map((c) => {
+        const cEnrollments = enrollments.filter((e) => e.course_id === c.id);
+        const cProgress = studentProgressListMapped.filter((sp) => sp.courseTitle === c.title);
+        const cCompletions = cProgress.filter((sp) => sp.progressPercent === 100).length;
+        
+        let price = 199;
+        if (c.id === "forex-trading") price = 299;
+        if (c.id === "ai-automation") price = 249;
+
+        return {
+          title: c.title,
+          enrollments: cEnrollments.length,
+          completions: cCompletions,
+          revenue: cEnrollments.length * price,
+        };
+      });
+
+      popular.sort((a, b) => b.enrollments - a.enrollments);
+      
+      setPopularCourses(popular);
+      setReportData({
+        totalStudents,
+        totalRevenue,
+        activeEnrollments,
+        completionsCount,
+      });
+      setStudentProgressList(studentProgressListMapped);
+
+      setMonthlyGrowth([
+        { month: "May", count: Math.max(0, totalStudents - 8) },
+        { month: "Jun", count: Math.max(0, totalStudents - 4) },
+        { month: "Jul", count: totalStudents },
+      ]);
+    } catch (err) {
+      console.error("Error loading reports data:", err);
+    }
+  };
+
   useEffect(() => {
-    const students = AcademyDB.getStudents();
-    const courses = AcademyDB.getCourses();
-
-    let enrollmentsTotal = 0;
-    let completionsTotal = 0;
-    let revenueTotal = 0;
-
-    // Course tracking map
-    const courseMap = new Map<string, { enrollments: number; completions: number; price: number }>();
-    courses.forEach((c) => {
-      let price = 199;
-      if (c.id === "forex-trading") price = 299;
-      if (c.id === "ai-automation") price = 249;
-      courseMap.set(c.id, { enrollments: 0, completions: 0, price });
-    });
-
-    students.forEach((student: any) => {
-      const progress = student.progress || [];
-      progress.forEach((p: any) => {
-        enrollmentsTotal++;
-        if (p.status === "Completed") {
-          completionsTotal++;
-        }
-
-        const current = courseMap.get(p.courseId);
-        if (current) {
-          courseMap.set(p.courseId, {
-            enrollments: current.enrollments + 1,
-            completions: p.status === "Completed" ? current.completions + 1 : current.completions,
-            price: current.price,
-          });
-          revenueTotal += current.price;
-        }
-      });
-    });
-
-    // Compile popular courses
-    const popular: PopularCourse[] = [];
-    courseMap.forEach((val, key) => {
-      const courseObj = courses.find((c) => c.id === key);
-      popular.push({
-        title: courseObj ? courseObj.title : key,
-        enrollments: val.enrollments,
-        completions: val.completions,
-        revenue: val.enrollments * val.price,
-      });
-    });
-
-    // Sort by popular enrollments
-    popular.sort((a, b) => b.enrollments - a.enrollments);
-    setPopularCourses(popular);
-
-    setReportData({
-      totalStudents: students.length,
-      totalRevenue: revenueTotal,
-      activeEnrollments: enrollmentsTotal,
-      completionsCount: completionsTotal,
-    });
-
-    // Mock registrations monthly growth
-    setMonthlyGrowth([
-      { month: "May", count: 2 },
-      { month: "Jun", count: 5 },
-      { month: "Jul", count: students.length > 0 ? students.length : 8 },
-    ]);
-
+    loadReportData();
   }, []);
 
-  // Compute maximum enrollments to scale bars proportionally
   const maxEnrollments = Math.max(...popularCourses.map((c) => c.enrollments), 1);
 
   return (
@@ -184,7 +222,6 @@ export default function AdminReportsPage() {
                     </span>
                   </div>
                   
-                  {/* Dynamic Visual CSS bar */}
                   <div className="w-full bg-slate-100 dark:bg-slate-900 rounded-full h-3.5 overflow-hidden">
                     <div
                       className="bg-[#0055ff] h-3.5 rounded-full transition-all duration-500 flex items-center justify-end pr-2 text-[8px] font-black text-white"
@@ -235,6 +272,45 @@ export default function AdminReportsPage() {
           </div>
         </div>
 
+      </div>
+
+      {/* Student Progress Ledger */}
+      <div className="p-6 rounded-2xl border border-card-border bg-white dark:bg-[#18181c] shadow-xs space-y-4">
+        <h3 className="text-xs font-bold text-slate-800 dark:text-white uppercase tracking-wider pb-2 border-b border-card-border/40">
+          Student Progress Ledger
+        </h3>
+
+        <div className="rounded-xl border border-card-border overflow-hidden bg-slate-50/50 dark:bg-transparent">
+          <div className="divide-y divide-card-border/30 text-xs font-semibold">
+            <div className="p-3 bg-slate-100/50 dark:bg-slate-900/30 grid grid-cols-12 text-[9px] uppercase tracking-wider font-black text-slate-450 select-none">
+              <span className="col-span-4">Student Name</span>
+              <span className="col-span-4">Learning Program</span>
+              <span className="col-span-2 text-center">Lessons completed</span>
+              <span className="col-span-2 text-right">Progress ratio</span>
+            </div>
+
+            {studentProgressList.length === 0 ? (
+              <div className="p-4 text-center text-slate-400 font-medium">No enrollments tracked.</div>
+            ) : (
+              studentProgressList.map((sp, idx) => (
+                <div key={idx} className="p-3 grid grid-cols-12 text-slate-655 dark:text-slate-350 items-center">
+                  <span className="col-span-4 font-bold text-slate-800 dark:text-white">{sp.studentName}</span>
+                  <span className="col-span-4 font-medium">{sp.courseTitle}</span>
+                  <span className="col-span-2 text-center font-bold">{sp.completedLessons} / {sp.totalLessons}</span>
+                  <div className="col-span-2 flex items-center justify-end gap-2">
+                    <div className="w-16 bg-slate-100 dark:bg-slate-800 rounded-full h-2 overflow-hidden shrink-0">
+                      <div
+                        className="bg-[#0055ff] h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${sp.progressPercent}%` }}
+                      />
+                    </div>
+                    <span className="font-black text-slate-800 dark:text-white w-8 text-right">{sp.progressPercent}%</span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
       </div>
 
     </div>

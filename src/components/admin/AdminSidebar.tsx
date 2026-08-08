@@ -45,6 +45,7 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
     { name: "Certificates", href: "/admin/dashboard/certificates", icon: Award },
     { name: "Payments", href: "/admin/dashboard/payments", icon: CreditCard },
     { name: "Messages", href: "/admin/dashboard/messages", icon: MessageCircle },
+    { name: "Community Forum", href: "/admin/dashboard/community", icon: Users },
     { name: "Reports", href: "/admin/dashboard/reports", icon: BarChart3 },
     { name: "Settings", href: "/admin/dashboard/settings", icon: Settings },
     { name: "Main Website", href: "/", icon: Globe },

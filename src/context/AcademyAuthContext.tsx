@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { Student } from "@/types/academy";
-import { supabase } from "@/utils/supabaseClient";
+import { supabase, isSupabaseConfigured } from "@/utils/supabaseClient";
 
 interface AcademyAuthContextType {
   student: Student | null;
@@ -39,6 +39,20 @@ export function AcademyAuthProvider({ children }: { children: React.ReactNode })
   useEffect(() => {
     const checkSession = async () => {
       setLoading(true);
+      if (!isSupabaseConfigured) {
+        const stored = localStorage.getItem("mervox_academy_current_user");
+        if (stored) {
+          try {
+            setStudent(JSON.parse(stored));
+          } catch {
+            setStudent(null);
+          }
+        } else {
+          setStudent(null);
+        }
+        setLoading(false);
+        return;
+      }
       try {
         const { data: { session } } = await supabase.auth.getSession();
         
@@ -60,7 +74,7 @@ export function AcademyAuthProvider({ children }: { children: React.ReactNode })
 
             const { data: newProfile } = await supabase
               .from("profiles")
-              .insert({
+              .upsert({
                 id: session.user.id,
                 full_name: fullName,
                 email: email,
@@ -112,6 +126,10 @@ export function AcademyAuthProvider({ children }: { children: React.ReactNode })
     };
 
     checkSession();
+
+    if (!isSupabaseConfigured) {
+      return;
+    }
 
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (event === "SIGNED_OUT") {
@@ -188,6 +206,36 @@ export function AcademyAuthProvider({ children }: { children: React.ReactNode })
   }, []);
 
   const signup = async (userData: Omit<Student, "id" | "memberSince" | "avatarUrl"> & { password: string }) => {
+    if (!isSupabaseConfigured) {
+      const newId = "student-" + Math.random().toString(36).substring(2, 9);
+      const memberSince = new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" });
+      const studentData = {
+        id: newId,
+        firstName: userData.firstName,
+        lastName: userData.lastName,
+        email: userData.email,
+        phone: userData.phone || "",
+        country: userData.country || "",
+        memberSince,
+        avatarUrl: "",
+        bio: "",
+        occupation: "",
+        dob: "",
+        socials: {},
+        password: userData.password,
+        role: "student",
+      };
+
+      const usersJson = localStorage.getItem("mervox_academy_users");
+      const users = usersJson ? JSON.parse(usersJson) : [];
+      users.push(studentData);
+      localStorage.setItem("mervox_academy_users", JSON.stringify(users));
+
+      setStudent(studentData);
+      localStorage.setItem("mervox_academy_current_user", JSON.stringify(studentData));
+      return;
+    }
+
     const { data, error } = await supabase.auth.signUp({
       email: userData.email,
       password: userData.password,
@@ -274,94 +322,231 @@ export function AcademyAuthProvider({ children }: { children: React.ReactNode })
   };
 
   const login = async (email: string, password: string): Promise<boolean> => {
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    if (!isSupabaseConfigured) {
+      const usersJson = localStorage.getItem("mervox_academy_users");
+      const users = usersJson ? JSON.parse(usersJson) : [];
+      
+      if (users.length === 0) {
+        const defaultStudent = {
+          id: "student-default",
+          firstName: "John",
+          lastName: "Doe",
+          email: "student@mervoxdynamic.com",
+          phone: "+234 812 345 6789",
+          country: "Nigeria",
+          memberSince: "July 2026",
+          avatarUrl: "",
+          bio: "Student exploring forex and AI automation.",
+          occupation: "Trader",
+          dob: "2000-01-01",
+          socials: {},
+          password: "student123",
+          role: "student",
+        };
+        users.push(defaultStudent);
+        localStorage.setItem("mervox_academy_users", JSON.stringify(users));
+      }
 
-    if (error) {
-      alert(error.message);
+      const matched = users.find(
+        (u: any) => u.email.toLowerCase().trim() === email.toLowerCase().trim() && u.password === password
+      );
+
+      if (matched) {
+        if (matched.suspended) {
+          alert("Your account has been suspended by the administrator.");
+          return false;
+        }
+        const studentData: Student = {
+          id: matched.id,
+          firstName: matched.firstName,
+          lastName: matched.lastName,
+          email: matched.email,
+          phone: matched.phone || "",
+          country: matched.country || "",
+          memberSince: matched.memberSince || "Joined",
+          avatarUrl: matched.avatarUrl || "",
+          bio: matched.bio || "",
+          occupation: matched.occupation || "",
+          dob: matched.dob || "",
+          socials: matched.socials || {},
+        };
+        setStudent(studentData);
+        localStorage.setItem("mervox_academy_current_user", JSON.stringify(studentData));
+        return true;
+      }
+      alert("Invalid student email or password.");
       return false;
     }
 
-    if (data.user) {
-      let { data: profile } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", data.user.id)
-        .single();
+    let networkFailed = false;
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-      if (!profile) {
-        // Automatically create missing profile during login
-        const role = email === "marvelousotugalu012@gmail.com" ? "admin" : "student";
-        const meta = data.user.user_metadata || {};
-        const fullName = meta.fullName || `${meta.firstName || ""} ${meta.lastName || ""}`.trim() || email.split("@")[0];
-        const phone = meta.phone || "";
-        const country = meta.country || "";
-
-        const { data: newProfile, error: insertError } = await supabase
-          .from("profiles")
-          .insert({
-            id: data.user.id,
-            full_name: fullName,
-            email: email,
-            role: role,
-            phone: phone,
-            country: country,
-            avatar_url: "",
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString(),
-          })
-          .select()
-          .single();
-
-        if (insertError) {
-          console.error("Failed to auto-create profile during login. Supabase Error:", insertError);
-          alert(`Failed to initialize your user profile: ${insertError.message || JSON.stringify(insertError)}`);
-          await supabase.auth.signOut();
-          return false;
-        }
-        profile = newProfile;
-      }
-
-      if (profile.suspended) {
-        alert("Your account has been suspended by the administrator.");
-        await supabase.auth.signOut();
+      if (error) {
+        alert(error.message);
         return false;
       }
 
-      const { firstName, lastName, memberSince } = getNamesAndDate(profile);
-      const studentData: Student = {
-        id: profile.id,
-        firstName,
-        lastName,
-        email: profile.email,
-        phone: profile.phone || "",
-        country: profile.country || "",
-        memberSince,
-        avatarUrl: profile.avatar_url || "",
-        bio: profile.bio || "",
-        occupation: profile.occupation || "",
-        dob: profile.dob || "",
-        socials: profile.socials || {},
-      };
+      if (data.user) {
+        let { data: profile } = await supabase
+          .from("profiles")
+          .select("*")
+          .eq("id", data.user.id)
+          .single();
 
-      setStudent(studentData);
-      localStorage.setItem("mervox_academy_current_user", JSON.stringify(studentData));
-      return true;
+        if (!profile) {
+          // Automatically create missing profile during login
+          const role = email === "marvelousotugalu012@gmail.com" ? "admin" : "student";
+          const meta = data.user.user_metadata || {};
+          const fullName = meta.fullName || `${meta.firstName || ""} ${meta.lastName || ""}`.trim() || email.split("@")[0];
+          const phone = meta.phone || "";
+          const country = meta.country || "";
+
+          const { data: newProfile, error: insertError } = await supabase
+            .from("profiles")
+            .upsert({
+              id: data.user.id,
+              full_name: fullName,
+              email: email,
+              role: role,
+              phone: phone,
+              country: country,
+              avatar_url: "",
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .select()
+            .single();
+
+          if (insertError) {
+            console.error("Failed to auto-create profile during login. Supabase Error:", insertError);
+            alert(`Failed to initialize your user profile: ${insertError.message || JSON.stringify(insertError)}`);
+            await supabase.auth.signOut();
+            return false;
+          }
+          profile = newProfile;
+        }
+
+        if (profile.suspended) {
+          alert("Your account has been suspended by the administrator.");
+          await supabase.auth.signOut();
+          return false;
+        }
+
+        const { firstName, lastName, memberSince } = getNamesAndDate(profile);
+        const studentData: Student = {
+          id: profile.id,
+          firstName,
+          lastName,
+          email: profile.email,
+          phone: profile.phone || "",
+          country: profile.country || "",
+          memberSince,
+          avatarUrl: profile.avatar_url || "",
+          bio: profile.bio || "",
+          occupation: profile.occupation || "",
+          dob: profile.dob || "",
+          socials: profile.socials || {},
+        };
+
+        setStudent(studentData);
+        localStorage.setItem("mervox_academy_current_user", JSON.stringify(studentData));
+        return true;
+      }
+    } catch (err: any) {
+      console.error("Supabase student login failed:", err);
+      if (err.message?.includes("Failed to fetch") || String(err).includes("Failed to fetch") || err.message?.includes("network error")) {
+        networkFailed = true;
+      } else {
+        alert(`Login failed: ${err.message || err}`);
+        return false;
+      }
+    }
+
+    if (networkFailed) {
+      const usersJson = localStorage.getItem("mervox_academy_users");
+      const users = usersJson ? JSON.parse(usersJson) : [];
+      const matched = users.find(
+        (u: any) => u.email.toLowerCase().trim() === email.toLowerCase().trim() && u.password === password
+      );
+
+      if (matched) {
+        if (matched.suspended) {
+          alert("Your account has been suspended by the administrator.");
+          return false;
+        }
+        const studentData: Student = {
+          id: matched.id,
+          firstName: matched.firstName,
+          lastName: matched.lastName,
+          email: matched.email,
+          phone: matched.phone || "",
+          country: matched.country || "",
+          memberSince: matched.memberSince || "Joined",
+          avatarUrl: matched.avatarUrl || "",
+          bio: matched.bio || "",
+          occupation: matched.occupation || "",
+          dob: matched.dob || "",
+          socials: matched.socials || {},
+        };
+        setStudent(studentData);
+        localStorage.setItem("mervox_academy_current_user", JSON.stringify(studentData));
+        alert("⚠️ Note: Supabase database connection failed. Running in Offline Sandbox Mode.");
+        return true;
+      }
+      alert("Invalid student email or password (Offline Sandbox Mode).");
+      return false;
     }
 
     return false;
   };
 
   const logout = async () => {
-    await supabase.auth.signOut();
+    if (isSupabaseConfigured) {
+      try {
+        await supabase.auth.signOut();
+      } catch (e) {}
+    }
     setStudent(null);
     localStorage.removeItem("mervox_academy_current_user");
   };
 
   const updateProfile = async (updatedData: Partial<Student>) => {
     if (!student) return;
+
+    if (!isSupabaseConfigured) {
+      const usersJson = localStorage.getItem("mervox_academy_users");
+      const users = usersJson ? JSON.parse(usersJson) : [];
+      const updatedUsers = users.map((u: any) => {
+        if (u.id === student.id) {
+          return {
+            ...u,
+            ...updatedData,
+            socials: {
+              ...u.socials,
+              ...updatedData.socials,
+            },
+          };
+        }
+        return u;
+      });
+      localStorage.setItem("mervox_academy_users", JSON.stringify(updatedUsers));
+
+      const newStudentSession: Student = {
+        ...student,
+        ...updatedData,
+        socials: {
+          ...student.socials,
+          ...updatedData.socials,
+        },
+      };
+      setStudent(newStudentSession);
+      localStorage.setItem("mervox_academy_current_user", JSON.stringify(newStudentSession));
+      return;
+    }
 
     const dbData: any = {};
     if (updatedData.firstName !== undefined || updatedData.lastName !== undefined) {
@@ -408,6 +593,27 @@ export function AcademyAuthProvider({ children }: { children: React.ReactNode })
   const changePassword = async (oldPw: string, newPw: string): Promise<boolean> => {
     if (!student) return false;
 
+    if (!isSupabaseConfigured) {
+      const usersJson = localStorage.getItem("mervox_academy_users");
+      const users = usersJson ? JSON.parse(usersJson) : [];
+      let updated = false;
+      const updatedUsers = users.map((u: any) => {
+        if (u.id === student.id && u.password === oldPw) {
+          updated = true;
+          return {
+            ...u,
+            password: newPw,
+          };
+        }
+        return u;
+      });
+      if (updated) {
+        localStorage.setItem("mervox_academy_users", JSON.stringify(updatedUsers));
+        return true;
+      }
+      return false;
+    }
+
     // Verify old password by attempting to sign in
     const { error: signInErr } = await supabase.auth.signInWithPassword({
       email: student.email,
@@ -426,6 +632,30 @@ export function AcademyAuthProvider({ children }: { children: React.ReactNode })
   };
 
   const loginWithGoogle = async (email: string, name: string) => {
+    if (!isSupabaseConfigured) {
+      const parts = name.trim().split(/\s+/);
+      const firstName = parts[0] || "";
+      const lastName = parts.slice(1).join(" ") || "";
+      const mockStudent: Student = {
+        id: "student-google",
+        firstName,
+        lastName,
+        email,
+        phone: "",
+        country: "",
+        memberSince: new Date().toLocaleDateString("en-US", { month: "long", year: "numeric" }),
+        avatarUrl: "",
+        bio: "",
+        occupation: "",
+        dob: "",
+        socials: {},
+      };
+      setStudent(mockStudent);
+      localStorage.setItem("mervox_academy_current_user", JSON.stringify(mockStudent));
+      window.location.href = "/academy/dashboard";
+      return;
+    }
+
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: {

@@ -5,7 +5,7 @@ import { AcademyDB } from "@/utils/academyDb";
 import { useState, useEffect } from "react";
 import { FileText, Calendar, Upload, CheckCircle2, ChevronRight, BookOpen, AlertCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/utils/supabaseClient";
+import { supabase, isSupabaseConfigured } from "@/utils/supabaseClient";
 
 interface Assignment {
   id: string;
@@ -31,6 +31,52 @@ export default function AssignmentsPage() {
     if (userId) {
       const loadAssignments = async () => {
         try {
+          if (!isSupabaseConfigured) {
+            const progress = AcademyDB.getProgress(userId);
+            setCoursesEnrolled(progress.length);
+
+            const subKey = `mervox_academy_submissions_${userId}`;
+            const storedSubs = localStorage.getItem(subKey);
+            const submissions = storedSubs ? JSON.parse(storedSubs) : {};
+
+            const mockAssignments: Assignment[] = [];
+            progress.forEach((p) => {
+              const course = AcademyDB.getCourses().find((c) => c.id === p.courseId);
+              const courseTitle = course?.title || "Academy Program";
+              const a1Id = `asg-${p.courseId}-1`;
+              const a2Id = `asg-${p.courseId}-2`;
+
+              mockAssignments.push({
+                id: a1Id,
+                courseId: p.courseId,
+                courseTitle,
+                title: `${courseTitle} - Milestone Checkpoint 1`,
+                dueDate: "Next Sunday",
+                status: (submissions[a1Id]?.status || "Pending") as "Pending" | "Submitted" | "Graded",
+                grade: submissions[a1Id]?.grade || "",
+                feedback: submissions[a1Id]?.feedback || "",
+              });
+
+              mockAssignments.push({
+                id: a2Id,
+                courseId: p.courseId,
+                courseTitle,
+                title: `${courseTitle} - Capstone Project`,
+                dueDate: "End of Month",
+                status: (submissions[a2Id]?.status || "Pending") as "Pending" | "Submitted" | "Graded",
+                grade: submissions[a2Id]?.grade || "",
+                feedback: submissions[a2Id]?.feedback || "",
+              });
+            });
+
+            setAssignments(mockAssignments);
+
+            const viewedAsgKey = `mervox_academy_viewed_asg_${userId}`;
+            const activeIds = mockAssignments.map((a: any) => a.id);
+            localStorage.setItem(viewedAsgKey, JSON.stringify(activeIds));
+            return;
+          }
+
           // 1. Fetch student's progress rows
           const { data: userProgress } = await supabase
             .from("progress")
@@ -70,6 +116,10 @@ export default function AssignmentsPage() {
             });
 
             setAssignments(mapped);
+
+            const viewedAsgKey = `mervox_academy_viewed_asg_${userId}`;
+            const activeIds = mapped.map((a: any) => a.id);
+            localStorage.setItem(viewedAsgKey, JSON.stringify(activeIds));
           }
         } catch (err) {
           console.error("Failed to load assignments:", err);
@@ -84,6 +134,55 @@ export default function AssignmentsPage() {
     const confirmUpload = confirm(`Simulate file checkpoint upload for:\n"${title}"?\n\nClick OK to confirm submission.`);
     if (confirmUpload) {
       try {
+        if (!isSupabaseConfigured) {
+          const subKey = `mervox_academy_submissions_${userId}`;
+          const storedSubs = localStorage.getItem(subKey);
+          const submissions = storedSubs ? JSON.parse(storedSubs) : {};
+          
+          submissions[id] = {
+            status: "Submitted",
+            grade: "",
+            feedback: "",
+          };
+          localStorage.setItem(subKey, JSON.stringify(submissions));
+
+          // Reload mock list
+          const progress = AcademyDB.getProgress(userId);
+          const mockAssignments: Assignment[] = [];
+          progress.forEach((p) => {
+            const course = AcademyDB.getCourses().find((c) => c.id === p.courseId);
+            const titleMeta = course?.title || "Academy Program";
+            const a1Id = `asg-${p.courseId}-1`;
+            const a2Id = `asg-${p.courseId}-2`;
+
+            mockAssignments.push({
+              id: a1Id,
+              courseId: p.courseId,
+              courseTitle: titleMeta,
+              title: `${titleMeta} - Milestone Checkpoint 1`,
+              dueDate: "Next Sunday",
+              status: (submissions[a1Id]?.status || "Pending") as "Pending" | "Submitted" | "Graded",
+              grade: submissions[a1Id]?.grade || "",
+              feedback: submissions[a1Id]?.feedback || "",
+            });
+
+            mockAssignments.push({
+              id: a2Id,
+              courseId: p.courseId,
+              courseTitle: titleMeta,
+              title: `${titleMeta} - Capstone Project`,
+              dueDate: "End of Month",
+              status: (submissions[a2Id]?.status || "Pending") as "Pending" | "Submitted" | "Graded",
+              grade: submissions[a2Id]?.grade || "",
+              feedback: submissions[a2Id]?.feedback || "",
+            });
+          });
+
+          setAssignments(mockAssignments);
+          alert("Submission successful! Mentor feedback will render here upon evaluation.");
+          return;
+        }
+
         const asgItem = assignments.find((a) => a.id === id);
         if (!asgItem) return;
 

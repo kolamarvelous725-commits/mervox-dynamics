@@ -5,7 +5,7 @@ import { AcademyDB } from "@/utils/academyDb";
 import { useState, useEffect } from "react";
 import { CreditCard, Download, Plus, DollarSign, Calendar, BookOpen, CheckCircle, AlertCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { supabase } from "@/utils/supabaseClient";
+import { supabase, isSupabaseConfigured } from "@/utils/supabaseClient";
 
 interface Invoice {
   id: string;
@@ -32,6 +32,22 @@ export default function WalletPage() {
 
       const fetchPayments = async () => {
         try {
+          if (!isSupabaseConfigured) {
+            const list = progress.map((p, idx) => {
+              const course = AcademyDB.getCourses().find((c) => c.id === p.courseId);
+              const amount = [299, 249, 199][idx % 3];
+              return {
+                id: `INV-OFFLINE-${p.courseId.toUpperCase()}-${userId.substring(0, 5).toUpperCase()}`,
+                courseTitle: course?.title || "Academy Program Fee",
+                amount: `$${amount}.00`,
+                status: "Paid" as const,
+                date: "July 2026",
+              };
+            });
+            setInvoices(list);
+            return;
+          }
+
           const { data, error } = await supabase
             .from("payments")
             .select("*")

@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { Plus, Trash2, Edit2, Megaphone, Save, Calendar, Tag, X, Info } from "lucide-react";
-import { supabase } from "@/utils/supabaseClient";
+import { supabase, isSupabaseConfigured } from "@/utils/supabaseClient";
+import AcademyDB from "@/utils/academyDb";
 
 interface Announcement {
   id: string;
@@ -26,6 +27,20 @@ export default function AdminAnnouncementsPage() {
 
   const loadData = async () => {
     try {
+      if (!isSupabaseConfigured) {
+        const list = AcademyDB.getAnnouncements();
+        setAnnouncements(
+          list.map((ann: any) => ({
+            id: ann.id,
+            title: ann.title,
+            content: ann.content,
+            date: ann.date,
+            tag: (ann.category || "academic") as "academic" | "event" | "alert",
+          }))
+        );
+        return;
+      }
+
       const { data, error } = await supabase
         .from("announcements")
         .select("*")
@@ -61,6 +76,25 @@ export default function AdminAnnouncementsPage() {
     const dateStr = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
     try {
+      if (!isSupabaseConfigured) {
+        const list = AcademyDB.getAnnouncements();
+        const newAnn = {
+          id: newId,
+          title: title.trim(),
+          content: content.trim(),
+          category: tag,
+          date: dateStr,
+        };
+        list.unshift(newAnn);
+        localStorage.setItem("mervox_academy_announcements", JSON.stringify(list));
+        loadData();
+        setTitle("");
+        setContent("");
+        setTag("academic");
+        setIsCreating(false);
+        return;
+      }
+
       const { error } = await supabase.from("announcements").insert({
         id: newId,
         title: title.trim(),
@@ -89,6 +123,25 @@ export default function AdminAnnouncementsPage() {
     if (!selectedAnnouncement) return;
 
     try {
+      if (!isSupabaseConfigured) {
+        const list = AcademyDB.getAnnouncements();
+        const updated = list.map((ann) => {
+          if (ann.id === selectedAnnouncement.id) {
+            return {
+              ...ann,
+              title: selectedAnnouncement.title.trim(),
+              content: selectedAnnouncement.content.trim(),
+              category: selectedAnnouncement.tag,
+            };
+          }
+          return ann;
+        });
+        localStorage.setItem("mervox_academy_announcements", JSON.stringify(updated));
+        loadData();
+        alert("Announcement updated successfully!");
+        return;
+      }
+
       const { error } = await supabase
         .from("announcements")
         .update({
@@ -114,6 +167,17 @@ export default function AdminAnnouncementsPage() {
     const confirmAct = confirm("Are you sure you want to permanently delete this broadcast announcement?");
     if (confirmAct) {
       try {
+        if (!isSupabaseConfigured) {
+          const list = AcademyDB.getAnnouncements();
+          const filtered = list.filter((ann) => ann.id !== id);
+          localStorage.setItem("mervox_academy_announcements", JSON.stringify(filtered));
+          loadData();
+          if (selectedAnnouncement?.id === id) {
+            setSelectedAnnouncement(null);
+          }
+          return;
+        }
+
         const { error } = await supabase
           .from("announcements")
           .delete()

@@ -5,7 +5,8 @@ import { useRouter } from "next/navigation";
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import Link from "next/link";
-import { Lock, Mail, ArrowRight, Eye, EyeOff } from "lucide-react";
+import { Lock, Mail, ArrowRight, Eye, EyeOff, Info } from "lucide-react";
+import { isSupabaseConfigured } from "@/utils/supabaseClient";
 
 export default function AdminLoginPage() {
   const { isAdminAuthenticated, login } = useAdminAuth();
@@ -60,13 +61,30 @@ export default function AdminLoginPage() {
           </div>
           <div className="space-y-1">
             <h3 className="text-xl font-heading font-black tracking-wider text-slate-800 dark:text-white uppercase leading-none">
-              Mervox Academy
+               Mervox Academy
             </h3>
             <span className="text-[10px] font-bold text-[#0055ff] uppercase tracking-widest block mt-1.5">
               Administrator Access Only
             </span>
           </div>
         </div>
+
+        {/* Sandbox Mode Warning Banner */}
+        {!isSupabaseConfigured && (
+          <div className="p-4 bg-amber-50 dark:bg-amber-950/20 border border-amber-200/50 dark:border-amber-900/30 rounded-2xl text-xs text-amber-800 dark:text-amber-200 space-y-1.5">
+            <div className="flex items-center gap-1.5 font-bold">
+              <Info className="w-4 h-4 text-amber-500" />
+              <span>Sandbox Mode Active</span>
+            </div>
+            <p className="leading-relaxed">
+              Supabase database is not configured. Log in with the sandbox credentials:
+            </p>
+            <div className="bg-amber-100/50 dark:bg-amber-950/40 p-2 rounded-xl font-mono text-[10px] space-y-0.5 select-all">
+              <div><strong>Email:</strong> marvelousotugalu012@gmail.com</div>
+              <div><strong>Pass:</strong> Marv224.</div>
+            </div>
+          </div>
+        )}
 
         {/* Error panel */}
         {error && (

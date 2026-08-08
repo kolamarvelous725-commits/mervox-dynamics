@@ -3,9 +3,9 @@
 import { useAcademyAuth } from "@/context/AcademyAuthContext";
 import { AcademyDB } from "@/utils/academyDb";
 import { Course, UserCourseProgress, QuizAttempt } from "@/types/academy";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Image from "next/image";
-import { supabase } from "@/utils/supabaseClient";
+import { supabase, isSupabaseConfigured } from "@/utils/supabaseClient";
 import {
   BookOpen,
   CheckCircle2,
@@ -21,11 +21,12 @@ import {
   AlertCircle
 } from "lucide-react";
 
-interface ExtendedCourse extends Course {
+interface ExtendedCourse extends Omit<Course, "lessons"> {
   progressData?: UserCourseProgress;
   quizData?: QuizAttempt;
   video_url?: string;
   pdf_url?: string;
+  lessons?: any[];
 }
 
 export default function CoursesPage() {
@@ -40,14 +41,52 @@ export default function CoursesPage() {
   const [studentQuizzes, setStudentQuizzes] = useState<QuizAttempt[]>([]);
   const [studentCertificates, setStudentCertificates] = useState<string[]>([]);
   const [courses, setCourses] = useState<any[]>([]);
+  const [lessons, setLessons] = useState<any[]>([]);
 
   const quizQuestions = AcademyDB.getQuizQuestions();
 
   const refreshData = async () => {
     if (!userId) return;
     try {
-      const { data: progress } = await supabase
-        .from("progress")
+      if (!isSupabaseConfigured) {
+        const list = AcademyDB.getCourses();
+        setCourses(list);
+        
+        const defaultLessons: any[] = [];
+        list.forEach((c) => {
+          const key = `mervox_academy_lessons_${c.id}`;
+          const stored = localStorage.getItem(key);
+          if (stored) {
+            defaultLessons.push(...JSON.parse(stored));
+          } else {
+            const courseLessons = c.lessons?.map((lesTitle: string, idx: number) => ({
+              id: `les-${c.id}-${idx}`,
+              course_id: c.id,
+              title: lesTitle,
+              description: "Sandbox Course Lesson. Master high-yield digital skills step-by-step.",
+              video_url: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+              pdf_url: "",
+              duration: "15:00",
+              sort_order: idx + 1,
+            })) || [];
+            defaultLessons.push(...courseLessons);
+          }
+        });
+        setLessons(defaultLessons);
+        
+        const quizzes = AcademyDB.getQuizzes(userId);
+        setStudentQuizzes(quizzes);
+        
+        const certs = AcademyDB.getCertificates(userId);
+        setStudentCertificates(certs);
+        
+        const progress = AcademyDB.getProgress(userId);
+        setStudentProgress(progress);
+        return;
+      }
+
+      const { data: enrollmentsData } = await supabase
+        .from("enrollments")
         .select("*")
         .eq("user_id", userId);
 
@@ -66,18 +105,58 @@ export default function CoursesPage() {
         .select("*")
         .eq("published", true);
 
-      if (progress) {
-        setStudentProgress(
-          progress.map((p: any) => ({
-            courseId: p.course_id,
-            progress: p.progress_percent,
-            lessonsCompleted: p.lessons_completed?.completed_lessons?.length || 0,
-            status: p.status || "In Progress",
-            completedLessons: p.lessons_completed?.completed_lessons || [],
-            totalLessons: 20,
-            studyMinutes: (p.lessons_completed?.completed_lessons?.length || 0) * 25,
-          }))
-        );
+      const { data: lessonsData } = await supabase
+        .from("course_lessons")
+        .select("*")
+        .order("sort_order", { ascending: true });
+
+      const { data: progressData } = await supabase
+        .from("lesson_progress")
+        .select("*")
+        .eq("user_id", userId)
+        .eq("completed", true);
+
+      const rawLessons = lessonsData && lessonsData.length > 0 ? lessonsData : [
+        ...AcademyDB.getCourses().reduce((acc: any[], course: any) => {
+          const list = course.lessons?.map((lesTitle: string, idx: number) => ({
+            id: `les-${course.id}-${idx}`,
+            course_id: course.id,
+            title: lesTitle,
+            description: "Sandbox Course Lesson. Master high-yield digital skills step-by-step.",
+            video_url: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+            pdf_url: "",
+            duration: "15:00",
+            sort_order: idx + 1,
+          })) || [];
+          return [...acc, ...list];
+        }, [])
+      ];
+
+      const mappedLessons = rawLessons.map((l: any) => {
+        let vUrl = l.video_url || "https://www.youtube.com/embed/dQw4w9WgXcQ";
+        let pUrl = l.pdf_url;
+        if (!pUrl) {
+          const handbookMap: Record<string, string> = {
+            "forex-trading": "/downloads/forex_trading_masterclass.pdf",
+            "ai-automation": "/downloads/ai_automation_funnels.pdf",
+            "web-dev": "/downloads/software_development_blueprint.pdf",
+            "youtube-monetization": "/downloads/youtube_algorithm_secrets.pdf",
+          };
+          pUrl = handbookMap[l.course_id] || "/downloads/forex_trading_masterclass.pdf";
+        }
+        return {
+          ...l,
+          video_url: vUrl,
+          pdf_url: pUrl,
+          description: l.description || "Sandbox Course Lesson. Master high-yield digital skills step-by-step.",
+          duration: l.duration || "15:00",
+        };
+      });
+
+      setLessons(mappedLessons);
+
+      if (courseData) {
+        setCourses(courseData);
       }
 
       if (quizzes) {
@@ -97,9 +176,37 @@ export default function CoursesPage() {
         setStudentCertificates(certificates.map((c: any) => c.course_id));
       }
 
-      if (courseData) {
-        setCourses(courseData);
-      }
+      const coursesArr = courseData || [];
+      const enrollsArr = enrollmentsData || [];
+      const lessonsArr = mappedLessons;
+      const progressArr = progressData || [];
+
+      const enrolledCourseIds = new Set(enrollsArr.map((e: any) => e.course_id));
+      const completedLessonIds = new Set(progressArr.map((p: any) => p.lesson_id));
+
+      const computedProgress: UserCourseProgress[] = coursesArr.map((c: any) => {
+        const cLessons = lessonsArr.filter((l: any) => l.course_id === c.id);
+        const total = cLessons.length;
+        const completedCount = cLessons.filter((l: any) => completedLessonIds.has(l.id)).length;
+        const progressPercent = total > 0 ? Math.round((completedCount / total) * 100) : 0;
+        
+        let status: 'Not Started' | 'In Progress' | 'Completed' = 'Not Started';
+        if (enrolledCourseIds.has(c.id)) {
+          status = progressPercent === 100 ? 'Completed' : 'In Progress';
+        }
+
+        return {
+          courseId: c.id,
+          progress: progressPercent,
+          status,
+          lessonsCompleted: completedCount,
+          totalLessons: total,
+          completedLessons: cLessons.filter((l: any) => completedLessonIds.has(l.id)).map((l: any) => l.id),
+          studyMinutes: completedCount * 25,
+        };
+      });
+
+      setStudentProgress(computedProgress);
     } catch (err) {
       console.error("Failed to load student courses database state:", err);
     }
@@ -111,7 +218,17 @@ export default function CoursesPage() {
 
   const handleEnroll = async (courseId: string, courseTitle: string) => {
     try {
-      // 1. Check if enrollment already exists to avoid unique constraint conflicts
+      if (!userId) {
+        alert("Authentication error: Please log in again to enroll.");
+        return;
+      }
+      if (!isSupabaseConfigured) {
+        AcademyDB.enroll(userId, courseId, courseTitle);
+        refreshData();
+        alert("Enrolled successfully in the course program!");
+        return;
+      }
+
       const { data: existingEnroll, error: checkError } = await supabase
         .from("enrollments")
         .select("*")
@@ -124,30 +241,10 @@ export default function CoursesPage() {
       }
 
       if (existingEnroll) {
-        // Verify progress checkpoint row is synced
-        const { data: existingProg } = await supabase
-          .from("progress")
-          .select("*")
-          .eq("user_id", userId)
-          .eq("course_id", courseId)
-          .maybeSingle();
-
-        if (!existingProg) {
-          await supabase.from("progress").insert({
-            user_id: userId,
-            course_id: courseId,
-            progress_percent: 0,
-            lessons_completed: {
-              completed_lessons: [],
-            },
-          });
-        }
-
         refreshData();
         return;
       }
 
-      // 2. Perform insert if new enrollment
       const enrollmentPayload = {
         user_id: userId,
         course_id: courseId,
@@ -168,21 +265,6 @@ export default function CoursesPage() {
         return;
       }
 
-      const { error: progressError } = await supabase
-        .from("progress")
-        .insert({
-          user_id: userId,
-          course_id: courseId,
-          progress_percent: 0,
-          lessons_completed: {
-            completed_lessons: [],
-          },
-        });
-
-      if (progressError && !progressError.message.includes("duplicate key")) {
-        console.error("Supabase progress table INSERT error:", progressError);
-      }
-
       alert("Enrolled successfully in the course program!");
       refreshData();
     } catch (err) {
@@ -191,38 +273,70 @@ export default function CoursesPage() {
     }
   };
 
-  const handleLessonToggle = async (courseId: string, courseTitle: string, lessonIndex: number, lessonTitle: string) => {
-    try {
-      const { data: currentProg } = await supabase
-        .from("progress")
-        .select("*")
-        .eq("user_id", userId)
-        .eq("course_id", courseId)
-        .single();
+  const handleLessonToggle = async (courseId: string, lessonId: string, isCurrentlyDone: boolean) => {
+    if (!userId) return;
 
-      if (currentProg) {
-        const completed = currentProg.lessons_completed?.completed_lessons || [];
-        let nextCompleted = [...completed];
-        if (nextCompleted.includes(lessonTitle)) {
-          nextCompleted = nextCompleted.filter((l) => l !== lessonTitle);
-        } else {
-          nextCompleted.push(lessonTitle);
+    // Optimistic UI Update: update studentProgress state instantly for snappy UI feedback!
+    setStudentProgress((prevProgress) => {
+      return prevProgress.map((p) => {
+        if (p.courseId === courseId) {
+          const completedList = (p.completedLessons as any[]) || [];
+          const newCompleted = isCurrentlyDone
+            ? completedList.filter((id) => id !== lessonId)
+            : [...completedList, lessonId];
+          const total = p.totalLessons;
+          const completedCount = newCompleted.length;
+          const progressPercent = total > 0 ? Math.round((completedCount / total) * 100) : 0;
+          return {
+            ...p,
+            completedLessons: newCompleted as any,
+            lessonsCompleted: completedCount,
+            progress: progressPercent,
+            studyMinutes: completedCount * 25,
+            status: progressPercent === 100 ? "Completed" : progressPercent > 0 ? "In Progress" : "Not Started"
+          } as any;
         }
+        return p;
+      });
+    });
 
-        const nextPercent = Math.round((nextCompleted.length / 20) * 100);
-        await supabase
-          .from("progress")
-          .update({
-            progress_percent: nextPercent,
-            lessons_completed: {
-              ...currentProg.lessons_completed,
-              completed_lessons: nextCompleted,
-            },
-          })
-          .eq("id", currentProg.id);
-
-        refreshData();
+    try {
+      if (!isSupabaseConfigured) {
+        const courseLessons = lessons.filter((l: any) => l.course_id === courseId);
+        const idx = courseLessons.findIndex((l: any) => l.id === lessonId);
+        const lessonTitle = courseLessons[idx]?.title || "Course Lesson";
+        const course = courses.find((c: any) => c.id === courseId);
+        const courseTitle = course?.title || "Academy Course";
+        
+        AcademyDB.completeLesson(userId, courseId, courseTitle, idx, lessonTitle);
+        return;
       }
+
+      if (isCurrentlyDone) {
+        const { error } = await supabase
+          .from("lesson_progress")
+          .delete()
+          .eq("user_id", userId)
+          .eq("lesson_id", lessonId);
+        
+        if (error) console.error("Error toggling progress:", error);
+      } else {
+        const { error } = await supabase
+          .from("lesson_progress")
+          .upsert({
+            user_id: userId,
+            lesson_id: lessonId,
+            completed: true,
+            completed_at: new Date().toISOString()
+          }, {
+            onConflict: "user_id,lesson_id"
+          });
+
+        if (error) console.error("Error toggling progress:", error);
+      }
+
+      // Sync state with database in background
+      refreshData();
     } catch (err) {
       console.error("Failed to toggle lesson:", err);
     }
@@ -244,6 +358,13 @@ export default function CoursesPage() {
     const dateStr = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
 
     try {
+      if (!isSupabaseConfigured) {
+        AcademyDB.saveQuizAttempt(userId, courseId, courseTitle, correctCount, passed);
+        setQuizResult({ score: correctCount, passed });
+        refreshData();
+        return;
+      }
+
       await supabase.from("quizzes").upsert({
         user_id: userId,
         course_id: courseId,
@@ -280,26 +401,44 @@ export default function CoursesPage() {
     alert(`Certificate Unlocked!\nStudent: ${student?.firstName} ${student?.lastName}\nCourse: ${courseTitle}\n\nThis would generate a downloadable PDF in production.`);
   };
 
-  // Merge templates with user database progress
-  const coursesList: ExtendedCourse[] = courses.map((tpl) => {
-    const progressData = studentProgress.find((p) => p.courseId === tpl.id);
-    const quizData = studentQuizzes.find((q) => q.courseId === tpl.id);
-    
-    // Resolve video and PDF from direct columns or arrays
-    const videoUrl = tpl.video_url || (tpl.videos && tpl.videos.length > 0 ? tpl.videos[0] : undefined);
-    const pdfUrl = tpl.pdf_url || (tpl.pdfs && tpl.pdfs.length > 0 ? tpl.pdfs[0] : undefined);
+  // Merge templates with user database progress using useMemo to optimize re-render performance
+  const coursesList: ExtendedCourse[] = useMemo(() => {
+    return courses.map((tpl) => {
+      const progressData = studentProgress.find((p) => p.courseId === tpl.id);
+      const quizData = studentQuizzes.find((q) => q.courseId === tpl.id);
+      
+      // Filter lessons belonging to this course from lessons state
+      const courseLessons = lessons.filter((l: any) => l.course_id === tpl.id);
 
-    return {
-      ...tpl,
-      progress: progressData ? progressData.progress : 0,
-      status: progressData ? progressData.status : "Not Started",
-      lessonsCompleted: progressData ? progressData.lessonsCompleted : 0,
-      progressData,
-      quizData,
-      video_url: videoUrl,
-      pdf_url: pdfUrl,
-    };
-  });
+      return {
+        ...tpl,
+        progress: progressData ? progressData.progress : 0,
+        status: progressData ? progressData.status : "Not Started",
+        lessonsCompleted: progressData ? progressData.lessonsCompleted : 0,
+        totalLessons: courseLessons.length,
+        progressData,
+        quizData,
+        video_url: tpl.video_url || (courseLessons.length > 0 ? courseLessons[0].video_url : undefined),
+        pdf_url: tpl.pdf_url || (courseLessons.length > 0 ? courseLessons[0].pdf_url : undefined),
+        lessons: courseLessons,
+      };
+    });
+  }, [courses, studentProgress, studentQuizzes, studentCertificates, lessons]);
+
+  // Automatically resume from the first unfinished lesson on load
+  useEffect(() => {
+    if (coursesList.length > 0 && !activeCourseId) {
+      const courseToResume = coursesList.find((c) => {
+        const hasLessons = c.lessons && c.lessons.length > 0;
+        const incompleteCount = (c.lessons as any[])?.filter((l: any) => !c.progressData?.completedLessons.includes(l.id)).length || 0;
+        return c.status === "In Progress" && hasLessons && incompleteCount > 0;
+      });
+
+      if (courseToResume) {
+        setActiveCourseId(courseToResume.id);
+      }
+    }
+  }, [coursesList, activeCourseId]);
 
   return (
     <div className="space-y-6">
@@ -430,43 +569,6 @@ export default function CoursesPage() {
               {isExpanded && (
                 <div className="border-t border-card-border/40 p-6 bg-slate-50/30 dark:bg-slate-900/10 space-y-6">
                   
-                  {/* Dynamic Video & PDF resources */}
-                  <div className="bg-slate-50 dark:bg-slate-900/50 p-4 rounded-2xl border border-card-border/60 grid grid-cols-1 md:grid-cols-2 gap-4 text-left">
-                    <div className="space-y-1.5">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block font-heading">Course Video Reference</span>
-                      {course.video_url ? (
-                        <a
-                          href={course.video_url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#0055ff] hover:bg-[#0044dd] text-white text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer select-none"
-                        >
-                          <Play className="w-3.5 h-3.5" />
-                          <span>Watch Video</span>
-                        </a>
-                      ) : (
-                        <span className="text-xs text-slate-400 font-semibold italic block">No video available.</span>
-                      )}
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block font-heading">Course Study Slides</span>
-                      {course.pdf_url ? (
-                        <a
-                          href={course.pdf_url}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="inline-flex items-center gap-1.5 px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold rounded-xl border border-card-border/40 transition-all shadow-xs cursor-pointer select-none"
-                        >
-                          <Download className="w-3.5 h-3.5" />
-                          <span>Download PDF</span>
-                        </a>
-                      ) : (
-                        <span className="text-xs text-slate-400 font-semibold italic block">No PDF available.</span>
-                      )}
-                    </div>
-                  </div>
-
                   {/* Sub-navigation bar inside card */}
                   <div className="flex gap-4 border-b border-card-border/40 pb-3">
                     <button
@@ -492,41 +594,91 @@ export default function CoursesPage() {
                     <div className="space-y-3">
                       <div className="flex items-center gap-2 text-xs font-semibold text-slate-400 text-left">
                         <Clock className="w-4 h-4" />
-                        <span>Each completed lesson adds **25 minutes** to study logs and **5%** to progress.</span>
+                        <span>Toggle lesson checkboxes to mark completeness. Each completed lesson adds **25 minutes** to study logs.</span>
                       </div>
-                                           {/* List of lessons */}
+
+                      {/* List of lessons */}
                       {(!course.lessons || course.lessons.length === 0) ? (
                         <p className="text-xs text-slate-400 font-semibold italic pt-2 text-left">No lessons available.</p>
                       ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 text-left">
-                          {course.lessons.map((title, idx) => {
-                            const lessonIndex = idx + 1;
-                            const lessonTitle = title;
-                            const isDone = course.progressData?.completedLessons.includes(lessonIndex) || false;
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 text-left">
+                          {course.lessons.map((lesson: any, idx: number) => {
+                            const isDone = course.progressData?.completedLessons.includes(lesson.id) || false;
+                            
+                            // Highlight the first incomplete lesson to allow automatic resume
+                            const firstIncomplete = (course.lessons || []).find((l: any) => !course.progressData?.completedLessons.includes(l.id));
+                            const isResumeHighlight = firstIncomplete?.id === lesson.id;
 
                             return (
                               <div
-                                key={lessonIndex}
-                                onClick={() => handleLessonToggle(course.id, course.title, lessonIndex, lessonTitle)}
-                                className={`p-3 rounded-xl border flex items-center justify-between gap-3 cursor-pointer transition-all hover:-translate-y-[1px] select-none ${
+                                key={lesson.id}
+                                className={`p-4 rounded-xl border flex flex-col gap-2.5 transition-all select-none ${
                                   isDone
-                                    ? "bg-blue-50/40 dark:bg-blue-950/10 border-blue-100/50 dark:border-blue-900/10 text-slate-700 dark:text-slate-300"
-                                    : "border-card-border bg-white dark:bg-[#18181c] text-slate-600 dark:text-slate-400 hover:border-slate-300 dark:hover:border-slate-800"
+                                    ? "bg-blue-50/45 dark:bg-blue-950/10 border-blue-150/50 dark:border-blue-900/10 text-slate-700 dark:text-slate-350"
+                                    : isResumeHighlight
+                                      ? "border-[#0055ff] bg-blue-50/10 dark:bg-blue-950/5 shadow-xs ring-1 ring-[#0055ff]/10 text-slate-800 dark:text-slate-200"
+                                      : "border-card-border bg-white dark:bg-[#18181c] text-slate-600 dark:text-slate-455 hover:border-slate-300 dark:hover:border-slate-800"
                                 }`}
                               >
-                              <div className="flex items-center gap-2.5 truncate">
-                                <Play className={`w-3.5 h-3.5 shrink-0 ${isDone ? "text-[#0055ff]" : "text-slate-400"}`} />
-                                <span className={`text-xs truncate ${isDone ? "font-bold" : "font-medium"}`}>
-                                  {lessonTitle}
-                                </span>
+                                <div className="flex items-center justify-between gap-3">
+                                  <div className="flex items-center gap-2 truncate">
+                                    <Play className={`w-3.5 h-3.5 shrink-0 ${isDone ? "text-[#0055ff]" : "text-slate-400"}`} />
+                                    <span className="text-xs truncate font-bold">
+                                      {idx + 1}. {lesson.title}
+                                    </span>
+                                    {isResumeHighlight && !isDone && (
+                                      <span className="px-1.5 py-0.5 rounded bg-blue-100 text-[#0055ff] dark:bg-blue-950 dark:text-blue-400 text-[8px] font-black uppercase tracking-wider shrink-0">
+                                        Resume
+                                      </span>
+                                    )}
+                                  </div>
+                                  <input
+                                    type="checkbox"
+                                    checked={isDone}
+                                    onChange={() => handleLessonToggle(course.id, lesson.id, isDone)}
+                                    className="w-4 h-4 text-[#0055ff] border-card-border rounded-sm cursor-pointer shrink-0"
+                                  />
+                                </div>
+
+                                {lesson.description && (
+                                  <p className="text-[10px] text-slate-450 dark:text-slate-500 leading-relaxed text-left pl-6 font-semibold">
+                                    {lesson.description}
+                                  </p>
+                                )}
+
+                                {/* Lesson Video & PDF attachments */}
+                                {(lesson.video_url || lesson.pdf_url) && (
+                                  <div className="flex items-center gap-2 pl-6 pt-1">
+                                    {lesson.video_url ? (
+                                      <a
+                                        href={lesson.video_url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-[#0055ff] hover:bg-[#0044dd] text-white text-[9px] font-bold rounded-lg transition-all"
+                                      >
+                                        <Play className="w-2.5 h-2.5" />
+                                        <span>Watch Video</span>
+                                      </a>
+                                    ) : (
+                                      <span className="text-[9px] text-slate-400 font-semibold italic">No video available.</span>
+                                    )}
+
+                                    {lesson.pdf_url ? (
+                                      <a
+                                        href={lesson.pdf_url}
+                                        target="_blank"
+                                        rel="noreferrer"
+                                        className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-[9px] font-bold rounded-lg border border-card-border/40 transition-all"
+                                      >
+                                        <Download className="w-2.5 h-2.5" />
+                                        <span>Download PDF</span>
+                                      </a>
+                                    ) : (
+                                      <span className="text-[9px] text-slate-400 font-semibold italic">No PDF available.</span>
+                                    )}
+                                  </div>
+                                )}
                               </div>
-                              <input
-                                type="checkbox"
-                                checked={isDone}
-                                readOnly
-                                className="w-4 h-4 text-[#0055ff] border-card-border rounded-sm cursor-pointer shrink-0"
-                              />
-                            </div>
                             );
                           })}
                         </div>

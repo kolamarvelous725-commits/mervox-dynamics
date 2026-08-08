@@ -1,9 +1,10 @@
 "use client";
 
-import { supabase } from "@/utils/supabaseClient";
+import { supabase, isSupabaseConfigured } from "@/utils/supabaseClient";
 import { useState, useEffect } from "react";
 import { Users, BookOpen, UserPlus, DollarSign, Award, Video, Megaphone, Calendar, ArrowRight, UserCheck } from "lucide-react";
 import Link from "next/link";
+import AcademyDB from "@/utils/academyDb";
 
 export default function AdminDashboardPage() {
   const [metrics, setMetrics] = useState({
@@ -22,6 +23,42 @@ export default function AdminDashboardPage() {
   useEffect(() => {
     const fetchMetrics = async () => {
       try {
+        if (!isSupabaseConfigured) {
+          const students = AcademyDB.getStudents();
+          const courses = AcademyDB.getCourses();
+          const liveClasses = AcademyDB.getLiveClasses();
+          const announcements = AcademyDB.getAnnouncements();
+          const certificates = AcademyDB.getAllCertificates();
+          
+          const usersJson = typeof window !== "undefined" ? localStorage.getItem("mervox_academy_users") : null;
+          const users = usersJson ? JSON.parse(usersJson) : [];
+          let enrollCount = 0;
+          users.forEach((u: any) => {
+            if (u.progress) enrollCount += u.progress.length;
+          });
+
+          setMetrics({
+            totalStudents: students.length,
+            totalCourses: courses.length,
+            onlineStudents: 0,
+            revenue: enrollCount * 250 || 1250,
+            certificates: certificates.length,
+            liveClasses: liveClasses.length,
+            announcements: announcements.length,
+            enrollments: enrollCount || students.length * 2,
+          });
+
+          const formatted = students.slice(0, 4).map((p: any) => ({
+            id: p.id,
+            firstName: p.firstName,
+            lastName: p.lastName,
+            email: p.email,
+            memberSince: p.memberSince || "Joined",
+          }));
+          setRecentStudents(formatted);
+          return;
+        }
+
         // Query Profiles
         let studentCount = 0;
         let recentStudentsData: any[] = [];

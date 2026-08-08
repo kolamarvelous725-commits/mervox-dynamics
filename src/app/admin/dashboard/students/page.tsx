@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { Search, UserX, Trash2, ShieldAlert, Award, FileText, CheckCircle, Clock, BookOpen, X, Info } from "lucide-react";
-import { supabase } from "@/utils/supabaseClient";
+import { supabase, isSupabaseConfigured } from "@/utils/supabaseClient";
+import AcademyDB from "@/utils/academyDb";
 
 export default function AdminStudentsPage() {
   const [students, setStudents] = useState<any[]>([]);
@@ -10,9 +11,17 @@ export default function AdminStudentsPage() {
   const [selectedStudent, setSelectedStudent] = useState<any | null>(null);
   const [courses, setCourses] = useState<any[]>([]);
 
-  // Load students list from Supabase
+  // Load students list from Supabase or LocalStorage fallback
   const loadData = async () => {
     try {
+      if (!isSupabaseConfigured) {
+        const studentsList = AcademyDB.getStudents();
+        setStudents(studentsList);
+        const coursesList = AcademyDB.getCourses();
+        setCourses(coursesList);
+        return;
+      }
+
       const { data: studentList, error: studentError } = await supabase
         .from("profiles")
         .select("*");
@@ -60,6 +69,15 @@ export default function AdminStudentsPage() {
     const confirmAct = confirm(`Are you sure you want to ${actStr} this student account?`);
     if (confirmAct) {
       try {
+        if (!isSupabaseConfigured) {
+          await AcademyDB.suspendStudent(id, !currentlySuspended);
+          loadData();
+          if (selectedStudent && selectedStudent.id === id) {
+            setSelectedStudent((prev: any) => ({ ...prev, suspended: !currentlySuspended }));
+          }
+          return;
+        }
+
         const { error } = await supabase
           .from("profiles")
           .update({ suspended: !currentlySuspended })
@@ -83,6 +101,15 @@ export default function AdminStudentsPage() {
     const confirmAct = confirm(`WARNING: Are you sure you want to permanently DELETE student "${name}"?\nThis action cannot be undone.`);
     if (confirmAct) {
       try {
+        if (!isSupabaseConfigured) {
+          await AcademyDB.deleteStudent(id);
+          loadData();
+          if (selectedStudent && selectedStudent.id === id) {
+            setSelectedStudent(null);
+          }
+          return;
+        }
+
         const { error } = await supabase
           .from("profiles")
           .delete()

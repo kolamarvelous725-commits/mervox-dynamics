@@ -2,6 +2,7 @@
 
 import { useAcademyAuth } from "@/context/AcademyAuthContext";
 import { AcademyDB } from "@/utils/academyDb";
+import { supabase, isSupabaseConfigured } from "@/utils/supabaseClient";
 import { Course, UserCourseProgress, RecentActivity, Notification } from "@/types/academy";
 import { useState, useEffect } from "react";
 import Image from "next/image";
@@ -36,26 +37,195 @@ export default function DashboardPage() {
   const [certificates, setCertificates] = useState<string[]>([]);
   const [announcements, setAnnouncements] = useState<any[]>([]);
   const [courses, setCourses] = useState<any[]>([]);
+  const [liveClasses, setLiveClasses] = useState<any[]>([]);
 
   // Load user data on mount / session load
   useEffect(() => {
-    if (userId) {
-      setStudentProgress(AcademyDB.getProgress(userId));
-      setActivities(AcademyDB.getActivities(userId));
-      setNotifications(AcademyDB.getNotifications(userId));
-      setCertificates(AcademyDB.getCertificates(userId));
-      setAnnouncements(AcademyDB.getAnnouncements());
-      setCourses(AcademyDB.getCourses());
-    }
+    const loadDashboardData = async () => {
+      if (!userId) return;
+
+      try {
+        if (!isSupabaseConfigured) {
+          // Fallback offline Sandbox load
+          const progress = AcademyDB.getProgress(userId);
+          setStudentProgress(progress);
+          setActivities(AcademyDB.getActivities(userId));
+          setNotifications(AcademyDB.getNotifications(userId));
+          setCertificates(AcademyDB.getCertificates(userId));
+          setAnnouncements(AcademyDB.getAnnouncements());
+          setCourses(AcademyDB.getCourses());
+
+          const enrolledCourseIds = progress.map((p) => p.courseId);
+          const filteredLive = AcademyDB.getLiveClasses().filter((lc: any) => {
+            const cId = lc.course_id || lc.courseId;
+            return enrolledCourseIds.includes(cId);
+          });
+          setLiveClasses(filteredLive.slice(0, 2));
+          return;
+        }
+
+        // Fetch courses, enrollments, lessons, progress, certificates, announcements
+        const { data: enrollmentsData } = await supabase
+          .from("enrollments")
+          .select("*")
+          .eq("user_id", userId);
+
+        const { data: certificatesData } = await supabase
+          .from("certificates")
+          .select("*")
+          .eq("user_id", userId);
+
+        const { data: courseData } = await supabase
+          .from("courses")
+          .select("*")
+          .eq("published", true);
+
+        const { data: lessonsData } = await supabase
+          .from("course_lessons")
+          .select("*");
+
+        const { data: progressData } = await supabase
+          .from("lesson_progress")
+          .select("*")
+          .eq("user_id", userId)
+          .eq("completed", true);
+
+        const { data: announcementsData } = await supabase
+          .from("announcements")
+          .select("*");
+
+        const { data: liveData } = await supabase
+          .from("live_classes")
+          .select("*");
+
+        // Resilient arrays
+        const coursesArr = courseData || [];
+        const enrollsArr = enrollmentsData || [];
+        const rawLessons = lessonsData && lessonsData.length > 0 ? lessonsData : [
+          ...AcademyDB.getCourses().reduce((acc: any[], course: any) => {
+            const list = course.lessons?.map((lesTitle: string, idx: number) => ({
+              id: `les-${course.id}-${idx}`,
+              course_id: course.id,
+              title: lesTitle,
+              description: "Sandbox Course Lesson. Master high-yield digital skills step-by-step.",
+              video_url: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+              pdf_url: "",
+              duration: "15:00",
+              sort_order: idx + 1,
+            })) || [];
+            return [...acc, ...list];
+          }, [])
+        ];
+
+        const mappedLessons = rawLessons.map((l: any) => {
+          let vUrl = l.video_url || "https://www.youtube.com/embed/dQw4w9WgXcQ";
+          let pUrl = l.pdf_url;
+          if (!pUrl) {
+            const handbookMap: Record<string, string> = {
+              "forex-trading": "/downloads/forex_trading_masterclass.pdf",
+              "ai-automation": "/downloads/ai_automation_funnels.pdf",
+              "web-dev": "/downloads/software_development_blueprint.pdf",
+              "youtube-monetization": "/downloads/youtube_algorithm_secrets.pdf",
+            };
+            pUrl = handbookMap[l.course_id] || "/downloads/forex_trading_masterclass.pdf";
+          }
+          return {
+            ...l,
+            video_url: vUrl,
+            pdf_url: pUrl,
+            description: l.description || "Sandbox Course Lesson. Master high-yield digital skills step-by-step.",
+            duration: l.duration || "15:00",
+          };
+        });
+
+        const progressArr = progressData || [];
+
+        const enrolledCourseIds = new Set(enrollsArr.map((e: any) => e.course_id));
+        const completedLessonIds = new Set(progressArr.map((p: any) => p.lesson_id));
+
+        const computedProgress: UserCourseProgress[] = coursesArr.map((c: any) => {
+          const cLessons = mappedLessons.filter((l: any) => l.course_id === c.id);
+          const total = cLessons.length;
+          const completedCount = cLessons.filter((l: any) => completedLessonIds.has(l.id)).length;
+          const progressPercent = total > 0 ? Math.round((completedCount / total) * 100) : 0;
+          
+          let status: 'Not Started' | 'In Progress' | 'Completed' = 'Not Started';
+          if (enrolledCourseIds.has(c.id)) {
+            status = progressPercent === 100 ? 'Completed' : 'In Progress';
+          }
+
+          return {
+            courseId: c.id,
+            progress: progressPercent,
+            status,
+            lessonsCompleted: completedCount,
+            totalLessons: total,
+            completedLessons: cLessons.filter((l: any) => completedLessonIds.has(l.id)).map((l: any) => l.id),
+            studyMinutes: completedCount * 25,
+          };
+        });
+
+        const onlyEnrolled = computedProgress.filter((p) => p.status !== "Not Started");
+        setStudentProgress(onlyEnrolled);
+        setCourses(coursesArr);
+
+        if (certificatesData) {
+          setCertificates(certificatesData.map((c: any) => c.course_id));
+        }
+
+        if (announcementsData) {
+          setAnnouncements(announcementsData);
+        } else {
+          setAnnouncements(AcademyDB.getAnnouncements());
+        }
+
+        // Live classes course-targeted filtering
+        if (liveData) {
+          const enrolledIds = onlyEnrolled.map((p) => p.courseId);
+          const filtered = liveData.filter((lc: any) => enrolledIds.includes(lc.course_id));
+          setLiveClasses(filtered.slice(0, 2));
+        } else {
+          const enrolledIds = onlyEnrolled.map((p) => p.courseId);
+          const filteredLive = AcademyDB.getLiveClasses().filter((lc: any) => {
+            const cId = lc.course_id || lc.courseId;
+            return enrolledIds.includes(cId);
+          });
+          setLiveClasses(filteredLive.slice(0, 2));
+        }
+
+        // Notifications & Activities from Profile
+        const { data: profile } = await supabase
+          .from("profiles")
+          .select("notifications, activity")
+          .eq("id", userId)
+          .single();
+        
+        if (profile) {
+          if (profile.notifications) {
+            const parsedNotifs = Array.isArray(profile.notifications) 
+              ? profile.notifications 
+              : JSON.parse(profile.notifications as string);
+            setNotifications(parsedNotifs || []);
+          } else {
+            setNotifications(AcademyDB.getNotifications(userId));
+          }
+          
+          if (profile.activity) {
+            const parsedActs = Array.isArray(profile.activity) 
+              ? profile.activity 
+              : JSON.parse(profile.activity as string);
+            setActivities(parsedActs || []);
+          } else {
+            setActivities(AcademyDB.getActivities(userId));
+          }
+        }
+      } catch (err) {
+        console.error("Dashboard data load exception:", err);
+      }
+    };
+
+    loadDashboardData();
   }, [userId]);
-
-  const [liveClasses, setLiveClasses] = useState<any[]>([]);
-
-  useEffect(() => {
-    if (userId) {
-      setLiveClasses(AcademyDB.getLiveClasses().slice(0, 2));
-    }
-  }, [userId, courses]);
 
   // Dynamic statistics calculations
   const coursesEnrolled = studentProgress.length;

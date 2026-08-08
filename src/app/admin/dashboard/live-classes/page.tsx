@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { Plus, Trash2, Edit2, Save, Calendar, Clock, Link as LinkIcon, User, X, Film, Video } from "lucide-react";
-import { supabase } from "@/utils/supabaseClient";
+import { supabase, isSupabaseConfigured } from "@/utils/supabaseClient";
+import AcademyDB from "@/utils/academyDb";
 
 interface LiveClass {
   id: string;
@@ -34,6 +35,25 @@ export default function AdminLiveClassesPage() {
 
   const loadData = async () => {
     try {
+      if (!isSupabaseConfigured) {
+        const list = AcademyDB.getLiveClasses();
+        setClasses(
+          list.map((lc: any) => ({
+            id: lc.id,
+            courseId: lc.courseId || "forex-trading",
+            title: lc.title,
+            description: lc.description || "",
+            instructor: lc.instructor,
+            date: lc.date,
+            time: lc.time,
+            link: lc.link,
+          }))
+        );
+        const coursesList = AcademyDB.getCourses();
+        setCourses(coursesList);
+        return;
+      }
+
       const { data: classData, error: classError } = await supabase
         .from("live_classes")
         .select("*")
@@ -75,6 +95,32 @@ export default function AdminLiveClassesPage() {
 
     const newId = "live-" + Math.random().toString(36).substring(2, 9);
     try {
+      if (!isSupabaseConfigured) {
+        const list = AcademyDB.getLiveClasses();
+        const newClass = {
+          id: newId,
+          courseId: courseId || "forex-trading",
+          title: title.trim(),
+          description: desc.trim(),
+          instructor: instructor.trim(),
+          date: date.trim(),
+          time: time.trim() || "17:00 BST",
+          link: link.trim() || "https://zoom.us/j/mock",
+        };
+        list.unshift(newClass);
+        localStorage.setItem("mervox_academy_live_classes", JSON.stringify(list));
+        loadData();
+        setTitle("");
+        setDesc("");
+        setInstructor("");
+        setDate("");
+        setTime("");
+        setLink("");
+        setCourseId("");
+        setIsCreating(false);
+        return;
+      }
+
       const { error } = await supabase.from("live_classes").insert({
         id: newId,
         course_id: courseId || "forex-trading",
@@ -98,6 +144,7 @@ export default function AdminLiveClassesPage() {
         setDate("");
         setTime("");
         setLink("");
+        setCourseId("");
         setIsCreating(false);
       }
     } catch (err) {
@@ -109,6 +156,20 @@ export default function AdminLiveClassesPage() {
     if (!selectedClass) return;
 
     try {
+      if (!isSupabaseConfigured) {
+        const list = AcademyDB.getLiveClasses();
+        const updated = list.map((lc) => {
+          if (lc.id === selectedClass.id) {
+            return selectedClass;
+          }
+          return lc;
+        });
+        localStorage.setItem("mervox_academy_live_classes", JSON.stringify(updated));
+        loadData();
+        alert("Live class details updated and broadcasted to students.");
+        return;
+      }
+
       const { error } = await supabase
         .from("live_classes")
         .update({
@@ -138,6 +199,17 @@ export default function AdminLiveClassesPage() {
     const confirmAct = confirm("Are you sure you want to cancel this scheduled live class session?");
     if (confirmAct) {
       try {
+        if (!isSupabaseConfigured) {
+          const list = AcademyDB.getLiveClasses();
+          const filtered = list.filter((lc) => lc.id !== id);
+          localStorage.setItem("mervox_academy_live_classes", JSON.stringify(filtered));
+          loadData();
+          if (selectedClass?.id === id) {
+            setSelectedClass(null);
+          }
+          return;
+        }
+
         const { error } = await supabase
           .from("live_classes")
           .delete()
