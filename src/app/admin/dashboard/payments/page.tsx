@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { CreditCard, DollarSign, Search, Calendar, UserCheck } from "lucide-react";
-import { supabase, isSupabaseConfigured } from "@/utils/supabaseClient";
+import { adminSupabase, isSupabaseConfigured } from "@/utils/supabaseClient";
 import AcademyDB from "@/utils/academyDb";
 
 interface PaymentItem {
@@ -48,7 +48,7 @@ export default function AdminPaymentsPage() {
           return;
         }
 
-        const { data: payData, error: payError } = await supabase
+        const { data: payData, error: payError } = await adminSupabase
           .from("payments")
           .select("*, profiles(full_name, email)")
           .order("created_at", { ascending: false });

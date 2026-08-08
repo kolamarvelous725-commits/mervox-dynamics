@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Send, MessageSquare, Shield, User, CornerDownLeft, Sparkles, Inbox, RefreshCw } from "lucide-react";
-import { supabase } from "@/utils/supabaseClient";
+import { adminSupabase } from "@/utils/supabaseClient";
 
 interface Message {
   id: string;
@@ -28,14 +28,14 @@ export default function AdminMessagesPage() {
   const loadData = async () => {
     try {
       // 1. Fetch profiles to map user_id -> full_name
-      const { data: students } = await supabase
+      const { data: students } = await adminSupabase
         .from("profiles")
         .select("id, full_name")
         .eq("role", "student");
       const nameMap = new Map(students?.map((s) => [s.id, s.full_name]) || []);
 
       // 2. Fetch all messages ordered by time
-      const { data: allMsgs } = await supabase
+      const { data: allMsgs } = await adminSupabase
         .from("messages")
         .select("*")
         .order("created_at", { ascending: true });
@@ -50,29 +50,26 @@ export default function AdminMessagesPage() {
             studentId: m.user_id,
             studentName,
             channelId: m.channel_id,
-            lastMessage: "",
-            lastMessageTime: "",
+            lastMessage: m.text,
+            lastMessageTime: m.time || "Recently",
             messages: [],
           });
         }
-        const t = threadsMap.get(key)!;
-        t.messages.push({
+        threadsMap.get(key)?.messages.push({
           id: m.id,
-          sender: m.sender as "student" | "mentor",
+          sender: m.sender,
           text: m.text,
-          time: m.time,
+          time: m.time || "",
         });
-        t.lastMessage = m.text;
-        t.lastMessageTime = m.time;
       });
 
-      const sortedThreads = Array.from(threadsMap.values());
-      setThreads(sortedThreads);
-      if (sortedThreads.length > 0 && selectedThreadIndex === null) {
+      const list = Array.from(threadsMap.values());
+      setThreads(list);
+      if (list.length > 0 && selectedThreadIndex === null) {
         setSelectedThreadIndex(0);
       }
     } catch (err) {
-      console.error("Failed to load message threads:", err);
+      console.error("Failed to load admin message threads:", err);
     }
   };
 
@@ -80,7 +77,7 @@ export default function AdminMessagesPage() {
     loadData();
 
     // Setup real-time listener for incoming messages
-    const channel = supabase
+    const channel = adminSupabase
       .channel("admin-chat-listener")
       .on(
         "postgres_changes",
@@ -92,7 +89,7 @@ export default function AdminMessagesPage() {
       .subscribe();
 
     return () => {
-      supabase.removeChannel(channel);
+      adminSupabase.removeChannel(channel);
     };
   }, [selectedThreadIndex]);
 
@@ -107,7 +104,7 @@ export default function AdminMessagesPage() {
     const timestamp = new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
 
     try {
-      const { error } = await supabase.from("messages").insert({
+      const { error } = await adminSupabase.from("messages").insert({
         user_id: thread.studentId,
         channel_id: thread.channelId,
         text: msgText,

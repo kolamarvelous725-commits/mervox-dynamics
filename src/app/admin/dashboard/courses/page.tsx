@@ -409,11 +409,6 @@ export default function AdminCoursesPage() {
       }
     }
   };
-      } catch (err) {
-        console.error(err);
-      }
-    }
-  };
 
   const handleMoveLesson = async (index: number, direction: "up" | "down") => {
     if (!selectedCourse) return;
@@ -438,12 +433,12 @@ export default function AdminCoursesPage() {
         return;
       }
 
-      const { error: err1 } = await supabase
+      const { error: err1 } = await adminSupabase
         .from("course_lessons")
         .update({ sort_order: otherOrder })
         .eq("id", currentLesson.id);
 
-      const { error: err2 } = await supabase
+      const { error: err2 } = await adminSupabase
         .from("course_lessons")
         .update({ sort_order: currentOrder })
         .eq("id", otherLesson.id);

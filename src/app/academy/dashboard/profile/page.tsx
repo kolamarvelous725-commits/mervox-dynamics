@@ -1,7 +1,7 @@
 "use client";
 
 import { useAcademyAuth } from "@/context/AcademyAuthContext";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { User, Phone, Globe, Lock, Save, Camera, Mail, Briefcase, FileText, Globe2, Link as LinkIcon, Calendar } from "lucide-react";
 import Image from "next/image";
 

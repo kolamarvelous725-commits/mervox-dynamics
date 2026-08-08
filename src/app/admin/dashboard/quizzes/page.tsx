@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Plus, Trash2, Edit2, CheckSquare, Save, User, Award, CheckCircle, AlertCircle, X, HelpCircle, GraduationCap } from "lucide-react";
-import { supabase } from "@/utils/supabaseClient";
+import { adminSupabase } from "@/utils/supabaseClient";
 import { AcademyDB } from "@/utils/academyDb";
 
 interface QuizQuestion {
@@ -35,7 +35,7 @@ export default function AdminQuizzesPage() {
 
   const loadData = async () => {
     try {
-      const { data, error } = await supabase.from("courses").select("*");
+      const { data, error } = await adminSupabase.from("courses").select("*");
       if (error) {
         console.error("Failed to load courses for quizzes:", error);
       } else if (data) {
@@ -65,11 +65,11 @@ export default function AdminQuizzesPage() {
     // Load student attempts for this course from Supabase
     const loadAttempts = async () => {
       try {
-        const { data: profiles } = await supabase
+        const { data: profiles } = await adminSupabase
           .from("profiles")
           .select("id, full_name, email");
 
-        const { data: quizzes } = await supabase
+        const { data: quizzes } = await adminSupabase
           .from("quizzes")
           .select("*")
           .eq("course_id", selectedCourseId);

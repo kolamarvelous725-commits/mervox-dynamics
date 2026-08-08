@@ -240,7 +240,7 @@ export default function AdminEnrollmentsPage() {
         }
 
         // Insert initial progress record
-        await supabase
+        await adminSupabase
           .from("progress")
           .upsert({
             user_id: selectedStudentId,

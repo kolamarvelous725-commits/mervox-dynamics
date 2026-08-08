@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { BarChart3, TrendingUp, DollarSign, Award, BookOpen, Users, ArrowUpRight, GraduationCap } from "lucide-react";
-import { supabase } from "@/utils/supabaseClient";
+import { adminSupabase } from "@/utils/supabaseClient";
 
 interface PopularCourse {
   title: string;
@@ -25,23 +25,23 @@ export default function AdminReportsPage() {
 
   const loadReportData = async () => {
     try {
-      const { data: profiles } = await supabase
+      const { data: profiles } = await adminSupabase
         .from("profiles")
         .select("*");
 
-      const { data: courses } = await supabase
+      const { data: courses } = await adminSupabase
         .from("courses")
         .select("*");
 
-      const { data: lessons } = await supabase
+      const { data: lessons } = await adminSupabase
         .from("course_lessons")
         .select("*");
 
-      const { data: enrollments } = await supabase
+      const { data: enrollments } = await adminSupabase
         .from("enrollments")
         .select("*, profiles(*)");
 
-      const { data: lessonProgress } = await supabase
+      const { data: lessonProgress } = await adminSupabase
         .from("lesson_progress")
         .select("*")
         .eq("completed", true);

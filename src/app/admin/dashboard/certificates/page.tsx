@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Award, Trash2, RotateCcw, Plus, Calendar, User, BookOpen, X, ShieldAlert, CheckCircle } from "lucide-react";
-import { supabase } from "@/utils/supabaseClient";
+import { adminSupabase } from "@/utils/supabaseClient";
 
 interface CertificateItem {
   studentId: string;
@@ -25,7 +25,7 @@ export default function AdminCertificatesPage() {
   const loadData = async () => {
     try {
       // 1. Fetch student profiles (filter out admin)
-      const { data: studentProfiles } = await supabase
+      const { data: studentProfiles } = await adminSupabase
         .from("profiles")
         .select("id, full_name, email, role");
 
@@ -34,7 +34,7 @@ export default function AdminCertificatesPage() {
         setStudents(studentList);
 
         // 2. Fetch certificates list
-        const { data: certData } = await supabase.from("certificates").select("*");
+        const { data: certData } = await adminSupabase.from("certificates").select("*");
         if (certData) {
           setCerts(
             certData.map((c: any) => {
@@ -52,7 +52,7 @@ export default function AdminCertificatesPage() {
       }
 
       // 3. Fetch courses
-      const { data: courseData } = await supabase.from("courses").select("*");
+      const { data: courseData } = await adminSupabase.from("courses").select("*");
       if (courseData) {
         setCourses(courseData);
       }
@@ -69,7 +69,7 @@ export default function AdminCertificatesPage() {
     const confirmAct = confirm(`Are you sure you want to REVOKE the certificate for student "${name}"?\nThis removes download permissions on their profile.`);
     if (confirmAct) {
       try {
-        const { error } = await supabase
+        const { error } = await adminSupabase
           .from("certificates")
           .delete()
           .eq("user_id", studentId)
@@ -91,7 +91,7 @@ export default function AdminCertificatesPage() {
     if (confirmAct) {
       const dateStr = new Date().toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
       try {
-        const { error } = await supabase
+        const { error } = await adminSupabase
           .from("certificates")
           .update({
             issue_date: dateStr,
@@ -120,7 +120,7 @@ export default function AdminCertificatesPage() {
     const newId = "cert-" + Math.random().toString(36).substring(2, 9);
 
     try {
-      const { error } = await supabase.from("certificates").upsert({
+      const { error } = await adminSupabase.from("certificates").upsert({
         id: newId,
         user_id: selectedStudentId,
         course_id: selectedCourseId,
