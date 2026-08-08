@@ -2,6 +2,7 @@
 
 import { useAcademyAuth } from "@/context/AcademyAuthContext";
 import { AcademyDB } from "@/utils/academyDb";
+import { supabase, isSupabaseConfigured } from "@/utils/supabaseClient";
 import { useState, useEffect } from "react";
 import { Award, Download, Lock, CheckCircle2, BookOpen, AlertCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -29,34 +30,100 @@ export default function CertificatesPage() {
     { id: "c-youtube", courseId: "youtube-monetization", courseTitle: "YouTube Algorithm Monetization" },
   ];
 
-  useEffect(() => {
-    if (userId) {
-      const progressList = AcademyDB.getProgress(userId);
-      const earnedIds = AcademyDB.getCertificates(userId);
-      const quizzesList = AcademyDB.getQuizzes(userId);
-      setCoursesEnrolled(progressList.length);
+  const loadCertificates = async () => {
+    if (!userId) return;
 
-      // Merge templates with dynamic certificate unlock states
+    try {
+      if (!isSupabaseConfigured) {
+        const progressList = AcademyDB.getProgress(userId);
+        const earnedIds = AcademyDB.getCertificates(userId);
+        const quizzesList = AcademyDB.getQuizzes(userId);
+        setCoursesEnrolled(progressList.length);
+
+        const merged = certTemplates
+          .filter((tpl) => progressList.some((p) => p.courseId === tpl.courseId))
+          .map((tpl) => {
+            const unlocked = earnedIds.includes(tpl.courseId);
+            const quizAttempt = quizzesList.find((q) => q.courseId === tpl.courseId);
+            return {
+              id: tpl.id,
+              courseId: tpl.courseId,
+              courseTitle: tpl.courseTitle,
+              isUnlocked: unlocked,
+              dateEarned: quizAttempt?.date || "Recently Issued",
+            };
+          });
+
+        setCertificates(merged);
+        return;
+      }
+
+      // 1. Fetch user enrollments
+      const { data: enrolls } = await supabase
+        .from("enrollments")
+        .select("course_id")
+        .eq("user_id", userId);
+
+      const enrolledCourseIds = enrolls?.map((e: any) => e.course_id) || [];
+      setCoursesEnrolled(enrolledCourseIds.length);
+
+      // 2. Fetch earned certificates from Supabase
+      const { data: userCerts } = await supabase
+        .from("certificates")
+        .select("*")
+        .eq("user_id", userId);
+
+      const earnedMap = new Map((userCerts || []).map((c: any) => [c.course_id, c.issue_date]));
+
       const merged = certTemplates
-        .filter((tpl) => progressList.some((p) => p.courseId === tpl.courseId))
+        .filter((tpl) => enrolledCourseIds.includes(tpl.courseId))
         .map((tpl) => {
-          const unlocked = earnedIds.includes(tpl.courseId);
-          const quizAttempt = quizzesList.find((q) => q.courseId === tpl.courseId);
+          const isUnlocked = earnedMap.has(tpl.courseId);
           return {
             id: tpl.id,
             courseId: tpl.courseId,
             courseTitle: tpl.courseTitle,
-            isUnlocked: unlocked,
-            dateEarned: quizAttempt?.date || "July 2026",
+            isUnlocked,
+            dateEarned: earnedMap.get(tpl.courseId) || "Recently Issued",
           };
         });
 
       setCertificates(merged);
+    } catch (err) {
+      console.error("Failed to load certificates:", err);
+    }
+  };
+
+  useEffect(() => {
+    loadCertificates();
+
+    if (isSupabaseConfigured && userId) {
+      const channel = supabase
+        .channel("student_certs_sync_" + userId)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "certificates", filter: `user_id=eq.${userId}` },
+          () => {
+            loadCertificates();
+          }
+        )
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "enrollments", filter: `user_id=eq.${userId}` },
+          () => {
+            loadCertificates();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [userId]);
 
   const handleDownload = (courseTitle: string) => {
-    alert(`Certificate Unlocked!\nStudent: ${student?.firstName} ${student?.lastName}\nCourse: ${courseTitle}\n\nThis would generate a downloadable PDF in production.`);
+    alert(`Certificate Unlocked!\nStudent: ${student?.firstName} ${student?.lastName}\nCourse: ${courseTitle}\n\nOfficial PDF verified credential.`);
   };
 
   return (

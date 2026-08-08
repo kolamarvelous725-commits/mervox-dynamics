@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { supabase, isSupabaseConfigured } from "@/utils/supabaseClient";
+import { adminSupabase, isSupabaseConfigured } from "@/utils/supabaseClient";
 
 interface AdminAuthContextType {
   isAdminAuthenticated: boolean;
@@ -28,10 +28,10 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
       try {
-        const { data: { session } } = await supabase.auth.getSession();
+        const { data: { session } } = await adminSupabase.auth.getSession();
         
         if (session?.user) {
-          const { data: profile } = await supabase
+          const { data: profile } = await adminSupabase
             .from("profiles")
             .select("*")
             .eq("id", session.user.id)
@@ -77,10 +77,10 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
 
     let networkFailed = false;
     try {
-      // 1. Attempt login via Supabase Auth
+      // 1. Attempt login via isolated Admin Supabase Auth
       let activeUser: any = null;
 
-      const loginRes = await supabase.auth.signInWithPassword({
+      const loginRes = await adminSupabase.auth.signInWithPassword({
         email,
         password: pass,
       });
@@ -94,7 +94,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
         if (email.toLowerCase().trim() === targetEmail.toLowerCase().trim() && pass === targetPass) {
           console.log("Admin account missing in auth.users. Automatically creating/registering in Supabase Auth...");
           
-          const signupResult = await supabase.auth.signUp({
+          const signupResult = await adminSupabase.auth.signUp({
             email,
             password: pass,
             options: {
@@ -115,7 +115,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
 
           // If session was not created automatically, re-login to acquire the session tokens
           if (!signupResult.data.session) {
-            const retryRes = await supabase.auth.signInWithPassword({
+            const retryRes = await adminSupabase.auth.signInWithPassword({
               email,
               password: pass,
             });
@@ -134,7 +134,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (activeUser) {
-        let { data: profile } = await supabase
+        let { data: profile } = await adminSupabase
           .from("profiles")
           .select("*")
           .eq("id", activeUser.id)
@@ -142,7 +142,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
 
         if (!profile) {
           // Check if profile exists with this email but different ID (pre-registered)
-          const { data: preExisting } = await supabase
+          const { data: preExisting } = await adminSupabase
             .from("profiles")
             .select("*")
             .eq("email", email)
@@ -150,7 +150,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
 
           if (preExisting) {
             // Update the pre-existing profile ID to match the new auth user id
-            const { data: updatedProfile } = await supabase
+            const { data: updatedProfile } = await adminSupabase
               .from("profiles")
               .update({ id: activeUser.id })
               .eq("email", email)
@@ -159,7 +159,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
             profile = updatedProfile;
           } else {
             // Auto-create missing admin profile
-            const { data: newProfile, error: insertError } = await supabase
+            const { data: newProfile, error: insertError } = await adminSupabase
               .from("profiles")
               .upsert({
                 id: activeUser.id,
@@ -187,7 +187,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
           return true;
         } else {
           alert("Access Denied: You do not have administrator permissions.");
-          await supabase.auth.signOut();
+          await adminSupabase.auth.signOut();
           return false;
         }
       }
@@ -215,7 +215,7 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = async () => {
     try {
-      await supabase.auth.signOut();
+      await adminSupabase.auth.signOut();
     } catch (e) {}
     setIsAdminAuthenticated(false);
     localStorage.removeItem("mervox_academy_admin_active");

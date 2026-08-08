@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Search, UserX, Trash2, ShieldAlert, Award, FileText, CheckCircle, Clock, BookOpen, X, Info } from "lucide-react";
-import { supabase, isSupabaseConfigured } from "@/utils/supabaseClient";
+import { adminSupabase, isSupabaseConfigured } from "@/utils/supabaseClient";
 import AcademyDB from "@/utils/academyDb";
 
 export default function AdminStudentsPage() {
@@ -22,7 +22,7 @@ export default function AdminStudentsPage() {
         return;
       }
 
-      const { data: studentList, error: studentError } = await supabase
+      const { data: studentList, error: studentError } = await adminSupabase
         .from("profiles")
         .select("*");
 
@@ -51,7 +51,7 @@ export default function AdminStudentsPage() {
         setStudents(list);
       }
 
-      const { data: courseList } = await supabase.from("courses").select("*");
+      const { data: courseList } = await adminSupabase.from("courses").select("*");
       if (courseList) {
         setCourses(courseList);
       }
@@ -78,7 +78,7 @@ export default function AdminStudentsPage() {
           return;
         }
 
-        const { error } = await supabase
+        const { error } = await adminSupabase
           .from("profiles")
           .update({ suspended: !currentlySuspended })
           .eq("id", id);
@@ -110,7 +110,7 @@ export default function AdminStudentsPage() {
           return;
         }
 
-        const { error } = await supabase
+        const { error } = await adminSupabase
           .from("profiles")
           .delete()
           .eq("id", id);

@@ -2,6 +2,7 @@
 
 import { useAcademyAuth } from "@/context/AcademyAuthContext";
 import { AcademyDB } from "@/utils/academyDb";
+import { supabase, isSupabaseConfigured } from "@/utils/supabaseClient";
 import { useState, useEffect } from "react";
 import Image from "next/image";
 import { Video, Calendar, Clock, ExternalLink, Play, ArrowRight, BookOpen } from "lucide-react";
@@ -23,73 +24,144 @@ export default function LiveClassesPage() {
     return "/course-youtube-v3.webp";
   };
 
-  useEffect(() => {
-    if (userId) {
-      const progress = AcademyDB.getProgress(userId);
-      setCoursesEnrolled(progress.length);
-      
-      const enrolledCourseIds = progress.map((p) => p.courseId);
-      const allSessions = AcademyDB.getLiveClasses().filter((s: any) => {
+  const loadLiveClasses = async () => {
+    if (!userId) return;
+
+    try {
+      if (!isSupabaseConfigured) {
+        const progress = AcademyDB.getProgress(userId);
+        setCoursesEnrolled(progress.length);
+        
+        const enrolledCourseIds = progress.map((p) => p.courseId);
+        const allSessions = AcademyDB.getLiveClasses().filter((s: any) => {
+          const cId = s.course_id || s.courseId;
+          return enrolledCourseIds.includes(cId);
+        });
+        
+        categorizeClasses(allSessions);
+        return;
+      }
+
+      // 1. Fetch user enrollments
+      const { data: enrollData } = await supabase
+        .from("enrollments")
+        .select("course_id")
+        .eq("user_id", userId);
+
+      const enrolledCourseIds = enrollData?.map((e: any) => e.course_id) || [];
+      setCoursesEnrolled(enrolledCourseIds.length);
+
+      if (enrolledCourseIds.length === 0) {
+        setUpcomingClasses([]);
+        setPastRecordings([]);
+        return;
+      }
+
+      // 2. Fetch live classes from Supabase
+      const { data: classData } = await supabase
+        .from("live_classes")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      const allSessions = (classData || []).filter((s: any) => {
         const cId = s.course_id || s.courseId;
         return enrolledCourseIds.includes(cId);
       });
-      const now = new Date();
-      
-      const upcoming: any[] = [];
-      const past: any[] = [];
-      
-      allSessions.forEach((s: any) => {
-        let isPast = false;
-        try {
-          const cleanDateStr = s.date.replace(/BST|EST|GMT/i, "").trim();
-          const sessionDate = new Date(cleanDateStr);
-          if (sessionDate < now) {
-            isPast = true;
-          }
-        } catch {
-          // default false
+
+      categorizeClasses(allSessions);
+    } catch (err) {
+      console.error("Failed to load student live classes:", err);
+    }
+  };
+
+  const categorizeClasses = (allSessions: any[]) => {
+    const now = new Date();
+    const upcoming: any[] = [];
+    const past: any[] = [];
+    
+    allSessions.forEach((s: any) => {
+      let isPast = false;
+      try {
+        const cleanDateStr = (s.date || "").replace(/BST|EST|GMT/i, "").trim();
+        const sessionDate = new Date(cleanDateStr);
+        if (!isNaN(sessionDate.getTime()) && sessionDate < now) {
+          isPast = true;
         }
+      } catch {
+        // default false
+      }
 
-        const item = {
-          id: s.id,
-          title: s.title,
-          courseId: s.course_id || s.courseId,
-          instructor: s.instructor,
-          date: s.date,
-          time: s.time,
-          link: s.link,
-          thumbnail: getThumbnailForCourse(s.course_id || s.courseId),
-          duration: "1h 30m"
-        };
-
-        if (isPast) {
-          past.push(item);
-        } else {
-          upcoming.push(item);
-        }
-      });
-
-      setUpcomingClasses(upcoming);
-      setPastRecordings(past.length > 0 ? past : allSessions.map(s => ({
+      const item = {
         id: s.id,
         title: s.title,
         courseId: s.course_id || s.courseId,
-        instructor: s.instructor,
+        instructor: s.instructor || "Academy Instructor",
         date: s.date,
         time: s.time,
-        link: s.link,
+        link: s.link || "https://zoom.us",
         thumbnail: getThumbnailForCourse(s.course_id || s.courseId),
         duration: "1h 30m"
-      })));
+      };
 
-      const viewedLiveKey = `mervox_academy_viewed_live_${userId}`;
-      const activeIds = allSessions.map((s: any) => s.id);
-      localStorage.setItem(viewedLiveKey, JSON.stringify(activeIds));
+      if (isPast) {
+        past.push(item);
+      } else {
+        upcoming.push(item);
+      }
+    });
+
+    setUpcomingClasses(upcoming);
+    setPastRecordings(past.length > 0 ? past : allSessions.map(s => ({
+      id: s.id,
+      title: s.title,
+      courseId: s.course_id || s.courseId,
+      instructor: s.instructor || "Academy Instructor",
+      date: s.date,
+      time: s.time,
+      link: s.link || "https://zoom.us",
+      thumbnail: getThumbnailForCourse(s.course_id || s.courseId),
+      duration: "1h 30m"
+    })));
+
+    const viewedLiveKey = `mervox_academy_viewed_live_${userId}`;
+    const activeIds = allSessions.map((s: any) => s.id);
+    localStorage.setItem(viewedLiveKey, JSON.stringify(activeIds));
+  };
+
+  useEffect(() => {
+    loadLiveClasses();
+
+    if (isSupabaseConfigured && userId) {
+      const channel = supabase
+        .channel("student_live_sync_" + userId)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "live_classes" },
+          () => {
+            loadLiveClasses();
+          }
+        )
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "enrollments", filter: `user_id=eq.${userId}` },
+          () => {
+            loadLiveClasses();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [userId]);
 
-  const handleJoinClass = (title: string) => {
-    alert(`Launching live mentoring session stream:\n"${title}"\n\nConnecting to Zoom portal...`);
+  const handleJoinClass = (session: any) => {
+    if (session.link && (session.link.startsWith("http://") || session.link.startsWith("https://"))) {
+      window.open(session.link, "_blank");
+    } else {
+      alert(`Launching live mentoring session stream:\n"${session.title}"\n\nConnecting to meeting room...`);
+    }
   };
 
   return (

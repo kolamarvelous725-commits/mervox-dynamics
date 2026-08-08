@@ -27,106 +27,171 @@ export default function AssignmentsPage() {
   const [assignments, setAssignments] = useState<Assignment[]>([]);
   const [progressRows, setProgressRows] = useState<any[]>([]);
 
+  const loadAssignments = async () => {
+    if (!userId) return;
+
+    try {
+      if (!isSupabaseConfigured) {
+        const progress = AcademyDB.getProgress(userId);
+        setCoursesEnrolled(progress.length);
+
+        const subKey = `mervox_academy_submissions_${userId}`;
+        const storedSubs = localStorage.getItem(subKey);
+        const submissions = storedSubs ? JSON.parse(storedSubs) : {};
+
+        const mockAssignments: Assignment[] = [];
+        progress.forEach((p) => {
+          const course = AcademyDB.getCourses().find((c) => c.id === p.courseId);
+          const courseTitle = course?.title || "Academy Program";
+          const a1Id = `asg-${p.courseId}-1`;
+          const a2Id = `asg-${p.courseId}-2`;
+
+          mockAssignments.push({
+            id: a1Id,
+            courseId: p.courseId,
+            courseTitle,
+            title: `${courseTitle} - Milestone Checkpoint 1`,
+            dueDate: "Next Sunday",
+            status: (submissions[a1Id]?.status || "Pending") as "Pending" | "Submitted" | "Graded",
+            grade: submissions[a1Id]?.grade || "",
+            feedback: submissions[a1Id]?.feedback || "",
+          });
+
+          mockAssignments.push({
+            id: a2Id,
+            courseId: p.courseId,
+            courseTitle,
+            title: `${courseTitle} - Capstone Project`,
+            dueDate: "End of Month",
+            status: (submissions[a2Id]?.status || "Pending") as "Pending" | "Submitted" | "Graded",
+            grade: submissions[a2Id]?.grade || "",
+            feedback: submissions[a2Id]?.feedback || "",
+          });
+        });
+
+        setAssignments(mockAssignments);
+
+        const viewedAsgKey = `mervox_academy_viewed_asg_${userId}`;
+        const activeIds = mockAssignments.map((a: any) => a.id);
+        localStorage.setItem(viewedAsgKey, JSON.stringify(activeIds));
+        return;
+      }
+
+      // 1. Fetch user enrollments
+      const { data: userEnrolls } = await supabase
+        .from("enrollments")
+        .select("course_id")
+        .eq("user_id", userId);
+
+      const enrolledCourseIds = userEnrolls?.map((e: any) => e.course_id) || [];
+      setCoursesEnrolled(enrolledCourseIds.length);
+
+      if (enrolledCourseIds.length === 0) {
+        setAssignments([]);
+        setProgressRows([]);
+        return;
+      }
+
+      // 2. Fetch student's progress rows
+      const { data: userProgress } = await supabase
+        .from("progress")
+        .select("*")
+        .eq("user_id", userId);
+
+      const progress = userProgress || [];
+      setProgressRows(progress);
+
+      // 3. Fetch all assignments
+      const { data: allAsgs } = await supabase
+        .from("assignments")
+        .select("*");
+
+      const coursesArr = AcademyDB.getCourses();
+      let matchedAsgs = (allAsgs || []).filter((a: any) => enrolledCourseIds.includes(a.course_id));
+
+      // Fallback default assignments for courses if database assignments table is empty
+      if (matchedAsgs.length === 0) {
+        matchedAsgs = enrolledCourseIds.flatMap((cId) => {
+          const cObj = coursesArr.find((c) => c.id === cId);
+          const cTitle = cObj?.title || "Academy Program";
+          return [
+            {
+              id: `asg-${cId}-1`,
+              course_id: cId,
+              course_title: cTitle,
+              title: `${cTitle} - Milestone Checkpoint 1`,
+              due_date: "Next Sunday",
+            },
+            {
+              id: `asg-${cId}-2`,
+              course_id: cId,
+              course_title: cTitle,
+              title: `${cTitle} - Capstone Project`,
+              due_date: "End of Month",
+            }
+          ];
+        });
+      }
+
+      // Map and attach submissions from lessons_completed JSON
+      const mapped: Assignment[] = matchedAsgs.map((a: any) => {
+        const courseProg = progress.find((p: any) => p.course_id === a.course_id);
+        const submissionObj = courseProg?.lessons_completed?.assignments?.find((sub: any) => sub.id === a.id);
+
+        return {
+          id: a.id,
+          courseId: a.course_id,
+          courseTitle: a.course_title,
+          title: a.title,
+          dueDate: a.due_date,
+          status: (submissionObj?.status || "Pending") as "Pending" | "Submitted" | "Graded",
+          grade: submissionObj?.grade || "",
+          feedback: submissionObj?.feedback || "",
+        };
+      });
+
+      setAssignments(mapped);
+
+      const viewedAsgKey = `mervox_academy_viewed_asg_${userId}`;
+      const activeIds = mapped.map((a: any) => a.id);
+      localStorage.setItem(viewedAsgKey, JSON.stringify(activeIds));
+    } catch (err) {
+      console.error("Failed to load assignments:", err);
+    }
+  };
+
   useEffect(() => {
-    if (userId) {
-      const loadAssignments = async () => {
-        try {
-          if (!isSupabaseConfigured) {
-            const progress = AcademyDB.getProgress(userId);
-            setCoursesEnrolled(progress.length);
+    loadAssignments();
 
-            const subKey = `mervox_academy_submissions_${userId}`;
-            const storedSubs = localStorage.getItem(subKey);
-            const submissions = storedSubs ? JSON.parse(storedSubs) : {};
-
-            const mockAssignments: Assignment[] = [];
-            progress.forEach((p) => {
-              const course = AcademyDB.getCourses().find((c) => c.id === p.courseId);
-              const courseTitle = course?.title || "Academy Program";
-              const a1Id = `asg-${p.courseId}-1`;
-              const a2Id = `asg-${p.courseId}-2`;
-
-              mockAssignments.push({
-                id: a1Id,
-                courseId: p.courseId,
-                courseTitle,
-                title: `${courseTitle} - Milestone Checkpoint 1`,
-                dueDate: "Next Sunday",
-                status: (submissions[a1Id]?.status || "Pending") as "Pending" | "Submitted" | "Graded",
-                grade: submissions[a1Id]?.grade || "",
-                feedback: submissions[a1Id]?.feedback || "",
-              });
-
-              mockAssignments.push({
-                id: a2Id,
-                courseId: p.courseId,
-                courseTitle,
-                title: `${courseTitle} - Capstone Project`,
-                dueDate: "End of Month",
-                status: (submissions[a2Id]?.status || "Pending") as "Pending" | "Submitted" | "Graded",
-                grade: submissions[a2Id]?.grade || "",
-                feedback: submissions[a2Id]?.feedback || "",
-              });
-            });
-
-            setAssignments(mockAssignments);
-
-            const viewedAsgKey = `mervox_academy_viewed_asg_${userId}`;
-            const activeIds = mockAssignments.map((a: any) => a.id);
-            localStorage.setItem(viewedAsgKey, JSON.stringify(activeIds));
-            return;
+    if (isSupabaseConfigured && userId) {
+      const channel = supabase
+        .channel("student_asg_sync_" + userId)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "progress", filter: `user_id=eq.${userId}` },
+          () => {
+            loadAssignments();
           }
-
-          // 1. Fetch student's progress rows
-          const { data: userProgress } = await supabase
-            .from("progress")
-            .select("*")
-            .eq("user_id", userId);
-
-          const progress = userProgress || [];
-          setProgressRows(progress);
-          setCoursesEnrolled(progress.length);
-
-          const enrolledCourseIds = progress.map((p: any) => p.course_id);
-
-          // 2. Fetch all assignments
-          const { data: allAsgs } = await supabase
-            .from("assignments")
-            .select("*");
-
-          if (allAsgs) {
-            // Filter assignments matching enrolled course IDs
-            const filteredAsgs = allAsgs.filter((a: any) => enrolledCourseIds.includes(a.course_id));
-
-            // Map and attach submissions from lessons_completed JSON
-            const mapped = filteredAsgs.map((a: any) => {
-              const courseProg = progress.find((p: any) => p.course_id === a.course_id);
-              const submissionObj = courseProg?.lessons_completed?.assignments?.find((sub: any) => sub.id === a.id);
-
-              return {
-                id: a.id,
-                courseId: a.course_id,
-                courseTitle: a.course_title,
-                title: a.title,
-                dueDate: a.due_date,
-                status: (submissionObj?.status || "Pending") as "Pending" | "Submitted" | "Graded",
-                grade: submissionObj?.grade || "",
-                feedback: submissionObj?.feedback || "",
-              };
-            });
-
-            setAssignments(mapped);
-
-            const viewedAsgKey = `mervox_academy_viewed_asg_${userId}`;
-            const activeIds = mapped.map((a: any) => a.id);
-            localStorage.setItem(viewedAsgKey, JSON.stringify(activeIds));
+        )
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "enrollments", filter: `user_id=eq.${userId}` },
+          () => {
+            loadAssignments();
           }
-        } catch (err) {
-          console.error("Failed to load assignments:", err);
-        }
+        )
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "assignments" },
+          () => {
+            loadAssignments();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
       };
-
-      loadAssignments();
     }
   }, [userId]);
 
@@ -145,40 +210,7 @@ export default function AssignmentsPage() {
             feedback: "",
           };
           localStorage.setItem(subKey, JSON.stringify(submissions));
-
-          // Reload mock list
-          const progress = AcademyDB.getProgress(userId);
-          const mockAssignments: Assignment[] = [];
-          progress.forEach((p) => {
-            const course = AcademyDB.getCourses().find((c) => c.id === p.courseId);
-            const titleMeta = course?.title || "Academy Program";
-            const a1Id = `asg-${p.courseId}-1`;
-            const a2Id = `asg-${p.courseId}-2`;
-
-            mockAssignments.push({
-              id: a1Id,
-              courseId: p.courseId,
-              courseTitle: titleMeta,
-              title: `${titleMeta} - Milestone Checkpoint 1`,
-              dueDate: "Next Sunday",
-              status: (submissions[a1Id]?.status || "Pending") as "Pending" | "Submitted" | "Graded",
-              grade: submissions[a1Id]?.grade || "",
-              feedback: submissions[a1Id]?.feedback || "",
-            });
-
-            mockAssignments.push({
-              id: a2Id,
-              courseId: p.courseId,
-              courseTitle: titleMeta,
-              title: `${titleMeta} - Capstone Project`,
-              dueDate: "End of Month",
-              status: (submissions[a2Id]?.status || "Pending") as "Pending" | "Submitted" | "Graded",
-              grade: submissions[a2Id]?.grade || "",
-              feedback: submissions[a2Id]?.feedback || "",
-            });
-          });
-
-          setAssignments(mockAssignments);
+          loadAssignments();
           alert("Submission successful! Mentor feedback will render here upon evaluation.");
           return;
         }
@@ -186,7 +218,24 @@ export default function AssignmentsPage() {
         const asgItem = assignments.find((a) => a.id === id);
         if (!asgItem) return;
 
-        const matchingProg = progressRows.find((p) => p.course_id === asgItem.courseId);
+        let matchingProg = progressRows.find((p) => p.course_id === asgItem.courseId);
+        
+        // If progress row doesn't exist yet, insert one
+        if (!matchingProg) {
+          const { data: newProgRow } = await supabase
+            .from("progress")
+            .insert({
+              user_id: userId,
+              course_id: asgItem.courseId,
+              lessons_completed: {},
+              progress: 0,
+              status: "In Progress"
+            })
+            .select()
+            .single();
+          matchingProg = newProgRow;
+        }
+
         if (!matchingProg) return;
 
         const currentLessonsCompleted = matchingProg.lessons_completed || {};
@@ -219,16 +268,6 @@ export default function AssignmentsPage() {
         if (error) {
           alert(`Failed to submit assignment: ${error.message}`);
         } else {
-          // Trigger reload
-          setProgressRows((prev) =>
-            prev.map((p) => {
-              if (p.id === matchingProg.id) {
-                return { ...p, lessons_completed: updatedLessonsCompleted };
-              }
-              return p;
-            })
-          );
-
           setAssignments((prev) =>
             prev.map((a) => {
               if (a.id === id) {

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Plus, Trash2, Edit2, Play, FileText, Upload, Save, ArrowRight, Eye, EyeOff, X, HelpCircle, Layers, ArrowUp, ArrowDown } from "lucide-react";
 import Image from "next/image";
-import { supabase, isSupabaseConfigured } from "@/utils/supabaseClient";
+import { adminSupabase, isSupabaseConfigured } from "@/utils/supabaseClient";
 import AcademyDB from "@/utils/academyDb";
 
 interface Course {
@@ -29,7 +29,6 @@ export default function AdminCoursesPage() {
   const [isCreatingLesson, setIsCreatingLesson] = useState(false);
   const [isEditingLesson, setIsEditingLesson] = useState(false);
   const [editingLessonId, setEditingLessonId] = useState<string | null>(null);
-  
   const [lessonTitle, setLessonTitle] = useState("");
   const [lessonDesc, setLessonDesc] = useState("");
   const [lessonVideoUrl, setLessonVideoUrl] = useState("");
@@ -44,7 +43,7 @@ export default function AdminCoursesPage() {
         return;
       }
 
-      const { data, error } = await supabase
+      const { data, error } = await adminSupabase
         .from("courses")
         .select("*")
         .order("created_at", { ascending: false });
@@ -92,7 +91,7 @@ export default function AdminCoursesPage() {
         return;
       }
 
-      const { data, error } = await supabase
+      const { data, error } = await adminSupabase
         .from("course_lessons")
         .select("*")
         .eq("course_id", courseId)
@@ -156,7 +155,7 @@ export default function AdminCoursesPage() {
         return;
       }
 
-      const { error } = await supabase.from("courses").insert({
+      const { error } = await adminSupabase.from("courses").insert({
         id: newId,
         title: newTitle.trim(),
         description: newDesc.trim(),
@@ -196,7 +195,7 @@ export default function AdminCoursesPage() {
         return;
       }
 
-      const { error } = await supabase
+      const { error } = await adminSupabase
         .from("courses")
         .update({
           title: selectedCourse.title.trim(),
@@ -233,7 +232,7 @@ export default function AdminCoursesPage() {
           return;
         }
 
-        const { error } = await supabase
+        const { error } = await adminSupabase
           .from("courses")
           .delete()
           .eq("id", id);
@@ -283,7 +282,7 @@ export default function AdminCoursesPage() {
         return;
       }
 
-      const { error } = await supabase.from("course_lessons").insert({
+      const { error } = await adminSupabase.from("course_lessons").insert({
         course_id: selectedCourse.id,
         title: lessonTitle.trim(),
         description: lessonDesc.trim() || null,
@@ -353,7 +352,7 @@ export default function AdminCoursesPage() {
         return;
       }
 
-      const { error } = await supabase
+      const { error } = await adminSupabase
         .from("course_lessons")
         .update({
           title: lessonTitle.trim(),
@@ -394,7 +393,7 @@ export default function AdminCoursesPage() {
           return;
         }
 
-        const { error } = await supabase
+        const { error } = await adminSupabase
           .from("course_lessons")
           .delete()
           .eq("id", lessonId);
@@ -405,6 +404,11 @@ export default function AdminCoursesPage() {
         } else {
           fetchLessons(selectedCourse.id);
         }
+      } catch (err) {
+        console.error(err);
+      }
+    }
+  };
       } catch (err) {
         console.error(err);
       }

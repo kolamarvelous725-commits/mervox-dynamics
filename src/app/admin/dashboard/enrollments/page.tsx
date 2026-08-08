@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { UserCheck, BookOpen, Clock, Calendar, Search, Plus, X, Trash2 } from "lucide-react";
-import { supabase, isSupabaseConfigured } from "@/utils/supabaseClient";
+import { adminSupabase, isSupabaseConfigured } from "@/utils/supabaseClient";
 import { AcademyDB } from "@/utils/academyDb";
 
 interface EnrollmentItem {
@@ -64,24 +64,24 @@ export default function AdminEnrollmentsPage() {
       }
 
       // Online Supabase loading
-      const { data: enrollData } = await supabase
+      const { data: enrollData } = await adminSupabase
         .from("enrollments")
         .select("*, profiles(id, full_name, email)")
         .order("enrolled_at", { ascending: false });
 
-      const { data: lessonProgressData } = await supabase
+      const { data: lessonProgressData } = await adminSupabase
         .from("lesson_progress")
         .select("user_id, lesson_id");
 
-      const { data: courseLessonsData } = await supabase
+      const { data: courseLessonsData } = await adminSupabase
         .from("course_lessons")
         .select("id, course_id");
 
-      const { data: courseData } = await supabase
+      const { data: courseData } = await adminSupabase
         .from("courses")
         .select("*");
 
-      const { data: studentsData } = await supabase
+      const { data: studentsData } = await adminSupabase
         .from("profiles")
         .select("id, full_name, email")
         .eq("role", "student");
@@ -134,36 +134,55 @@ export default function AdminEnrollmentsPage() {
   const handleStopEnrollment = async (uId: string, cId: string) => {
     if (!confirm("Are you sure you want to stop/cancel this student's enrollment?")) return;
     try {
-      if (!isSupabaseConfigured) {
-        // Offline: remove course record from progress array inside localStorage
-        const progress = AcademyDB.getProgress(uId);
-        const updated = progress.filter((p) => p.courseId !== cId);
-        AcademyDB.saveProgress(uId, updated);
-        alert("Enrollment stopped successfully.");
-        loadEnrollmentsData();
-      } else {
-        // Online: Delete record from Supabase table
-        const { error } = await supabase
+      // 1. Local / offline storage cleanup
+      const progress = AcademyDB.getProgress(uId);
+      const updated = progress.filter((p) => p.courseId !== cId);
+      AcademyDB.saveProgress(uId, updated);
+
+      if (isSupabaseConfigured) {
+        // 2. Delete from enrollments table
+        const { error: enrollErr } = await adminSupabase
           .from("enrollments")
           .delete()
           .eq("user_id", uId)
           .eq("course_id", cId);
         
-        if (error) {
-          alert(`Failed to delete enrollment: ${error.message}`);
-          return;
+        if (enrollErr) {
+          console.error("Failed to delete enrollment row:", enrollErr);
         }
 
-        // Also delete progress record
-        await supabase
+        // 3. Delete from progress table
+        await adminSupabase
           .from("progress")
           .delete()
           .eq("user_id", uId)
           .eq("course_id", cId);
 
-        alert("Enrollment stopped and deleted successfully.");
-        loadEnrollmentsData();
+        // 4. Delete all completed lesson ticks from lesson_progress for this course
+        const { data: cLessons } = await adminSupabase
+          .from("course_lessons")
+          .select("id")
+          .eq("course_id", cId);
+
+        if (cLessons && cLessons.length > 0) {
+          const lIds = cLessons.map((l: any) => l.id);
+          await adminSupabase
+            .from("lesson_progress")
+            .delete()
+            .eq("user_id", uId)
+            .in("lesson_id", lIds);
+        }
+
+        // 5. Delete certificates issued for this course if any
+        await adminSupabase
+          .from("certificates")
+          .delete()
+          .eq("user_id", uId)
+          .eq("course_id", cId);
       }
+
+      alert("Enrollment stopped and course progress purged successfully.");
+      loadEnrollmentsData();
     } catch (err) {
       console.error(err);
       alert("Error stopping enrollment.");
@@ -192,7 +211,7 @@ export default function AdminEnrollmentsPage() {
         loadEnrollmentsData();
       } else {
         // Supabase: Check duplicate enrollment record
-        const { data: existing } = await supabase
+        const { data: existing } = await adminSupabase
           .from("enrollments")
           .select("*")
           .eq("user_id", selectedStudentId)
@@ -206,7 +225,7 @@ export default function AdminEnrollmentsPage() {
         }
 
         // Insert enrollment record
-        const { error: enrollError } = await supabase
+        const { error: enrollError } = await adminSupabase
           .from("enrollments")
           .insert({
             user_id: selectedStudentId,

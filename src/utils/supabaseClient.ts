@@ -16,5 +16,24 @@ if (isPlaceholder) {
 const safeUrl = isPlaceholder ? "https://placeholder-project.supabase.co" : supabaseUrl;
 const safeKey = isPlaceholder ? "placeholder-anon-key" : supabaseAnonKey;
 
-export const supabase = createClient(safeUrl, safeKey);
+// Student-scoped Supabase client (persists to student storage key)
+export const supabase = createClient(safeUrl, safeKey, {
+  auth: {
+    storageKey: "sb-mervox-student-token",
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true,
+  },
+});
+
+// Admin-scoped Supabase client (persists to admin storage key to prevent session collisions)
+export const adminSupabase = createClient(safeUrl, safeKey, {
+  auth: {
+    storageKey: "sb-mervox-admin-token",
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: false,
+  },
+});
+
 export const isSupabaseConfigured = !isPlaceholder;

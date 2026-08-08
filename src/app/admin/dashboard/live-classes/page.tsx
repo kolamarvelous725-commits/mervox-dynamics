@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Plus, Trash2, Edit2, Save, Calendar, Clock, Link as LinkIcon, User, X, Film, Video } from "lucide-react";
-import { supabase, isSupabaseConfigured } from "@/utils/supabaseClient";
+import { adminSupabase, isSupabaseConfigured } from "@/utils/supabaseClient";
 import AcademyDB from "@/utils/academyDb";
 
 interface LiveClass {
@@ -54,31 +54,34 @@ export default function AdminLiveClassesPage() {
         return;
       }
 
-      const { data: classData, error: classError } = await supabase
+      const { data: classData, error: classError } = await adminSupabase
         .from("live_classes")
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (classError) {
-        console.error("Failed to query live classes:", classError);
-      } else if (classData) {
-        setClasses(
-          classData.map((lc: any) => ({
-            id: lc.id,
-            courseId: lc.course_id || lc.courseId || "forex-trading",
-            title: lc.title,
-            description: lc.description || "",
-            instructor: lc.instructor,
-            date: lc.date,
-            time: lc.time,
-            link: lc.link,
-          }))
-        );
-      }
+      const { data: courseData } = await adminSupabase
+        .from("courses")
+        .select("*");
 
-      const { data: courseData } = await supabase.from("courses").select("*");
       if (courseData) {
         setCourses(courseData);
+      }
+
+      if (classError) {
+        console.error("Supabase Live Classes loading error:", classError);
+      } else if (classData) {
+        setClasses(
+          classData.map((c: any) => ({
+            id: c.id,
+            courseId: c.course_id || c.courseId || "forex-trading",
+            title: c.title,
+            description: c.description || "",
+            instructor: c.instructor || "Academy Instructor",
+            date: c.date,
+            time: c.time,
+            link: c.link || "https://zoom.us",
+          }))
+        );
       }
     } catch (err) {
       console.error("Exception loading live classes:", err);
@@ -91,9 +94,12 @@ export default function AdminLiveClassesPage() {
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim() || !instructor.trim() || !date.trim()) return;
+    if (!title.trim() || !instructor.trim() || !date.trim()) {
+      alert("Please fill in the title, instructor, and date for the live class.");
+      return;
+    }
 
-    const newId = "live-" + Math.random().toString(36).substring(2, 9);
+    const newId = `live-${Date.now()}`;
     try {
       if (!isSupabaseConfigured) {
         const list = AcademyDB.getLiveClasses();
@@ -121,7 +127,7 @@ export default function AdminLiveClassesPage() {
         return;
       }
 
-      const { error } = await supabase.from("live_classes").insert({
+      const { error } = await adminSupabase.from("live_classes").insert({
         id: newId,
         course_id: courseId || "forex-trading",
         title: title.trim(),
@@ -170,7 +176,7 @@ export default function AdminLiveClassesPage() {
         return;
       }
 
-      const { error } = await supabase
+      const { error } = await adminSupabase
         .from("live_classes")
         .update({
           course_id: selectedClass.courseId,
@@ -210,7 +216,7 @@ export default function AdminLiveClassesPage() {
           return;
         }
 
-        const { error } = await supabase
+        const { error } = await adminSupabase
           .from("live_classes")
           .delete()
           .eq("id", id);

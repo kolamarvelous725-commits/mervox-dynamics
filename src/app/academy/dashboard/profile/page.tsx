@@ -38,6 +38,28 @@ export default function ProfilePage() {
 
   const [avatarPreview, setAvatarPreview] = useState<string | null>(student?.avatarUrl || null);
 
+  useEffect(() => {
+    if (student) {
+      setProfileForm({
+        firstName: student.firstName || "",
+        lastName: student.lastName || "",
+        phone: student.phone || "",
+        country: student.country || "",
+        bio: student.bio || "",
+        occupation: student.occupation || "",
+        dob: student.dob || "",
+      });
+      setSocialsForm({
+        twitter: student.socials?.twitter || "",
+        github: student.socials?.github || "",
+        linkedin: student.socials?.linkedin || "",
+      });
+      if (student.avatarUrl) {
+        setAvatarPreview(student.avatarUrl);
+      }
+    }
+  }, [student]);
+
   const countries = [
     "Nigeria", "United States", "United Kingdom", "Canada", 
     "South Africa", "Kenya", "Ghana", "Germany", "Australia", "Other"

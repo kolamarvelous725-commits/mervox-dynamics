@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Plus, Trash2, FileText, Send, Save, CheckCircle, Clock, Calendar, User, BookOpen, AlertCircle, X, CheckSquare } from "lucide-react";
-import { supabase } from "@/utils/supabaseClient";
+import { adminSupabase } from "@/utils/supabaseClient";
 
 interface AssignmentTask {
   id: string;
@@ -50,7 +50,7 @@ export default function AdminAssignmentsPage() {
   const loadData = async () => {
     try {
       // 1. Fetch assignment tasks from Supabase
-      const { data: taskData, error: taskError } = await supabase
+      const { data: taskData, error: taskError } = await adminSupabase
         .from("assignments")
         .select("*")
         .order("created_at", { ascending: false });
@@ -70,13 +70,13 @@ export default function AdminAssignmentsPage() {
       }
 
       // 2. Fetch student names map
-      const { data: studentProfiles } = await supabase
+      const { data: studentProfiles } = await adminSupabase
         .from("profiles")
         .select("id, full_name");
       const nameMap = new Map(studentProfiles?.map((s) => [s.id, s.full_name]) || []);
 
       // 3. Fetch submissions from progress table
-      const { data: progressRows, error: progressError } = await supabase
+      const { data: progressRows, error: progressError } = await adminSupabase
         .from("progress")
         .select("id, user_id, course_id, lessons_completed");
 
@@ -107,7 +107,7 @@ export default function AdminAssignmentsPage() {
       }
 
       // 4. Fetch courses
-      const { data: courseData } = await supabase.from("courses").select("*");
+      const { data: courseData } = await adminSupabase.from("courses").select("*");
       if (courseData) {
         setCourses(courseData);
       }
@@ -128,7 +128,7 @@ export default function AdminAssignmentsPage() {
     const newId = "asg-" + Math.random().toString(36).substring(2, 9);
 
     try {
-      const { error } = await supabase.from("assignments").insert({
+      const { error } = await adminSupabase.from("assignments").insert({
         id: newId,
         course_id: courseId || courses[0]?.id || "forex-trading",
         course_title: courseObj ? courseObj.title : "Academy Course",
@@ -155,7 +155,7 @@ export default function AdminAssignmentsPage() {
     const confirmAct = confirm("Are you sure you want to delete this assignment task description?");
     if (confirmAct) {
       try {
-        const { error } = await supabase
+        const { error } = await adminSupabase
           .from("assignments")
           .delete()
           .eq("id", id);
@@ -178,7 +178,7 @@ export default function AdminAssignmentsPage() {
     const progressRowId = selectedSubmission.progressRowId;
 
     try {
-      const { data: progRow } = await supabase
+      const { data: progRow } = await adminSupabase
         .from("progress")
         .select("*")
         .eq("id", progressRowId)
@@ -205,7 +205,7 @@ export default function AdminAssignmentsPage() {
           assignments: updatedAsgs,
         };
 
-        const { error } = await supabase
+        const { error } = await adminSupabase
           .from("progress")
           .update({
             lessons_completed: updatedLessonsCompleted,

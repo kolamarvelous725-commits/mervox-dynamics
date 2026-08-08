@@ -1,6 +1,6 @@
 "use client";
 
-import { supabase, isSupabaseConfigured } from "@/utils/supabaseClient";
+import { adminSupabase, isSupabaseConfigured } from "@/utils/supabaseClient";
 import { useState, useEffect } from "react";
 import { Users, BookOpen, UserPlus, DollarSign, Award, Video, Megaphone, Calendar, ArrowRight, UserCheck } from "lucide-react";
 import Link from "next/link";
@@ -63,7 +63,7 @@ export default function AdminDashboardPage() {
         let studentCount = 0;
         let recentStudentsData: any[] = [];
         try {
-          const { count, data, error } = await supabase
+          const { count, data, error } = await adminSupabase
             .from("profiles")
             .select("*", { count: "exact" })
             .eq("role", "student")
@@ -81,7 +81,7 @@ export default function AdminDashboardPage() {
         // Query Courses
         let courseCount = 0;
         try {
-          const { count, error } = await supabase
+          const { count, error } = await adminSupabase
             .from("courses")
             .select("*", { count: "exact", head: true });
           if (error) {
@@ -96,7 +96,7 @@ export default function AdminDashboardPage() {
         // Query Certificates
         let certCount = 0;
         try {
-          const { count, error } = await supabase
+          const { count, error } = await adminSupabase
             .from("certificates")
             .select("*", { count: "exact", head: true });
           if (error) {
@@ -111,7 +111,7 @@ export default function AdminDashboardPage() {
         // Query Live Classes
         let liveCount = 0;
         try {
-          const { count, error } = await supabase
+          const { count, error } = await adminSupabase
             .from("live_classes")
             .select("*", { count: "exact", head: true });
           if (error) {
@@ -126,7 +126,7 @@ export default function AdminDashboardPage() {
         // Query Announcements
         let annCount = 0;
         try {
-          const { count, error } = await supabase
+          const { count, error } = await adminSupabase
             .from("announcements")
             .select("*", { count: "exact", head: true });
           if (error) {
@@ -141,7 +141,7 @@ export default function AdminDashboardPage() {
         // Query Enrollments
         let enrollCount = 0;
         try {
-          const { count, error } = await supabase
+          const { count, error } = await adminSupabase
             .from("enrollments")
             .select("*", { count: "exact", head: true });
           if (error) {
@@ -156,7 +156,7 @@ export default function AdminDashboardPage() {
         // Query Payments
         let totalRevenue = 0;
         try {
-          const { data, error } = await supabase
+          const { data, error } = await adminSupabase
             .from("payments")
             .select("amount")
             .eq("status", "Paid");

@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { Plus, Trash2, Edit2, Megaphone, Save, Calendar, Tag, X, Info } from "lucide-react";
-import { supabase, isSupabaseConfigured } from "@/utils/supabaseClient";
+import { adminSupabase, isSupabaseConfigured } from "@/utils/supabaseClient";
 import AcademyDB from "@/utils/academyDb";
 
 interface Announcement {
@@ -41,7 +41,7 @@ export default function AdminAnnouncementsPage() {
         return;
       }
 
-      const { data, error } = await supabase
+      const { data, error } = await adminSupabase
         .from("announcements")
         .select("*")
         .order("created_at", { ascending: false });
@@ -95,7 +95,7 @@ export default function AdminAnnouncementsPage() {
         return;
       }
 
-      const { error } = await supabase.from("announcements").insert({
+      const { error } = await adminSupabase.from("announcements").insert({
         id: newId,
         title: title.trim(),
         content: content.trim(),
@@ -142,7 +142,7 @@ export default function AdminAnnouncementsPage() {
         return;
       }
 
-      const { error } = await supabase
+      const { error } = await adminSupabase
         .from("announcements")
         .update({
           title: selectedAnnouncement.title.trim(),
@@ -178,7 +178,7 @@ export default function AdminAnnouncementsPage() {
           return;
         }
 
-        const { error } = await supabase
+        const { error } = await adminSupabase
           .from("announcements")
           .delete()
           .eq("id", id);

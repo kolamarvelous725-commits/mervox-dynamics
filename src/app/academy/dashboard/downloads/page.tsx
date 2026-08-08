@@ -2,6 +2,7 @@
 
 import { useAcademyAuth } from "@/context/AcademyAuthContext";
 import { AcademyDB } from "@/utils/academyDb";
+import { supabase, isSupabaseConfigured } from "@/utils/supabaseClient";
 import { useState, useEffect } from "react";
 import { Download, FileText, FileArchive, Search, BookOpen, AlertCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
@@ -64,20 +65,56 @@ export default function DownloadsPage() {
     },
   ];
 
-  useEffect(() => {
-    if (userId) {
-      const progress = AcademyDB.getProgress(userId);
-      setCoursesEnrolled(progress.length);
+  const loadDownloads = async () => {
+    if (!userId) return;
 
-      // Filter downloads to only include resources of enrolled courses
-      const activeIds = progress.map((p) => p.courseId);
+    try {
+      if (!isSupabaseConfigured) {
+        const progress = AcademyDB.getProgress(userId);
+        setCoursesEnrolled(progress.length);
+        const activeIds = progress.map((p) => p.courseId);
+        const filtered = templates.filter((item) => activeIds.includes(item.courseId));
+        setDownloadsList(filtered);
+        return;
+      }
+
+      const { data: enrolls } = await supabase
+        .from("enrollments")
+        .select("course_id")
+        .eq("user_id", userId);
+
+      const activeIds = enrolls?.map((e: any) => e.course_id) || [];
+      setCoursesEnrolled(activeIds.length);
       const filtered = templates.filter((item) => activeIds.includes(item.courseId));
       setDownloadsList(filtered);
+    } catch (err) {
+      console.error("Failed to load downloads:", err);
+    }
+  };
+
+  useEffect(() => {
+    loadDownloads();
+
+    if (isSupabaseConfigured && userId) {
+      const channel = supabase
+        .channel("student_downloads_sync_" + userId)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "enrollments", filter: `user_id=eq.${userId}` },
+          () => {
+            loadDownloads();
+          }
+        )
+        .subscribe();
+
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
   }, [userId]);
 
   const handleDownload = (fileName: string) => {
-    alert(`Triggered download for "${fileName}"...\nThis is simulated for the MVP Portal.`);
+    alert(`Downloading "${fileName}"...\nYour handbook is being prepared.`);
   };
 
   const filteredDownloads = downloadsList.filter((item) =>

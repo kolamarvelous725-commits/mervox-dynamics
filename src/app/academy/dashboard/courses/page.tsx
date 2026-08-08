@@ -187,11 +187,12 @@ export default function CoursesPage() {
       const computedProgress: UserCourseProgress[] = coursesArr.map((c: any) => {
         const cLessons = lessonsArr.filter((l: any) => l.course_id === c.id);
         const total = cLessons.length;
-        const completedCount = cLessons.filter((l: any) => completedLessonIds.has(l.id)).length;
-        const progressPercent = total > 0 ? Math.round((completedCount / total) * 100) : 0;
+        const isEnrolled = enrolledCourseIds.has(c.id);
+        const completedCount = isEnrolled ? cLessons.filter((l: any) => completedLessonIds.has(l.id)).length : 0;
+        const progressPercent = isEnrolled && total > 0 ? Math.round((completedCount / total) * 100) : 0;
         
         let status: 'Not Started' | 'In Progress' | 'Completed' = 'Not Started';
-        if (enrolledCourseIds.has(c.id)) {
+        if (isEnrolled) {
           status = progressPercent === 100 ? 'Completed' : 'In Progress';
         }
 
@@ -201,8 +202,8 @@ export default function CoursesPage() {
           status,
           lessonsCompleted: completedCount,
           totalLessons: total,
-          completedLessons: cLessons.filter((l: any) => completedLessonIds.has(l.id)).map((l: any) => l.id),
-          studyMinutes: completedCount * 25,
+          completedLessons: isEnrolled ? (cLessons.filter((l: any) => completedLessonIds.has(l.id)).map((l: any) => l.id) as any) : [],
+          studyMinutes: isEnrolled ? completedCount * 25 : 0,
         };
       });
 
@@ -214,6 +215,45 @@ export default function CoursesPage() {
 
   useEffect(() => {
     refreshData();
+
+    if (isSupabaseConfigured && userId) {
+      const channel = supabase
+        .channel("student_courses_sync_" + userId)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "enrollments", filter: `user_id=eq.${userId}` },
+          () => {
+            refreshData();
+          }
+        )
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "lesson_progress", filter: `user_id=eq.${userId}` },
+          () => {
+            refreshData();
+          }
+        )
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "courses" },
+          () => {
+            refreshData();
+          }
+        )
+        .subscribe();
+
+      const handleStorageUpdate = (e: StorageEvent) => {
+        if (e.key?.includes("mervox_academy")) {
+          refreshData();
+        }
+      };
+      window.addEventListener("storage", handleStorageUpdate);
+
+      return () => {
+        supabase.removeChannel(channel);
+        window.removeEventListener("storage", handleStorageUpdate);
+      };
+    }
   }, [userId]);
 
   const handleEnroll = async (courseId: string, courseTitle: string) => {
