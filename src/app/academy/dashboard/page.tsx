@@ -64,39 +64,32 @@ export default function DashboardPage() {
           return;
         }
 
-        // Fetch courses, enrollments, lessons, progress, certificates, announcements
-        const { data: enrollmentsData } = await supabase
-          .from("enrollments")
-          .select("*")
-          .eq("user_id", userId);
+        // Parallel fetch courses, enrollments, lessons, progress, certificates, announcements, and live classes
+        const [
+          enrollmentsRes,
+          certificatesRes,
+          coursesRes,
+          lessonsRes,
+          progressRes,
+          announcementsRes,
+          liveRes
+        ] = await Promise.all([
+          supabase.from("enrollments").select("id, course_id, enrolled_at").eq("user_id", userId),
+          supabase.from("certificates").select("id, course_id, certificate_number, issued_at").eq("user_id", userId),
+          supabase.from("courses").select("id, title, slug, description, category, level, duration_hours, rating, review_count, instructor, image_url").eq("published", true),
+          supabase.from("course_lessons").select("id, course_id, title, duration, sort_order, video_url, pdf_url"),
+          supabase.from("lesson_progress").select("lesson_id, completed").eq("user_id", userId).eq("completed", true),
+          supabase.from("announcements").select("id, title, content, type, date, time").order("created_at", { ascending: false }).limit(5),
+          supabase.from("live_classes").select("id, course_id, title, instructor, date, time, link").order("created_at", { ascending: false }).limit(5)
+        ]);
 
-        const { data: certificatesData } = await supabase
-          .from("certificates")
-          .select("*")
-          .eq("user_id", userId);
-
-        const { data: courseData } = await supabase
-          .from("courses")
-          .select("*")
-          .eq("published", true);
-
-        const { data: lessonsData } = await supabase
-          .from("course_lessons")
-          .select("*");
-
-        const { data: progressData } = await supabase
-          .from("lesson_progress")
-          .select("*")
-          .eq("user_id", userId)
-          .eq("completed", true);
-
-        const { data: announcementsData } = await supabase
-          .from("announcements")
-          .select("*");
-
-        const { data: liveData } = await supabase
-          .from("live_classes")
-          .select("*");
+        const enrollmentsData = enrollmentsRes.data;
+        const certificatesData = certificatesRes.data;
+        const courseData = coursesRes.data;
+        const lessonsData = lessonsRes.data;
+        const progressData = progressRes.data;
+        const announcementsData = announcementsRes.data;
+        const liveData = liveRes.data;
 
         // Resilient arrays
         const coursesArr = courseData || [];

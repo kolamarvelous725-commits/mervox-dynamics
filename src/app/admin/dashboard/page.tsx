@@ -68,20 +68,49 @@ export default function AdminDashboardPage() {
         return;
       }
 
-      // 1. Query Real Student Profiles
+      // Parallel execute all 7 independent metric queries simultaneously
+      const [
+        profilesRes,
+        coursesRes,
+        certsRes,
+        liveRes,
+        annRes,
+        enrollRes,
+        payRes,
+      ] = await Promise.all([
+        adminSupabase
+          .from("profiles")
+          .select("id, full_name, email, role, created_at")
+          .order("created_at", { ascending: false }),
+        adminSupabase
+          .from("courses")
+          .select("id", { count: "exact", head: true }),
+        adminSupabase
+          .from("certificates")
+          .select("id", { count: "exact", head: true }),
+        adminSupabase
+          .from("live_classes")
+          .select("id", { count: "exact", head: true }),
+        adminSupabase
+          .from("announcements")
+          .select("id", { count: "exact", head: true }),
+        adminSupabase
+          .from("enrollments")
+          .select("id, course_id", { count: "exact" }),
+        adminSupabase
+          .from("payments")
+          .select("amount")
+          .eq("status", "Paid"),
+      ]);
+
+      // 1. Process Student Profiles
       let studentCount = 0;
       let actualStudents: any[] = [];
-
-      const { data: profilesData, error: profilesError } = await adminSupabase
-        .from("profiles")
-        .select("*")
-        .order("created_at", { ascending: false });
-
-      if (profilesError) {
-        console.error("Supabase profiles query error:", profilesError);
-        setMetricsError(profilesError.message || "Failed to load profiles");
-      } else if (profilesData) {
-        actualStudents = profilesData.filter((p: any) => {
+      if (profilesRes.error) {
+        console.error("Supabase profiles query error:", profilesRes.error);
+        setMetricsError(profilesRes.error.message || "Failed to load profiles");
+      } else if (profilesRes.data) {
+        actualStudents = profilesRes.data.filter((p: any) => {
           const email = (p.email || "").toLowerCase().trim();
           const isAdmin = email === "marvelousotugalu012@gmail.com" || email === "kolamarvelous725@gmail.com" || p.role === "admin";
           return !isAdmin;
@@ -89,74 +118,26 @@ export default function AdminDashboardPage() {
         studentCount = actualStudents.length;
       }
 
-      // 2. Query Courses
-      let courseCount = 0;
-      const { data: coursesData, count: coursesCount, error: coursesError } = await adminSupabase
-        .from("courses")
-        .select("*", { count: "exact" });
-      if (coursesError) {
-        console.error("Supabase courses query error:", coursesError);
-      } else {
-        courseCount = coursesCount ?? (coursesData?.length || 0);
-      }
+      // 2. Process Courses
+      const courseCount = coursesRes.count || 0;
 
-      // 3. Query Certificates
-      let certCount = 0;
-      const { count: certsCountVal, error: certError } = await adminSupabase
-        .from("certificates")
-        .select("*", { count: "exact", head: true });
-      if (certError) {
-        console.error("Supabase certificates query error:", certError);
-      } else {
-        certCount = certsCountVal || 0;
-      }
+      // 3. Process Certificates
+      const certCount = certsRes.count || 0;
 
-      // 4. Query Live Classes
-      let liveCount = 0;
-      const { count: liveCountVal, error: liveError } = await adminSupabase
-        .from("live_classes")
-        .select("*", { count: "exact", head: true });
-      if (liveError) {
-        console.error("Supabase live_classes query error:", liveError);
-      } else {
-        liveCount = liveCountVal || 0;
-      }
+      // 4. Process Live Classes
+      const liveCount = liveRes.count || 0;
 
-      // 5. Query Announcements
-      let annCount = 0;
-      const { count: annCountVal, error: annError } = await adminSupabase
-        .from("announcements")
-        .select("*", { count: "exact", head: true });
-      if (annError) {
-        console.error("Supabase announcements query error:", annError);
-      } else {
-        annCount = annCountVal || 0;
-      }
+      // 5. Process Announcements
+      const annCount = annRes.count || 0;
 
-      // 6. Query Enrollments
-      let enrollCount = 0;
-      let enrollmentsList: any[] = [];
-      const { data: enrollData, count: enrollCountVal, error: enrollError } = await adminSupabase
-        .from("enrollments")
-        .select("*", { count: "exact" });
-      if (enrollError) {
-        console.error("Supabase enrollments query error:", enrollError);
-      } else {
-        enrollmentsList = enrollData || [];
-        enrollCount = enrollCountVal ?? enrollmentsList.length;
-      }
+      // 6. Process Enrollments
+      const enrollCount = enrollRes.count ?? (enrollRes.data?.length || 0);
+      const enrollmentsList = enrollRes.data || [];
 
-      // 7. Query Payments & Compute Revenue
+      // 7. Process Payments & Revenue
       let totalRevenue = 0;
-      const { data: payData, error: payError } = await adminSupabase
-        .from("payments")
-        .select("amount")
-        .eq("status", "Paid");
-
-      if (payError) {
-        console.error("Supabase payments query error:", payError);
-      } else if (payData && payData.length > 0) {
-        totalRevenue = payData.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+      if (payRes.data && payRes.data.length > 0) {
+        totalRevenue = payRes.data.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
       } else if (enrollmentsList.length > 0) {
         enrollmentsList.forEach((e: any) => {
           let price = 199;

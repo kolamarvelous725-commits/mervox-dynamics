@@ -127,8 +127,10 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
         }
       });
     }
+  }, [pathname]);
 
-    // Realtime listeners for incoming messages, enrollments, and tickets
+  // Mount-only Realtime listener for incoming messages, enrollments, and tickets
+  useEffect(() => {
     let channel: any;
     import("@/utils/supabaseClient").then(({ adminSupabase, isSupabaseConfigured }) => {
       if (isSupabaseConfigured) {
@@ -148,7 +150,7 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
         });
       }
     };
-  }, [pathname]);
+  }, []);
 
   const menuItems = [
     { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
