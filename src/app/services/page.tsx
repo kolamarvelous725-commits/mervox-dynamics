@@ -5,18 +5,9 @@ import Link from "next/link";
 import Image from "next/image";
 import { Navbar } from "@/components/Navbar";
 import { Footer } from "@/components/Footer";
+import { Overview } from "@/components/Overview";
 import { motion } from "framer-motion";
 import {
-  Layout,
-  Code,
-  Megaphone,
-  Mail,
-  ShoppingCart,
-  PenTool,
-  Target,
-  Palette,
-  MessageSquare,
-  UserCheck,
   ArrowRight,
   Sparkles,
   ArrowUpRight,
@@ -24,69 +15,6 @@ import {
 } from "lucide-react";
 
 export default function ServicesPage() {
-  const services = [
-    {
-      id: "web-design",
-      icon: Layout,
-      title: "Web Design",
-      description: "Clean, professional visual layouts crafted with precise user experience structures to engage visitors and build immediate brand trust.",
-    },
-    {
-      id: "web-development",
-      icon: Code,
-      title: "Web Development",
-      description: "High-performance, responsive code engineered with Next.js, React, and TypeScript for clean architecture and search engine indexing.",
-    },
-    {
-      id: "digital-marketing",
-      icon: Megaphone,
-      title: "Digital Marketing",
-      description: "Data-driven client acquisition campaigns and landing page pipelines aligned directly with your key conversion targets.",
-    },
-    {
-      id: "email-marketing",
-      icon: Mail,
-      title: "Email Marketing",
-      description: "Custom email automation sequences and nurturing campaigns built to educate leads and optimize customer lifetime value.",
-    },
-    {
-      id: "ecommerce-development",
-      icon: ShoppingCart,
-      title: "E-commerce / Online Store Creation",
-      description: "High-converting online store systems equipped with smooth checkouts, secure gateways, and seamless stock inventory hookups.",
-    },
-    {
-      id: "digital-product-design",
-      icon: PenTool,
-      title: "Digital Product Design",
-      description: "Intuitive UX wireframes and high-fidelity SaaS dashboard layouts engineered for maximum usability and modern interactive workflows.",
-    },
-    {
-      id: "social-media-advertising",
-      icon: Target,
-      title: "Social Media Advertising",
-      description: "Targeted paid traffic campaigns across Meta, Google, and LinkedIn designed to acquire leads with a positive return on spend.",
-    },
-    {
-      id: "graphics-design",
-      icon: Palette,
-      title: "Graphics Design",
-      description: "Professional logo packages, visual assets, brand assets, and custom vector layouts that present a cohesive visual standard.",
-    },
-    {
-      id: "social-media-management",
-      icon: MessageSquare,
-      title: "Social Media Management",
-      description: "Creative content calendars, visual scheduling, and community engagement strategies to grow organic brand authority.",
-    },
-    {
-      id: "virtual-assistant-services",
-      icon: UserCheck,
-      title: "Virtual Assistant Services",
-      description: "Administrative support operations, schedule management, and client inquiry handling to streamline your daily operations.",
-    },
-  ];
-
   const steps = [
     {
       number: "01",
@@ -153,15 +81,6 @@ export default function ServicesPage() {
     },
   };
 
-  const cardVariants = {
-    hidden: { opacity: 0, y: 15 },
-    visible: {
-      opacity: 1,
-      y: 0,
-      transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] as any },
-    },
-  };
-
   return (
     <>
       <Navbar />
@@ -221,10 +140,10 @@ export default function ServicesPage() {
                   className="pt-1 mb-2"
                 >
                   <a
-                    href="#contact-cta"
+                    href="#overview"
                     className="inline-flex items-center justify-center gap-2.5 px-7 py-3.5 font-semibold text-white bg-accent hover:bg-accent-hover rounded-[14px] shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-[2px]"
                   >
-                    <span>Let's Work Together</span>
+                    <span>Explore Our Services</span>
                     <ArrowRight className="w-4 h-4" />
                   </a>
                 </motion.div>
@@ -349,7 +268,7 @@ export default function ServicesPage() {
                     </span>
                   </div>
                   
-                  {/* Set 2 (Duplicate for loop) */}
+                  {/* Set 2 */}
                   <div className="flex items-center gap-12 shrink-0">
                     <span className="flex items-center gap-1 select-none">
                       <svg className="w-3.5 h-3.5 text-blue-600 dark:text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
@@ -395,80 +314,8 @@ export default function ServicesPage() {
           </div>
         </section>
 
-        {/* SECTION 2 — SERVICES GRID */}
-        <section className="py-20 md:py-28 relative border-t border-card-border/50 bg-background">
-          <div className="max-w-7xl mx-auto px-6 w-full space-y-16">
-
-            {/* Header description */}
-            <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 mb-8 text-left">
-              <div className="max-w-xl">
-                <span className="text-xs font-bold text-accent uppercase tracking-widest block mb-3">
-                  SERVICE SUITE
-                </span>
-                <h2 className="text-3xl sm:text-4xl font-heading font-extrabold tracking-tight text-foreground">
-                  Our Professional Services
-                </h2>
-              </div>
-              <p className="text-sm text-muted-foreground max-w-sm">
-                Each service is tailored with a minimal design system, dark-mode capability, and optimal user paths.
-              </p>
-            </div>
-
-            {/* Services Grid container */}
-            <motion.div
-              variants={containerVariants}
-              initial="hidden"
-              whileInView="visible"
-              viewport={{ once: true, margin: "-100px" }}
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-            >
-              {services.map((service) => {
-                const IconComponent = service.icon;
-                return (
-                  <div
-                    id={service.id}
-                    key={service.id}
-                    className={`p-8 rounded-[20px] border bg-card text-left transition-all duration-300 flex flex-col justify-between group scroll-mt-28 relative ${activeHash === service.id
-                        ? "border-accent shadow-[0_0_20px_rgba(30,58,138,0.15)] scale-[1.01]"
-                        : "border-card-border hover:border-accent/40 shadow-sm hover:shadow-md"
-                      }`}
-                  >
-                    {/* Background glow highlights on hover */}
-                    <div className="absolute inset-0 bg-gradient-to-br from-accent/[0.01] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none rounded-[20px]" />
-
-                    <div className="space-y-6 relative z-10">
-                      {/* Icon */}
-                      <div className="w-12 h-12 rounded-xl bg-accent/5 text-accent flex items-center justify-center shrink-0 group-hover:bg-accent group-hover:text-white transition-colors duration-300">
-                        <IconComponent className="w-5 h-5 stroke-[1.75]" />
-                      </div>
-
-                      <div className="space-y-2">
-                        <h3 className="text-lg font-heading font-bold text-foreground group-hover:text-accent transition-colors duration-300">
-                          {service.title}
-                        </h3>
-                        <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed">
-                          {service.description}
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="pt-6 relative z-10">
-                      <a
-                        href={`https://wa.me/2348112769033?text=Hi%20Mervox%20Dynamics,%20I'd%20like%20to%20discuss%20a%20project%20for%20${encodeURIComponent(service.title)}.`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 text-xs font-bold text-accent hover:text-accent-hover transition-colors duration-300 mt-auto"
-                      >
-                        <span>Discuss Project</span>
-                        <ArrowUpRight className="w-3.5 h-3.5 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
-                      </a>
-                    </div>
-                  </div>
-                );
-              })}
-            </motion.div>
-          </div>
-        </section>
+        {/* SECTION 2 — WHAT WE DO (REUSING HOME PAGE OVERVIEW EXACTLY) */}
+        <Overview />
 
         {/* SECTION 3 — PROCESS SECTION */}
         <section className="py-20 md:py-28 relative border-t border-card-border/50 bg-background">

@@ -23,60 +23,70 @@ export function Overview() {
       desc: "We design beautiful websites that help your business make a great first impression.",
       icon: Layout,
       color: "text-blue-500 bg-blue-500/10",
+      href: "/services/web-design",
     },
     {
       title: "Web Development",
       desc: "We build fast, secure, and professional websites that work on every device.",
       icon: Laptop,
       color: "text-emerald-500 bg-emerald-500/10",
+      href: "/services/web-development",
     },
     {
       title: "UI/UX Design",
       desc: "We design websites and apps that are simple, attractive, and easy for people to use.",
       icon: Layers,
       color: "text-purple-500 bg-purple-500/10",
+      href: "/services/digital-products-design",
     },
     {
       title: "Graphic Design",
       desc: "We create logos, flyers, social media designs, brochures, and other visuals that help your brand stand out.",
       icon: Palette,
       color: "text-pink-500 bg-pink-500/10",
+      href: "/services/graphics-design",
     },
     {
       title: "Mobile App Development",
       desc: "We build mobile applications that help businesses connect with customers and simplify everyday tasks.",
       icon: Smartphone,
       color: "text-amber-500 bg-amber-500/10",
+      href: "/services/mobile-app-development",
     },
     {
       title: "E-commerce Solutions",
       desc: "We create online stores where customers can browse products and buy from you anytime.",
       icon: ShoppingBag,
       color: "text-cyan-500 bg-cyan-500/10",
+      href: "/services/store-creation",
     },
     {
       title: "Digital Marketing",
       desc: "We help your business reach more people through online advertising and marketing.",
       icon: Megaphone,
       color: "text-indigo-500 bg-indigo-500/10",
+      href: "/services/digital-marketing",
     },
     {
       title: "Brand Identity",
       desc: "We help businesses create a professional image people can trust and remember.",
       icon: ShieldCheck,
       color: "text-rose-500 bg-rose-500/10",
+      href: "/services/promotion",
     },
     {
       title: "Business Brochure Design",
       desc: "We design professional brochures, company profiles, and business documents that showcase your business.",
       icon: FileText,
       color: "text-teal-500 bg-teal-500/10",
+      href: "/services/business-brochure-design",
     },
     {
       title: "Mervox Academy",
       desc: "Learn practical digital skills through Mervox Academy and build a successful career or business.",
       icon: GraduationCap,
       color: "text-violet-500 bg-violet-500/10",
+      href: "/academy",
     },
   ];
 
@@ -145,17 +155,24 @@ export function Overview() {
                   key={idx}
                   variants={cardVariants}
                   whileHover={{ y: -4 }}
-                  className="group p-6 rounded-2xl border border-card-border bg-card/45 hover:bg-card hover:border-accent/15 transition-all duration-300 flex flex-col items-start text-left shadow-xs hover:shadow-md"
                 >
-                  <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-4 ${card.color}`}>
-                    <IconComponent className="w-5 h-5" />
-                  </div>
-                  <h3 className="text-sm font-heading font-extrabold text-foreground mb-2 group-hover:text-accent transition-colors duration-200">
-                    {card.title}
-                  </h3>
-                  <p className="text-[11px] text-muted-foreground leading-normal">
-                    {card.desc}
-                  </p>
+                  <Link
+                    href={card.href}
+                    className="group p-6 rounded-2xl border border-card-border bg-card/45 hover:bg-card hover:border-accent/30 transition-all duration-300 flex flex-col items-start text-left shadow-xs hover:shadow-md h-full cursor-pointer block"
+                  >
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center mb-4 ${card.color}`}>
+                      <IconComponent className="w-5 h-5" />
+                    </div>
+                    <div className="flex items-center justify-between w-full mb-2">
+                      <h3 className="text-sm font-heading font-extrabold text-foreground group-hover:text-accent transition-colors duration-200">
+                        {card.title}
+                      </h3>
+                      <ArrowRight className="w-3.5 h-3.5 text-muted-foreground/50 opacity-0 group-hover:opacity-100 group-hover:translate-x-1 group-hover:text-accent transition-all duration-300" />
+                    </div>
+                    <p className="text-[11px] text-muted-foreground leading-normal">
+                      {card.desc}
+                    </p>
+                  </Link>
                 </motion.div>
               );
             })}
