@@ -157,10 +157,11 @@ export default function LiveClassesPage() {
   }, [userId]);
 
   const handleJoinClass = (session: any) => {
-    if (session.link && (session.link.startsWith("http://") || session.link.startsWith("https://"))) {
-      window.open(session.link, "_blank");
+    const url = session?.link || (typeof session === "string" ? session : "");
+    if (url && (url.startsWith("http://") || url.startsWith("https://"))) {
+      window.open(url, "_blank", "noopener,noreferrer");
     } else {
-      alert(`Launching live mentoring session stream:\n"${session.title}"\n\nConnecting to meeting room...`);
+      alert(`Launching live mentoring session stream:\n"${session?.title || "Live Stream"}"\n\nConnecting to meeting room...`);
     }
   };
 
@@ -245,7 +246,7 @@ export default function LiveClassesPage() {
                     </div>
                     
                     <button
-                      onClick={() => handleJoinClass(session.title)}
+                      onClick={() => handleJoinClass(session)}
                       className="w-full md:w-auto px-5 py-2.5 flex items-center justify-center gap-1.5 text-xs font-bold text-white bg-red-500 hover:bg-red-600 rounded-xl transition-all cursor-pointer shadow-xs shrink-0 self-stretch md:self-auto"
                     >
                       <span>Join Session</span>
@@ -277,7 +278,7 @@ export default function LiveClassesPage() {
                     <div className="relative w-full aspect-video bg-slate-100 dark:bg-slate-900 border-b border-card-border/40 overflow-hidden flex items-center justify-center group">
                       <Image src={rec.thumbnail} alt={rec.title} fill className="object-cover" />
                       <button
-                        onClick={() => handleJoinClass(rec.title)}
+                        onClick={() => handleJoinClass(rec)}
                         className="absolute w-12 h-12 rounded-full bg-white/90 text-blue-600 flex items-center justify-center shadow-lg transition-transform group-hover:scale-105 active:scale-95 cursor-pointer border-none"
                       >
                         <Play className="w-5 h-5 fill-blue-600 text-blue-600 translate-x-0.5" />
