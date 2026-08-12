@@ -5,7 +5,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { ThemeToggle } from "./ThemeToggle";
-import { Menu, X, Home, Briefcase, User, LayoutGrid, Phone, GraduationCap } from "lucide-react";
+import { Menu, X, Home, Briefcase, User, LayoutGrid, Phone, GraduationCap, LayoutDashboard } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export function Navbar() {
@@ -32,6 +32,7 @@ export function Navbar() {
     { name: "About", href: "/about", icon: User },
     { name: "Portfolio", href: "/portfolio", icon: LayoutGrid },
     { name: "Academy", href: "/academy", icon: GraduationCap },
+    { name: "Academy Dashboard", href: "/academy/dashboard", icon: LayoutDashboard },
     { name: "Contact", href: "/#contact", icon: Phone },
   ];
 
