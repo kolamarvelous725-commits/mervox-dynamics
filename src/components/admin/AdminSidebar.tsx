@@ -2,6 +2,7 @@
 
 import { usePathname, useRouter } from "next/navigation";
 import { useAdminAuth } from "@/context/AdminAuthContext";
+import { useState, useEffect } from "react";
 import {
   LayoutDashboard,
   Users,
@@ -32,6 +33,122 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { logout } = useAdminAuth();
+
+  const [unreadMsgCount, setUnreadMsgCount] = useState(0);
+  const [unreadEnrollCount, setUnreadEnrollCount] = useState(0);
+  const [openTicketCount, setOpenTicketCount] = useState(0);
+
+  const calculateAdminBadges = async () => {
+    try {
+      const { adminSupabase, isSupabaseConfigured } = await import("@/utils/supabaseClient");
+      if (!isSupabaseConfigured) return;
+
+      // 1. Unread student messages count
+      if (pathname === "/admin/dashboard/messages") {
+        setUnreadMsgCount(0);
+      } else {
+        let viewedMsgIds: string[] = [];
+        try {
+          const stored = localStorage.getItem("mervox_admin_viewed_msgs");
+          viewedMsgIds = stored ? JSON.parse(stored) : [];
+        } catch {}
+
+        const { data: studentMsgs } = await adminSupabase
+          .from("messages")
+          .select("id")
+          .eq("sender", "student");
+
+        if (studentMsgs) {
+          const unread = studentMsgs.filter((m: any) => !viewedMsgIds.includes(m.id)).length;
+          setUnreadMsgCount(unread);
+        }
+      }
+
+      // 2. Unread enrollments count
+      if (pathname === "/admin/dashboard/enrollments") {
+        setUnreadEnrollCount(0);
+      } else {
+        let viewedEnrollIds: string[] = [];
+        try {
+          const stored = localStorage.getItem("mervox_admin_viewed_enrollments");
+          viewedEnrollIds = stored ? JSON.parse(stored) : [];
+        } catch {}
+
+        const { data: enrollData } = await adminSupabase
+          .from("enrollments")
+          .select("id");
+
+        if (enrollData) {
+          const unread = enrollData.filter((e: any) => !viewedEnrollIds.includes(e.id)).length;
+          setUnreadEnrollCount(unread);
+        }
+      }
+
+      // 3. Open Support Tickets count
+      const { data: ticketsData } = await adminSupabase
+        .from("support_tickets")
+        .select("id")
+        .eq("status", "Open");
+
+      if (ticketsData) {
+        setOpenTicketCount(ticketsData.length);
+      }
+    } catch (err) {
+      console.error("Error calculating admin badges:", err);
+    }
+  };
+
+  useEffect(() => {
+    calculateAdminBadges();
+
+    // Mark current viewed pages in admin localStorage
+    if (pathname === "/admin/dashboard/messages") {
+      import("@/utils/supabaseClient").then(async ({ adminSupabase, isSupabaseConfigured }) => {
+        if (isSupabaseConfigured) {
+          const { data } = await adminSupabase.from("messages").select("id").eq("sender", "student");
+          if (data) {
+            const allIds = data.map((m: any) => m.id);
+            localStorage.setItem("mervox_admin_viewed_msgs", JSON.stringify(allIds));
+            setUnreadMsgCount(0);
+          }
+        }
+      });
+    }
+
+    if (pathname === "/admin/dashboard/enrollments") {
+      import("@/utils/supabaseClient").then(async ({ adminSupabase, isSupabaseConfigured }) => {
+        if (isSupabaseConfigured) {
+          const { data } = await adminSupabase.from("enrollments").select("id");
+          if (data) {
+            const allIds = data.map((e: any) => e.id);
+            localStorage.setItem("mervox_admin_viewed_enrollments", JSON.stringify(allIds));
+            setUnreadEnrollCount(0);
+          }
+        }
+      });
+    }
+
+    // Realtime listeners for incoming messages, enrollments, and tickets
+    let channel: any;
+    import("@/utils/supabaseClient").then(({ adminSupabase, isSupabaseConfigured }) => {
+      if (isSupabaseConfigured) {
+        channel = adminSupabase
+          .channel("admin_sidebar_badges_sync")
+          .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => calculateAdminBadges())
+          .on("postgres_changes", { event: "*", schema: "public", table: "enrollments" }, () => calculateAdminBadges())
+          .on("postgres_changes", { event: "*", schema: "public", table: "support_tickets" }, () => calculateAdminBadges())
+          .subscribe();
+      }
+    });
+
+    return () => {
+      if (channel) {
+        import("@/utils/supabaseClient").then(({ adminSupabase }) => {
+          adminSupabase.removeChannel(channel);
+        });
+      }
+    };
+  }, [pathname]);
 
   const menuItems = [
     { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
@@ -107,19 +224,32 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
             const Icon = item.icon;
             const isActive = pathname === item.href;
 
+            let badgeCount = 0;
+            if (item.name === "Messages") badgeCount = unreadMsgCount + openTicketCount;
+            if (item.name === "Enrollments") badgeCount = unreadEnrollCount;
+
+            const displayBadge = badgeCount > 99 ? "99+" : badgeCount;
+
             return (
               <Link
                 key={item.name}
                 href={item.href}
                 onClick={onClose}
-                className={`flex items-center gap-3.5 px-4 py-3 rounded-xl text-xs font-semibold tracking-wide transition-all duration-200 cursor-pointer ${
+                className={`flex items-center justify-between gap-3.5 px-4 py-3 rounded-xl text-xs font-semibold tracking-wide transition-all duration-200 cursor-pointer ${
                   isActive
                     ? "bg-[#0055ff] text-white shadow-xs shadow-blue-500/10"
                     : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 hover:text-slate-900 dark:hover:text-white"
                 }`}
               >
-                <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-white" : "text-slate-450 dark:text-slate-400"}`} />
-                <span>{item.name}</span>
+                <div className="flex items-center gap-3.5">
+                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? "text-white" : "text-slate-450 dark:text-slate-400"}`} />
+                  <span>{item.name}</span>
+                </div>
+                {badgeCount > 0 && (
+                  <span className="bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full leading-none shrink-0 min-w-[16px] text-center shadow-xs">
+                    {displayBadge}
+                  </span>
+                )}
               </Link>
             );
           })}

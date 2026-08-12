@@ -40,66 +40,139 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
   const [unreadLiveCount, setUnreadLiveCount] = useState(0);
   const [unreadAsgCount, setUnreadAsgCount] = useState(0);
   const [unreadCommCount, setUnreadCommCount] = useState(0);
+  const [unreadMsgCount, setUnreadMsgCount] = useState(0);
+  const [unreadTicketCount, setUnreadTicketCount] = useState(0);
 
-  useEffect(() => {
+  const calculateBadges = async () => {
     if (!userId) return;
 
-    // 1. Live Classes unread count
-    const progress = AcademyDB.getProgress(userId);
-    const enrolledCourseIds = progress.map((p) => p.courseId);
-    const liveClasses = AcademyDB.getLiveClasses().filter((s: any) => {
-      const cId = s.course_id || s.courseId;
-      return enrolledCourseIds.includes(cId);
-    });
-    
-    let viewedLiveIds: string[] = [];
     try {
-      const stored = localStorage.getItem(`mervox_academy_viewed_live_${userId}`);
-      viewedLiveIds = stored ? JSON.parse(stored) : [];
-    } catch {}
-    const unreadLive = liveClasses.filter((lc: any) => !viewedLiveIds.includes(lc.id)).length;
-    setUnreadLiveCount(unreadLive);
+      // 1. Unread Messages from Mentor
+      if (pathname === "/academy/dashboard/messages") {
+        setUnreadMsgCount(0);
+      } else {
+        let viewedMsgIds: string[] = [];
+        try {
+          const stored = localStorage.getItem(`mervox_academy_viewed_msg_${userId}`);
+          viewedMsgIds = stored ? JSON.parse(stored) : [];
+        } catch {}
 
-    // 2. Assignments unread count
-    let assignmentsList: any[] = [];
-    try {
-      const stored = localStorage.getItem("mervox_academy_assignments_list");
-      if (stored) {
-        assignmentsList = JSON.parse(stored);
+        if (AcademyDB && typeof window !== "undefined") {
+          // If supabase configured, check unread mentor messages
+          import("@/utils/supabaseClient").then(async ({ supabase, isSupabaseConfigured }) => {
+            if (isSupabaseConfigured) {
+              const { data: mentorMsgs } = await supabase
+                .from("messages")
+                .select("id")
+                .eq("user_id", userId)
+                .eq("sender", "mentor");
+
+              if (mentorMsgs) {
+                const unread = mentorMsgs.filter((m: any) => !viewedMsgIds.includes(m.id)).length;
+                setUnreadMsgCount(unread);
+              }
+            }
+          });
+        }
       }
-    } catch {}
-    
-    if (assignmentsList.length === 0) {
-      progress.forEach((p) => {
-        assignmentsList.push({ id: `asg-${p.courseId}-1`, courseId: p.courseId });
-        assignmentsList.push({ id: `asg-${p.courseId}-2`, courseId: p.courseId });
-      });
+
+      // 2. Live Classes unread count
+      if (pathname === "/academy/dashboard/live") {
+        setUnreadLiveCount(0);
+      } else {
+        const progress = AcademyDB.getProgress(userId);
+        const enrolledCourseIds = progress.map((p) => p.courseId);
+        const liveClasses = AcademyDB.getLiveClasses().filter((s: any) => {
+          const cId = s.course_id || s.courseId;
+          return enrolledCourseIds.includes(cId);
+        });
+        
+        let viewedLiveIds: string[] = [];
+        try {
+          const stored = localStorage.getItem(`mervox_academy_viewed_live_${userId}`);
+          viewedLiveIds = stored ? JSON.parse(stored) : [];
+        } catch {}
+        const unreadLive = liveClasses.filter((lc: any) => !viewedLiveIds.includes(lc.id)).length;
+        setUnreadLiveCount(unreadLive);
+      }
+
+      // 3. Assignments unread count
+      if (pathname === "/academy/dashboard/assignments") {
+        setUnreadAsgCount(0);
+      } else {
+        const progress = AcademyDB.getProgress(userId);
+        const enrolledCourseIds = progress.map((p) => p.courseId);
+        let assignmentsList: any[] = [];
+        try {
+          const stored = localStorage.getItem("mervox_academy_assignments_list");
+          if (stored) {
+            assignmentsList = JSON.parse(stored);
+          }
+        } catch {}
+        
+        if (assignmentsList.length === 0) {
+          progress.forEach((p) => {
+            assignmentsList.push({ id: `asg-${p.courseId}-1`, courseId: p.courseId });
+            assignmentsList.push({ id: `asg-${p.courseId}-2`, courseId: p.courseId });
+          });
+        }
+        
+        const filteredAsgs = assignmentsList.filter((a) => enrolledCourseIds.includes(a.courseId || a.course_id));
+        let viewedAsgIds: string[] = [];
+        try {
+          const stored = localStorage.getItem(`mervox_academy_viewed_asg_${userId}`);
+          viewedAsgIds = stored ? JSON.parse(stored) : [];
+        } catch {}
+        const unreadAsg = filteredAsgs.filter((a: any) => !viewedAsgIds.includes(a.id)).length;
+        setUnreadAsgCount(unreadAsg);
+      }
+
+      // 4. Community forum unread count
+      if (pathname === "/academy/dashboard/community") {
+        setUnreadCommCount(0);
+      } else {
+        let forumPosts: any[] = [];
+        try {
+          const stored = localStorage.getItem("mervox_academy_posts");
+          forumPosts = stored ? JSON.parse(stored) : [];
+        } catch {}
+        
+        let viewedPostIds: string[] = [];
+        try {
+          const stored = localStorage.getItem(`mervox_academy_viewed_post_${userId}`);
+          viewedPostIds = stored ? JSON.parse(stored) : [];
+        } catch {}
+        const unreadComm = forumPosts.filter((post: any) => !viewedPostIds.includes(post.id)).length;
+        setUnreadCommCount(unreadComm);
+      }
+
+      // 5. Help & Support Ticket Updates
+      if (pathname === "/academy/dashboard/help") {
+        setUnreadTicketCount(0);
+      }
+    } catch (err) {
+      console.error("Error calculating student navigation badges:", err);
     }
-    
-    const filteredAsgs = assignmentsList.filter((a) => enrolledCourseIds.includes(a.courseId || a.course_id));
-    let viewedAsgIds: string[] = [];
-    try {
-      const stored = localStorage.getItem(`mervox_academy_viewed_asg_${userId}`);
-      viewedAsgIds = stored ? JSON.parse(stored) : [];
-    } catch {}
-    const unreadAsg = filteredAsgs.filter((a: any) => !viewedAsgIds.includes(a.id)).length;
-    setUnreadAsgCount(unreadAsg);
+  };
 
-    // 3. Community forum unread count
-    let forumPosts: any[] = [];
-    try {
-      const stored = localStorage.getItem("mervox_academy_posts");
-      forumPosts = stored ? JSON.parse(stored) : [];
-    } catch {}
-    
-    let viewedPostIds: string[] = [];
-    try {
-      const stored = localStorage.getItem(`mervox_academy_viewed_post_${userId}`);
-      viewedPostIds = stored ? JSON.parse(stored) : [];
-    } catch {}
-    const unreadComm = forumPosts.filter((post: any) => !viewedPostIds.includes(post.id)).length;
-    setUnreadCommCount(unreadComm);
+  useEffect(() => {
+    calculateBadges();
 
+    // Mark current page items as viewed in localStorage
+    if (userId) {
+      if (pathname === "/academy/dashboard/messages") {
+        import("@/utils/supabaseClient").then(async ({ supabase, isSupabaseConfigured }) => {
+          if (isSupabaseConfigured) {
+            const { data } = await supabase.from("messages").select("id").eq("user_id", userId);
+            if (data) {
+              const allIds = data.map((m: any) => m.id);
+              localStorage.setItem(`mervox_academy_viewed_msg_${userId}`, JSON.stringify(allIds));
+              setUnreadMsgCount(0);
+            }
+          }
+        });
+      }
+    }
   }, [userId, pathname]);
 
   const menuItems = [
@@ -178,9 +251,13 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
             const isActive = pathname === item.href;
 
             let badgeCount = 0;
+            if (item.name === "Messages") badgeCount = unreadMsgCount;
             if (item.name === "Live Classes") badgeCount = unreadLiveCount;
             if (item.name === "Assignments") badgeCount = unreadAsgCount;
             if (item.name === "Community") badgeCount = unreadCommCount;
+            if (item.name === "Help & Support") badgeCount = unreadTicketCount;
+
+            const displayBadge = badgeCount > 99 ? "99+" : badgeCount;
 
             return (
               <Link
@@ -198,8 +275,8 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
                   <span>{item.name}</span>
                 </div>
                 {badgeCount > 0 && (
-                  <span className="bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full leading-none shrink-0 min-w-[15px] text-center">
-                    {badgeCount}
+                  <span className="bg-red-500 text-white text-[9px] font-black px-1.5 py-0.5 rounded-full leading-none shrink-0 min-w-[16px] text-center shadow-xs">
+                    {displayBadge}
                   </span>
                 )}
               </Link>
