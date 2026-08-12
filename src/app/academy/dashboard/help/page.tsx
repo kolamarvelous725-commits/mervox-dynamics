@@ -62,6 +62,28 @@ export default function HelpPage() {
         return;
       }
 
+      // Query from dedicated support_tickets table
+      const { data: dbTickets, error: ticketsErr } = await supabase
+        .from("support_tickets")
+        .select("*")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false });
+
+      if (dbTickets && dbTickets.length > 0) {
+        setMyTickets(
+          dbTickets.map((t: any) => ({
+            id: t.id,
+            category: t.category || "General",
+            subject: t.subject || "Support Inquiry",
+            description: t.description || "",
+            time: t.created_at ? new Date(t.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "Recently",
+            status: t.status || "Open",
+          }))
+        );
+        return;
+      }
+
+      // Fallback query from messages table
       const { data } = await supabase
         .from("messages")
         .select("*")
@@ -106,6 +128,28 @@ export default function HelpPage() {
 
   useEffect(() => {
     loadMyTickets();
+
+    if (!isSupabaseConfigured || !userId) return;
+
+    const channel = supabase
+      .channel(`student_tickets_${userId}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "support_tickets",
+          filter: `user_id=eq.${userId}`,
+        },
+        () => {
+          loadMyTickets();
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [userId]);
 
   const handleSubmitTicket = async (e: React.FormEvent) => {
@@ -139,6 +183,21 @@ export default function HelpPage() {
         return;
       }
 
+      // 1. Insert into support_tickets table
+      try {
+        await supabase.from("support_tickets").insert({
+          id: ticketId,
+          user_id: userId,
+          category: ticketCategory,
+          subject: ticketSubject.trim(),
+          description: ticketDescription.trim(),
+          status: "Open",
+        });
+      } catch (stErr) {
+        console.warn("Notice: support_tickets table insert warning:", stErr);
+      }
+
+      // 2. Also insert into messages under helpdesk channel so it streams in Chat
       const { error } = await supabase.from("messages").insert({
         user_id: userId,
         channel_id: "helpdesk",
@@ -150,7 +209,7 @@ export default function HelpPage() {
       if (error) {
         alert(`Failed to submit ticket: ${error.message}`);
       } else {
-        alert(`Ticket #${ticketId} submitted successfully! You can track responses in the Messages desk.`);
+        alert(`Ticket #${ticketId} submitted successfully! You can track responses here or in Direct Messages.`);
         setTicketSubject("");
         setTicketDescription("");
         loadMyTickets();

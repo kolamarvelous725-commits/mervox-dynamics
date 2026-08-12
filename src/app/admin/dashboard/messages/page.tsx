@@ -65,9 +65,11 @@ export default function AdminMessagesPage() {
         .from("profiles")
         .select("id, full_name, email, role");
 
-      const filteredStudents = (studentProfiles || []).filter(
-        (s: any) => s.role === "student" && s.email !== "marvelousotugalu012@gmail.com" && s.email !== "kolamarvelous725@gmail.com"
-      );
+      const filteredStudents = (studentProfiles || []).filter((s: any) => {
+        const email = (s.email || "").toLowerCase().trim();
+        const isAdmin = email === "marvelousotugalu012@gmail.com" || email === "kolamarvelous725@gmail.com" || s.role === "admin";
+        return !isAdmin;
+      });
 
       const nameMap = new Map(filteredStudents.map((s) => [s.id, s.full_name || s.email]));
       const emailMap = new Map(filteredStudents.map((s) => [s.id, s.email]));
@@ -86,9 +88,8 @@ export default function AdminMessagesPage() {
         .select("*")
         .order("created_at", { ascending: true });
 
-      // 3. Group messages into support threads & extract tickets
+      // 3. Group messages into support threads
       const threadsMap = new Map<string, MessageThread>();
-      const extractedTickets: SupportTicket[] = [];
 
       allMsgs?.forEach((m: any) => {
         const key = `${m.user_id}_${m.channel_id}`;
@@ -113,46 +114,69 @@ export default function AdminMessagesPage() {
           text: m.text,
           time: m.time || "",
         });
-
-        // Check if message is a formatted support ticket
-        if (m.text && m.text.includes("[SUPPORT TICKET:")) {
-          const match = m.text.match(/\[SUPPORT TICKET:\s*([^\]]+)\]/);
-          const ticketId = match ? match[1].trim() : `TKT-${m.id.substring(0, 6)}`;
-          
-          let category = "General";
-          if (ticketId.includes("-")) {
-            category = ticketId.split("-")[1] || "General";
-          }
-
-          let subject = "Support Inquiry";
-          const subMatch = m.text.match(/Subject:\s*([^\n]+)/);
-          if (subMatch) {
-            subject = subMatch[1].trim();
-          }
-
-          extractedTickets.push({
-            id: ticketId,
-            userId: m.user_id,
-            studentName,
-            studentEmail,
-            category,
-            subject,
-            description: m.text,
-            status: "Open",
-            time: m.time || "Recently",
-          });
-        }
       });
 
       const list = Array.from(threadsMap.values());
       setThreads(list);
-      setTickets(extractedTickets);
 
       if (list.length > 0 && selectedThreadIndex === null) {
         setSelectedThreadIndex(0);
       }
+
+      // 4. Fetch Support Tickets from public.support_tickets
+      const { data: dbTickets, error: ticketsErr } = await adminSupabase
+        .from("support_tickets")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      const loadedTickets: SupportTicket[] = [];
+
+      if (dbTickets && dbTickets.length > 0) {
+        dbTickets.forEach((t: any) => {
+          loadedTickets.push({
+            id: t.id,
+            userId: t.user_id,
+            studentName: nameMap.get(t.user_id) || "Student Account",
+            studentEmail: emailMap.get(t.user_id) || "",
+            category: t.category || "General",
+            subject: t.subject || "Support Inquiry",
+            description: t.description || "",
+            status: t.status as "Open" | "In Progress" | "Resolved",
+            time: t.created_at ? new Date(t.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "Recently",
+          });
+        });
+      } else if (allMsgs) {
+        // Fallback extract tickets from messages if table is freshly created
+        allMsgs.forEach((m: any) => {
+          if (m.text && m.text.includes("[SUPPORT TICKET:")) {
+            const match = m.text.match(/\[SUPPORT TICKET:\s*([^\]]+)\]/);
+            const ticketId = match ? match[1].trim() : `TKT-${m.id.substring(0, 6)}`;
+            let category = "General";
+            if (ticketId.includes("-")) {
+              category = ticketId.split("-")[1] || "General";
+            }
+            let subject = "Support Inquiry";
+            const subMatch = m.text.match(/Subject:\s*([^\n]+)/);
+            if (subMatch) subject = subMatch[1].trim();
+
+            loadedTickets.push({
+              id: ticketId,
+              userId: m.user_id,
+              studentName: nameMap.get(m.user_id) || "Student Account",
+              studentEmail: emailMap.get(m.user_id) || "",
+              category,
+              subject,
+              description: m.text,
+              status: "Open",
+              time: m.time || "Recently",
+            });
+          }
+        });
+      }
+
+      setTickets(loadedTickets);
     } catch (err) {
-      console.error("Failed to load admin message threads:", err);
+      console.error("Failed to load admin message threads & tickets:", err);
     }
   };
 
@@ -161,22 +185,38 @@ export default function AdminMessagesPage() {
 
     if (!isSupabaseConfigured) return;
 
-    // Real-time listener for all message changes
+    // Real-time listener for all messages and tickets changes
     const channel = adminSupabase
       .channel("admin-chat-realtime-listener")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "messages" },
-        () => {
-          loadData();
-        }
-      )
+      .on("postgres_changes", { event: "*", schema: "public", table: "messages" }, () => loadData())
+      .on("postgres_changes", { event: "*", schema: "public", table: "support_tickets" }, () => loadData())
       .subscribe();
 
     return () => {
       adminSupabase.removeChannel(channel);
     };
   }, [selectedThreadIndex]);
+
+  const handleUpdateTicketStatus = async (ticketId: string, newStatus: "Open" | "In Progress" | "Resolved") => {
+    try {
+      if (isSupabaseConfigured) {
+        const { error } = await adminSupabase
+          .from("support_tickets")
+          .update({ status: newStatus, updated_at: new Date().toISOString() })
+          .eq("id", ticketId);
+
+        if (error) {
+          console.error("Error updating ticket status in Supabase:", error);
+        }
+      }
+
+      setTickets((prev) =>
+        prev.map((t) => (t.id === ticketId ? { ...t, status: newStatus } : t))
+      );
+    } catch (err) {
+      console.error("Exception updating ticket status:", err);
+    }
+  };
 
   const handleSendReply = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -491,10 +531,26 @@ export default function AdminMessagesPage() {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex flex-wrap items-center gap-2 shrink-0">
+                    <select
+                      value={t.status}
+                      onChange={(e) => handleUpdateTicketStatus(t.id, e.target.value as any)}
+                      className={`text-[10px] font-bold px-2.5 py-1.5 rounded-xl border cursor-pointer focus:outline-none ${
+                        t.status === "Resolved"
+                          ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 border-emerald-200 dark:border-emerald-900/30"
+                          : t.status === "In Progress"
+                          ? "bg-amber-50 dark:bg-amber-950/30 text-amber-600 border-amber-200 dark:border-amber-900/30"
+                          : "bg-blue-50 dark:bg-blue-950/30 text-[#0055ff] border-blue-200 dark:border-blue-900/30"
+                      }`}
+                    >
+                      <option value="Open">Open</option>
+                      <option value="In Progress">In Progress</option>
+                      <option value="Resolved">Resolved</option>
+                    </select>
+
                     <button
                       onClick={() => handleOpenTicketInChat(t.userId)}
-                      className="px-3.5 py-1.5 bg-[#0055ff] hover:bg-[#0044dd] text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5"
+                      className="px-3 py-1.5 bg-[#0055ff] hover:bg-[#0044dd] text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5"
                     >
                       <MessageSquare className="w-3.5 h-3.5" />
                       <span>Reply in Chat</span>
