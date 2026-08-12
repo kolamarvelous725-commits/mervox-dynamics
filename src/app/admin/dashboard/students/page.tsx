@@ -24,13 +24,14 @@ export default function AdminStudentsPage() {
 
       const { data: studentList, error: studentError } = await adminSupabase
         .from("profiles")
-        .select("*");
+        .select("*")
+        .order("created_at", { ascending: false });
 
       if (studentError) {
         console.error("Failed to query profiles:", studentError);
       } else if (studentList) {
         const list = studentList
-          .filter((s: any) => s.email !== "marvelousotugalu012@gmail.com")
+          .filter((s: any) => s.role === "student" && s.email !== "marvelousotugalu012@gmail.com" && s.email !== "kolamarvelous725@gmail.com")
           .map((s: any) => {
             const splitName = (s.full_name || "Student").split(" ");
             const firstName = splitName[0] || "Student";
@@ -62,6 +63,19 @@ export default function AdminStudentsPage() {
 
   useEffect(() => {
     loadData();
+
+    if (!isSupabaseConfigured) return;
+
+    const channel = adminSupabase
+      .channel("admin_students_realtime_sync")
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => {
+        loadData();
+      })
+      .subscribe();
+
+    return () => {
+      adminSupabase.removeChannel(channel);
+    };
   }, []);
 
   const handleToggleSuspend = async (id: string, currentlySuspended: boolean) => {

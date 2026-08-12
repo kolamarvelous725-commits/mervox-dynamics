@@ -129,6 +129,25 @@ export default function AdminEnrollmentsPage() {
 
   useEffect(() => {
     loadEnrollmentsData();
+
+    if (!isSupabaseConfigured) return;
+
+    const channel = adminSupabase
+      .channel("admin_enrollments_realtime_sync")
+      .on("postgres_changes", { event: "*", schema: "public", table: "enrollments" }, () => {
+        loadEnrollmentsData();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "lesson_progress" }, () => {
+        loadEnrollmentsData();
+      })
+      .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => {
+        loadEnrollmentsData();
+      })
+      .subscribe();
+
+    return () => {
+      adminSupabase.removeChannel(channel);
+    };
   }, []);
 
   const handleStopEnrollment = async (uId: string, cId: string) => {

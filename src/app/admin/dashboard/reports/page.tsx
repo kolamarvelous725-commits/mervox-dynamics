@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { BarChart3, TrendingUp, DollarSign, Award, BookOpen, Users, ArrowUpRight, GraduationCap } from "lucide-react";
-import { adminSupabase } from "@/utils/supabaseClient";
+import { BarChart3, TrendingUp, DollarSign, Award, BookOpen, Users, ArrowUpRight, GraduationCap, RefreshCw } from "lucide-react";
+import { adminSupabase, isSupabaseConfigured } from "@/utils/supabaseClient";
+import AcademyDB from "@/utils/academyDb";
 
 interface PopularCourse {
   title: string;
@@ -22,55 +23,146 @@ export default function AdminReportsPage() {
   const [popularCourses, setPopularCourses] = useState<PopularCourse[]>([]);
   const [studentProgressList, setStudentProgressList] = useState<any[]>([]);
   const [monthlyGrowth, setMonthlyGrowth] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
 
   const loadReportData = async () => {
+    setLoading(true);
     try {
-      const { data: profiles } = await adminSupabase
+      if (!isSupabaseConfigured) {
+        const students = AcademyDB.getStudents();
+        const courses = AcademyDB.getCourses();
+        let totalRevenue = 0;
+        let totalEnrollments = 0;
+        let totalCompletions = 0;
+        const progressList: any[] = [];
+
+        const popular = courses.map((c) => {
+          let cEnrolled = 0;
+          let cCompleted = 0;
+          const courseLessons = c.lessons || [];
+
+          students.forEach((s) => {
+            const userProg = AcademyDB.getProgress(s.id);
+            const matching = userProg.find((p) => p.courseId === c.id);
+            if (matching) {
+              cEnrolled++;
+              totalEnrollments++;
+              const completedCount = matching.completedLessons?.length || 0;
+              const totalCount = courseLessons.length || 20;
+              const pct = Math.round((completedCount / totalCount) * 100);
+              if (pct >= 100) {
+                cCompleted++;
+                totalCompletions++;
+              }
+              progressList.push({
+                studentName: `${s.firstName} ${s.lastName}`,
+                studentEmail: s.email,
+                courseTitle: c.title,
+                completedLessons: completedCount,
+                totalLessons: totalCount,
+                progressPercent: pct,
+              });
+            }
+          });
+
+          let price = 199;
+          if (c.id === "forex-trading") price = 299;
+          if (c.id === "ai-automation") price = 249;
+          const cRev = cEnrolled * price;
+          totalRevenue += cRev;
+
+          return {
+            title: c.title,
+            enrollments: cEnrolled,
+            completions: cCompleted,
+            revenue: cRev,
+          };
+        });
+
+        popular.sort((a, b) => b.enrollments - a.enrollments);
+        setPopularCourses(popular);
+        setReportData({
+          totalStudents: students.length,
+          totalRevenue,
+          activeEnrollments: totalEnrollments,
+          completionsCount: totalCompletions,
+        });
+        setStudentProgressList(progressList);
+        setMonthlyGrowth([
+          { month: "May", count: Math.max(0, students.length - 2) },
+          { month: "Jun", count: Math.max(0, students.length - 1) },
+          { month: "Jul", count: students.length },
+        ]);
+        setLoading(false);
+        return;
+      }
+
+      // 1. Fetch real student profiles (filter out admin)
+      const { data: allProfiles } = await adminSupabase
         .from("profiles")
         .select("*");
 
-      const { data: courses } = await adminSupabase
+      const studentProfiles = (allProfiles || []).filter(
+        (p: any) => p.role === "student" && p.email !== "marvelousotugalu012@gmail.com" && p.email !== "kolamarvelous725@gmail.com"
+      );
+
+      // 2. Fetch courses
+      const { data: coursesData } = await adminSupabase
         .from("courses")
         .select("*");
+      const courses = coursesData && coursesData.length > 0 ? coursesData : AcademyDB.getCourses();
 
-      const { data: lessons } = await adminSupabase
+      // 3. Fetch lessons
+      const { data: lessonsData } = await adminSupabase
         .from("course_lessons")
         .select("*");
+      const lessons = lessonsData || [];
 
-      const { data: enrollments } = await adminSupabase
+      // 4. Fetch enrollments
+      const { data: enrollmentsData } = await adminSupabase
         .from("enrollments")
         .select("*, profiles(*)");
+      const enrollments = (enrollmentsData || []).filter((e: any) =>
+        studentProfiles.some((s: any) => s.id === e.user_id)
+      );
 
-      const { data: lessonProgress } = await adminSupabase
+      // 5. Fetch lesson progress
+      const { data: lessonProgressData } = await adminSupabase
         .from("lesson_progress")
         .select("*")
         .eq("completed", true);
+      const lessonProgress = lessonProgressData || [];
 
-      if (!profiles || !courses || !lessons || !enrollments || !lessonProgress) return;
+      // 6. Fetch payments for actual dollar figures
+      const { data: paymentsData } = await adminSupabase
+        .from("payments")
+        .select("*");
 
-      const totalStudents = profiles.length;
+      const totalStudents = studentProfiles.length;
       const activeEnrollments = enrollments.length;
-      
+
       const lessonsByCourse: Record<string, any[]> = {};
-      lessons.forEach((l) => {
+      lessons.forEach((l: any) => {
         if (!lessonsByCourse[l.course_id]) lessonsByCourse[l.course_id] = [];
         lessonsByCourse[l.course_id].push(l);
       });
 
       const studentProgressListMapped = enrollments.map((e: any) => {
-        const profile = e.profiles;
-        const courseObj = courses.find((c) => c.id === e.course_id);
+        const profile = e.profiles || studentProfiles.find((sp: any) => sp.id === e.user_id);
+        const courseObj = courses.find((c: any) => c.id === e.course_id);
         const cLessons = lessonsByCourse[e.course_id] || [];
-        const total = cLessons.length;
-        
-        const completedCount = cLessons.filter((l) => 
-          lessonProgress.some((lp) => lp.user_id === e.user_id && lp.lesson_id === l.id && lp.completed)
-        ).length;
+        const total = cLessons.length > 0 ? cLessons.length : 20;
 
-        const progressPercent = total > 0 ? Math.round((completedCount / total) * 100) : 0;
+        const completedCount = cLessons.length > 0
+          ? cLessons.filter((l: any) =>
+              lessonProgress.some((lp: any) => lp.user_id === e.user_id && lp.lesson_id === l.id && lp.completed)
+            ).length
+          : (lessonProgress.filter((lp: any) => lp.user_id === e.user_id).length);
+
+        const progressPercent = total > 0 ? Math.min(100, Math.round((completedCount / total) * 100)) : 0;
 
         return {
-          studentName: profile ? profile.full_name || profile.email : "Unknown Student",
+          studentName: profile ? (profile.full_name || profile.email) : "Student Account",
           courseTitle: courseObj ? courseObj.title : e.course_id,
           completedLessons: completedCount,
           totalLessons: total,
@@ -80,19 +172,24 @@ export default function AdminReportsPage() {
 
       const completionsCount = studentProgressListMapped.filter((sp) => sp.progressPercent === 100).length;
 
+      // Revenue: use payments table sum if available, else standard tuition tier calculation
       let totalRevenue = 0;
-      enrollments.forEach((e: any) => {
-        let price = 199;
-        if (e.course_id === "forex-trading") price = 299;
-        if (e.course_id === "ai-automation") price = 249;
-        totalRevenue += price;
-      });
+      if (paymentsData && paymentsData.length > 0) {
+        totalRevenue = paymentsData.reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
+      } else {
+        enrollments.forEach((e: any) => {
+          let price = 199;
+          if (e.course_id === "forex-trading") price = 299;
+          if (e.course_id === "ai-automation") price = 249;
+          totalRevenue += price;
+        });
+      }
 
-      const popular: PopularCourse[] = courses.map((c) => {
-        const cEnrollments = enrollments.filter((e) => e.course_id === c.id);
+      const popular: PopularCourse[] = courses.map((c: any) => {
+        const cEnrollments = enrollments.filter((e: any) => e.course_id === c.id);
         const cProgress = studentProgressListMapped.filter((sp) => sp.courseTitle === c.title);
         const cCompletions = cProgress.filter((sp) => sp.progressPercent === 100).length;
-        
+
         let price = 199;
         if (c.id === "forex-trading") price = 299;
         if (c.id === "ai-automation") price = 249;
@@ -106,7 +203,7 @@ export default function AdminReportsPage() {
       });
 
       popular.sort((a, b) => b.enrollments - a.enrollments);
-      
+
       setPopularCourses(popular);
       setReportData({
         totalStudents,
@@ -117,17 +214,33 @@ export default function AdminReportsPage() {
       setStudentProgressList(studentProgressListMapped);
 
       setMonthlyGrowth([
-        { month: "May", count: Math.max(0, totalStudents - 8) },
-        { month: "Jun", count: Math.max(0, totalStudents - 4) },
+        { month: "May", count: Math.max(0, totalStudents - 3) },
+        { month: "Jun", count: Math.max(0, totalStudents - 1) },
         { month: "Jul", count: totalStudents },
       ]);
     } catch (err) {
       console.error("Error loading reports data:", err);
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
     loadReportData();
+
+    if (isSupabaseConfigured) {
+      const channel = adminSupabase
+        .channel("admin_reports_sync")
+        .on("postgres_changes", { event: "*", schema: "public", table: "enrollments" }, () => loadReportData())
+        .on("postgres_changes", { event: "*", schema: "public", table: "lesson_progress" }, () => loadReportData())
+        .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => loadReportData())
+        .on("postgres_changes", { event: "*", schema: "public", table: "payments" }, () => loadReportData())
+        .subscribe();
+
+      return () => {
+        adminSupabase.removeChannel(channel);
+      };
+    }
   }, []);
 
   const maxEnrollments = Math.max(...popularCourses.map((c) => c.enrollments), 1);

@@ -31,13 +31,16 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
         const { data: { session } } = await adminSupabase.auth.getSession();
         
         if (session?.user) {
+          const email = (session.user.email || "").toLowerCase().trim();
+          const isAdminEmail = email === "marvelousotugalu012@gmail.com" || email === "kolamarvelous725@gmail.com";
+
           const { data: profile } = await adminSupabase
             .from("profiles")
             .select("*")
             .eq("id", session.user.id)
             .single();
 
-          if (profile && profile.role === "admin") {
+          if ((profile && profile.role === "admin") || isAdminEmail) {
             setIsAdminAuthenticated(true);
             localStorage.setItem("mervox_academy_admin_active", "true");
           } else {
@@ -45,21 +48,50 @@ export function AdminAuthProvider({ children }: { children: React.ReactNode }) {
             localStorage.removeItem("mervox_academy_admin_active");
           }
         } else {
-          const active = localStorage.getItem("mervox_academy_admin_active");
-          if (active === "true") {
-            setIsAdminAuthenticated(true);
-          } else {
-            setIsAdminAuthenticated(false);
-          }
+          setIsAdminAuthenticated(false);
+          localStorage.removeItem("mervox_academy_admin_active");
         }
       } catch (err) {
         console.error("Error verifying admin session:", err);
+        setIsAdminAuthenticated(false);
       } finally {
         setLoading(false);
       }
     };
 
     checkAdminSession();
+
+    if (!isSupabaseConfigured) return;
+
+    const { data: { subscription } } = adminSupabase.auth.onAuthStateChange(async (event, session) => {
+      if (event === "SIGNED_OUT") {
+        setIsAdminAuthenticated(false);
+        localStorage.removeItem("mervox_academy_admin_active");
+      } else if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+        if (session?.user) {
+          const email = (session.user.email || "").toLowerCase().trim();
+          const isAdminEmail = email === "marvelousotugalu012@gmail.com" || email === "kolamarvelous725@gmail.com";
+          
+          const { data: profile } = await adminSupabase
+            .from("profiles")
+            .select("*")
+            .eq("id", session.user.id)
+            .single();
+
+          if ((profile && profile.role === "admin") || isAdminEmail) {
+            setIsAdminAuthenticated(true);
+            localStorage.setItem("mervox_academy_admin_active", "true");
+          } else {
+            setIsAdminAuthenticated(false);
+            localStorage.removeItem("mervox_academy_admin_active");
+          }
+        }
+      }
+    });
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   const login = async (email: string, pass: string): Promise<boolean> => {
