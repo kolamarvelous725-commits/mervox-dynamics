@@ -7,6 +7,8 @@ import Link from "next/link";
 import AcademyDB from "@/utils/academyDb";
 
 export default function AdminDashboardPage() {
+  const [metricsLoading, setMetricsLoading] = useState(true);
+  const [metricsError, setMetricsError] = useState<string | null>(null);
   const [metrics, setMetrics] = useState({
     totalStudents: 0,
     totalCourses: 0,
@@ -20,204 +22,184 @@ export default function AdminDashboardPage() {
 
   const [recentStudents, setRecentStudents] = useState<any[]>([]);
 
-  useEffect(() => {
-    const fetchMetrics = async () => {
-      try {
-        if (!isSupabaseConfigured) {
-          const students = AcademyDB.getStudents();
-          const courses = AcademyDB.getCourses();
-          const liveClasses = AcademyDB.getLiveClasses();
-          const announcements = AcademyDB.getAnnouncements();
-          const certificates = AcademyDB.getAllCertificates();
-          
-          const usersJson = typeof window !== "undefined" ? localStorage.getItem("mervox_academy_users") : null;
-          const users = usersJson ? JSON.parse(usersJson) : [];
-          let enrollCount = 0;
-          users.forEach((u: any) => {
-            if (u.progress) enrollCount += u.progress.length;
-          });
-
-          setMetrics({
-            totalStudents: students.length,
-            totalCourses: courses.length,
-            onlineStudents: 0,
-            revenue: enrollCount * 250 || 1250,
-            certificates: certificates.length,
-            liveClasses: liveClasses.length,
-            announcements: announcements.length,
-            enrollments: enrollCount || students.length * 2,
-          });
-
-          const formatted = students.slice(0, 4).map((p: any) => ({
-            id: p.id,
-            firstName: p.firstName,
-            lastName: p.lastName,
-            email: p.email,
-            memberSince: p.memberSince || "Joined",
-          }));
-          setRecentStudents(formatted);
-          return;
-        }
-
-        // 1. Query Real Student Profiles
-        let studentCount = 0;
-        let recentStudentsData: any[] = [];
-        try {
-          const { data, error } = await adminSupabase
-            .from("profiles")
-            .select("*")
-            .order("created_at", { ascending: false });
-
-          if (error) {
-            console.error("Supabase profiles query error:", error);
-          } else if (data) {
-            const actualStudents = data.filter(
-              (p: any) => p.role === "student" && p.email !== "marvelousotugalu012@gmail.com" && p.email !== "kolamarvelous725@gmail.com"
-            );
-            studentCount = actualStudents.length;
-            recentStudentsData = actualStudents;
-          }
-        } catch (e) {
-          console.error("Exception fetching profiles metrics:", e);
-        }
-
-        // 2. Query Courses
-        let courseCount = 0;
-        try {
-          const { count, error } = await adminSupabase
-            .from("courses")
-            .select("*", { count: "exact", head: true });
-          if (error) {
-            console.error("Supabase courses query error:", error);
-          } else {
-            courseCount = count || 0;
-          }
-        } catch (e) {
-          console.error("Exception fetching courses metrics:", e);
-        }
-
-        // 3. Query Certificates
-        let certCount = 0;
-        try {
-          const { count, error } = await adminSupabase
-            .from("certificates")
-            .select("*", { count: "exact", head: true });
-          if (error) {
-            console.error("Supabase certificates query error:", error);
-          } else {
-            certCount = count || 0;
-          }
-        } catch (e) {
-          console.error("Exception fetching certificates metrics:", e);
-        }
-
-        // 4. Query Live Classes
-        let liveCount = 0;
-        try {
-          const { count, error } = await adminSupabase
-            .from("live_classes")
-            .select("*", { count: "exact", head: true });
-          if (error) {
-            console.error("Supabase live_classes query error:", error);
-          } else {
-            liveCount = count || 0;
-          }
-        } catch (e) {
-          console.error("Exception fetching live_classes metrics:", e);
-        }
-
-        // 5. Query Announcements
-        let annCount = 0;
-        try {
-          const { count, error } = await adminSupabase
-            .from("announcements")
-            .select("*", { count: "exact", head: true });
-          if (error) {
-            console.error("Supabase announcements query error:", error);
-          } else {
-            annCount = count || 0;
-          }
-        } catch (e) {
-          console.error("Exception fetching announcements metrics:", e);
-        }
-
-        // 6. Query Enrollments
+  const fetchMetrics = async () => {
+    setMetricsLoading(true);
+    setMetricsError(null);
+    try {
+      if (!isSupabaseConfigured) {
+        const students = AcademyDB.getStudents();
+        const courses = AcademyDB.getCourses();
+        const liveClasses = AcademyDB.getLiveClasses();
+        const announcements = AcademyDB.getAnnouncements();
+        const certificates = AcademyDB.getAllCertificates();
+        
+        const usersJson = typeof window !== "undefined" ? localStorage.getItem("mervox_academy_users") : null;
+        const users = usersJson ? JSON.parse(usersJson) : [];
         let enrollCount = 0;
-        let enrollmentsList: any[] = [];
-        try {
-          const { data: enrollData, count, error } = await adminSupabase
-            .from("enrollments")
-            .select("*", { count: "exact" });
-          if (error) {
-            console.error("Supabase enrollments query error:", error);
-          } else {
-            enrollmentsList = enrollData || [];
-            enrollCount = count || enrollmentsList.length;
-          }
-        } catch (e) {
-          console.error("Exception fetching enrollments metrics:", e);
-        }
-
-        // 7. Query Payments & Compute Revenue
-        let totalRevenue = 0;
-        try {
-          const { data, error } = await adminSupabase
-            .from("payments")
-            .select("amount")
-            .eq("status", "Paid");
-
-          if (error) {
-            console.error("Supabase payments query error:", error);
-          } else if (data && data.length > 0) {
-            totalRevenue = data.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-          } else if (enrollmentsList.length > 0) {
-            // Fallback calculated tuition revenue from active enrollments
-            enrollmentsList.forEach((e: any) => {
-              let price = 199;
-              if (e.course_id === "forex-trading") price = 299;
-              if (e.course_id === "ai-automation") price = 249;
-              totalRevenue += price;
-            });
-          }
-        } catch (e) {
-          console.error("Exception fetching payments metrics:", e);
-        }
+        users.forEach((u: any) => {
+          if (u.progress) enrollCount += u.progress.length;
+        });
 
         setMetrics({
-          totalStudents: studentCount,
-          totalCourses: courseCount,
-          onlineStudents: studentCount > 0 ? Math.max(1, Math.min(studentCount, 3)) : 0,
-          revenue: totalRevenue,
-          certificates: certCount,
-          liveClasses: liveCount,
-          announcements: annCount,
-          enrollments: enrollCount,
+          totalStudents: students.length,
+          totalCourses: courses.length,
+          onlineStudents: students.length > 0 ? 1 : 0,
+          revenue: enrollCount * 250 || 1250,
+          certificates: certificates.length,
+          liveClasses: liveClasses.length,
+          announcements: announcements.length,
+          enrollments: enrollCount || students.length * 2,
         });
 
-        const formatted = recentStudentsData.slice(0, 4).map((p: any) => {
-          const parts = (p.full_name || "").trim().split(/\s+/);
-          const firstName = parts[0] || "";
-          const lastName = parts.slice(1).join(" ") || "";
-          let memberSince = "Joined";
-          if (p.created_at) {
-            try {
-              memberSince = new Date(p.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" });
-            } catch {}
-          }
-          return {
-            id: p.id,
-            firstName,
-            lastName,
-            email: p.email,
-            memberSince,
-          };
-        });
+        const formatted = students.slice(0, 4).map((p: any) => ({
+          id: p.id,
+          firstName: p.firstName,
+          lastName: p.lastName,
+          email: p.email,
+          memberSince: p.memberSince || "Joined",
+        }));
         setRecentStudents(formatted);
-      } catch (err) {
-        console.error("General error loading admin dashboard page metrics:", err);
+        setMetricsLoading(false);
+        return;
       }
-    };
 
+      // 1. Query Real Student Profiles
+      let studentCount = 0;
+      let actualStudents: any[] = [];
+
+      const { data: profilesData, error: profilesError } = await adminSupabase
+        .from("profiles")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (profilesError) {
+        console.error("Supabase profiles query error:", profilesError);
+        setMetricsError(profilesError.message || "Failed to load profiles");
+      } else if (profilesData) {
+        actualStudents = profilesData.filter((p: any) => {
+          const email = (p.email || "").toLowerCase().trim();
+          const isAdmin = email === "marvelousotugalu012@gmail.com" || email === "kolamarvelous725@gmail.com" || p.role === "admin";
+          return !isAdmin;
+        });
+        studentCount = actualStudents.length;
+      }
+
+      // 2. Query Courses
+      let courseCount = 0;
+      const { data: coursesData, count: coursesCount, error: coursesError } = await adminSupabase
+        .from("courses")
+        .select("*", { count: "exact" });
+      if (coursesError) {
+        console.error("Supabase courses query error:", coursesError);
+      } else {
+        courseCount = coursesCount ?? (coursesData?.length || 0);
+      }
+
+      // 3. Query Certificates
+      let certCount = 0;
+      const { count: certsCountVal, error: certError } = await adminSupabase
+        .from("certificates")
+        .select("*", { count: "exact", head: true });
+      if (certError) {
+        console.error("Supabase certificates query error:", certError);
+      } else {
+        certCount = certsCountVal || 0;
+      }
+
+      // 4. Query Live Classes
+      let liveCount = 0;
+      const { count: liveCountVal, error: liveError } = await adminSupabase
+        .from("live_classes")
+        .select("*", { count: "exact", head: true });
+      if (liveError) {
+        console.error("Supabase live_classes query error:", liveError);
+      } else {
+        liveCount = liveCountVal || 0;
+      }
+
+      // 5. Query Announcements
+      let annCount = 0;
+      const { count: annCountVal, error: annError } = await adminSupabase
+        .from("announcements")
+        .select("*", { count: "exact", head: true });
+      if (annError) {
+        console.error("Supabase announcements query error:", annError);
+      } else {
+        annCount = annCountVal || 0;
+      }
+
+      // 6. Query Enrollments
+      let enrollCount = 0;
+      let enrollmentsList: any[] = [];
+      const { data: enrollData, count: enrollCountVal, error: enrollError } = await adminSupabase
+        .from("enrollments")
+        .select("*", { count: "exact" });
+      if (enrollError) {
+        console.error("Supabase enrollments query error:", enrollError);
+      } else {
+        enrollmentsList = enrollData || [];
+        enrollCount = enrollCountVal ?? enrollmentsList.length;
+      }
+
+      // 7. Query Payments & Compute Revenue
+      let totalRevenue = 0;
+      const { data: payData, error: payError } = await adminSupabase
+        .from("payments")
+        .select("amount")
+        .eq("status", "Paid");
+
+      if (payError) {
+        console.error("Supabase payments query error:", payError);
+      } else if (payData && payData.length > 0) {
+        totalRevenue = payData.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+      } else if (enrollmentsList.length > 0) {
+        enrollmentsList.forEach((e: any) => {
+          let price = 199;
+          if (e.course_id === "forex-trading") price = 299;
+          if (e.course_id === "ai-automation") price = 249;
+          totalRevenue += price;
+        });
+      }
+
+      setMetrics({
+        totalStudents: studentCount,
+        totalCourses: courseCount,
+        onlineStudents: studentCount > 0 ? Math.max(1, Math.min(studentCount, 3)) : 0,
+        revenue: totalRevenue,
+        certificates: certCount,
+        liveClasses: liveCount,
+        announcements: annCount,
+        enrollments: enrollCount,
+      });
+
+      const formatted = actualStudents.slice(0, 4).map((p: any) => {
+        const parts = (p.full_name || "").trim().split(/\s+/);
+        const firstName = parts[0] || (p.email ? p.email.split("@")[0] : "Student");
+        const lastName = parts.slice(1).join(" ") || "";
+        let memberSince = "Joined";
+        if (p.created_at) {
+          try {
+            memberSince = new Date(p.created_at).toLocaleDateString("en-US", { month: "long", year: "numeric" });
+          } catch {}
+        }
+        return {
+          id: p.id,
+          firstName,
+          lastName,
+          email: p.email,
+          memberSince,
+        };
+      });
+      setRecentStudents(formatted);
+    } catch (err: any) {
+      console.error("General error loading admin dashboard page metrics:", err);
+      setMetricsError(err.message || "An unexpected error occurred loading metrics");
+    } finally {
+      setMetricsLoading(false);
+    }
+  };
+
+  useEffect(() => {
     fetchMetrics();
 
     if (!isSupabaseConfigured) return;
@@ -262,22 +244,44 @@ export default function AdminDashboardPage() {
         </p>
       </div>
 
-      {/* Grid widgets */}
+      {/* Error state banner if Supabase query failed */}
+      {metricsError && (
+        <div className="p-4 rounded-xl bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/30 flex items-center justify-between gap-4 text-left">
+          <div>
+            <h4 className="text-xs font-bold text-rose-800 dark:text-rose-300">Database Synchronization Notice</h4>
+            <p className="text-[11px] text-rose-600 dark:text-rose-400 mt-0.5">{metricsError}</p>
+          </div>
+          <button
+            onClick={() => fetchMetrics()}
+            className="px-3 py-1.5 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold cursor-pointer shrink-0"
+          >
+            Retry Sync
+          </button>
+        </div>
+      )}
+
+      {/* Grid widgets — Permanently anchored */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-left">
         {cardDetails.map((card, idx) => {
           const Icon = card.icon;
           return (
             <div
               key={idx}
-              className="p-5 rounded-2xl border border-card-border bg-white dark:bg-[#18181c] shadow-xs flex items-center justify-between gap-4"
+              className="p-5 rounded-2xl border border-card-border bg-white dark:bg-[#18181c] shadow-xs flex items-center justify-between gap-4 transition-all"
             >
               <div className="space-y-1">
                 <span className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider block">
                   {card.name}
                 </span>
-                <span className="text-xl font-heading font-black text-slate-800 dark:text-white">
-                  {card.value}
-                </span>
+                {metricsLoading ? (
+                  <div className="h-7 w-16 bg-slate-100 dark:bg-slate-800 animate-pulse rounded-md" />
+                ) : metricsError && card.name === "Total Students" ? (
+                  <span className="text-xs font-bold text-rose-500 block">Sync Error</span>
+                ) : (
+                  <span className="text-xl font-heading font-black text-slate-800 dark:text-white">
+                    {card.value}
+                  </span>
+                )}
               </div>
               <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${card.color}`}>
                 <Icon className="w-5 h-5" />
@@ -306,7 +310,13 @@ export default function AdminDashboardPage() {
           </div>
 
           <div className="divide-y divide-card-border/40">
-            {recentStudents.length === 0 ? (
+            {metricsLoading ? (
+              <div className="space-y-3 py-4">
+                {[1, 2, 3].map((i) => (
+                  <div key={i} className="h-10 bg-slate-100 dark:bg-slate-800/50 animate-pulse rounded-xl" />
+                ))}
+              </div>
+            ) : recentStudents.length === 0 ? (
               <p className="text-xs text-slate-450 font-semibold py-4 text-center">No registered students yet.</p>
             ) : (
               recentStudents.map((st) => (
