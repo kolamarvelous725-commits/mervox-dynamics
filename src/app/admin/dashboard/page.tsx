@@ -9,6 +9,10 @@ import AcademyDB from "@/utils/academyDb";
 export default function AdminDashboardPage() {
   const [metricsLoading, setMetricsLoading] = useState(true);
   const [metricsError, setMetricsError] = useState<string | null>(null);
+  const [presenceOnlineStudents, setPresenceOnlineStudents] = useState<number>(0);
+  const [presenceLoading, setPresenceLoading] = useState<boolean>(true);
+  const [presenceError, setPresenceError] = useState<boolean>(false);
+
   const [metrics, setMetrics] = useState({
     totalStudents: 0,
     totalCourses: 0,
@@ -43,7 +47,7 @@ export default function AdminDashboardPage() {
         setMetrics({
           totalStudents: students.length,
           totalCourses: courses.length,
-          onlineStudents: students.length > 0 ? 1 : 0,
+          onlineStudents: 0,
           revenue: enrollCount * 250 || 1250,
           certificates: certificates.length,
           liveClasses: liveClasses.length,
@@ -60,6 +64,7 @@ export default function AdminDashboardPage() {
         }));
         setRecentStudents(formatted);
         setMetricsLoading(false);
+        setPresenceLoading(false);
         return;
       }
 
@@ -164,7 +169,7 @@ export default function AdminDashboardPage() {
       setMetrics({
         totalStudents: studentCount,
         totalCourses: courseCount,
-        onlineStudents: studentCount > 0 ? Math.max(1, Math.min(studentCount, 3)) : 0,
+        onlineStudents: 0,
         revenue: totalRevenue,
         certificates: certCount,
         liveClasses: liveCount,
@@ -204,6 +209,7 @@ export default function AdminDashboardPage() {
 
     if (!isSupabaseConfigured) return;
 
+    // Realtime Database Changes Listener
     const channel = adminSupabase
       .channel("admin_dashboard_metrics_realtime")
       .on("postgres_changes", { event: "*", schema: "public", table: "profiles" }, () => fetchMetrics())
@@ -214,15 +220,61 @@ export default function AdminDashboardPage() {
       .on("postgres_changes", { event: "*", schema: "public", table: "announcements" }, () => fetchMetrics())
       .subscribe();
 
+    // Supabase Realtime Presence Channel for tracking active online students
+    const presenceChannel = adminSupabase.channel("mervox_academy_presence");
+
+    const updatePresenceCount = () => {
+      try {
+        const state = presenceChannel.presenceState();
+        const uniqueStudentIds = new Set<string>();
+
+        Object.values(state).forEach((presences: any) => {
+          if (Array.isArray(presences)) {
+            presences.forEach((p: any) => {
+              const email = (p.email || "").toLowerCase().trim();
+              const isAdmin =
+                email === "marvelousotugalu012@gmail.com" ||
+                email === "kolamarvelous725@gmail.com" ||
+                p.role === "admin";
+              if (!isAdmin && p.userId) {
+                uniqueStudentIds.add(p.userId);
+              }
+            });
+          }
+        });
+
+        setPresenceOnlineStudents(uniqueStudentIds.size);
+        setPresenceLoading(false);
+        setPresenceError(false);
+      } catch (pErr) {
+        console.error("Error calculating presence count:", pErr);
+        setPresenceError(true);
+      }
+    };
+
+    presenceChannel
+      .on("presence", { event: "sync" }, updatePresenceCount)
+      .on("presence", { event: "join" }, updatePresenceCount)
+      .on("presence", { event: "leave" }, updatePresenceCount)
+      .subscribe(async (status) => {
+        if (status === "SUBSCRIBED") {
+          updatePresenceCount();
+        } else if (status === "CHANNEL_ERROR" || status === "TIMED_OUT") {
+          setPresenceError(true);
+          setPresenceLoading(false);
+        }
+      });
+
     return () => {
       adminSupabase.removeChannel(channel);
+      adminSupabase.removeChannel(presenceChannel);
     };
   }, []);
 
   const cardDetails = [
     { name: "Total Students", value: metrics.totalStudents, icon: Users, color: "text-[#0055ff] bg-blue-50/70 dark:bg-blue-950/20" },
     { name: "Total Courses", value: metrics.totalCourses, icon: BookOpen, color: "text-purple-600 bg-purple-50/70 dark:bg-purple-950/20" },
-    { name: "Students Online", value: metrics.onlineStudents, icon: UserCheck, color: "text-emerald-600 bg-emerald-50/70 dark:bg-emerald-950/20" },
+    { name: "Students Online", value: presenceLoading ? "..." : presenceError ? "Sync Error" : presenceOnlineStudents, icon: UserCheck, color: "text-emerald-600 bg-emerald-50/70 dark:bg-emerald-950/20" },
     { name: "Total Revenue", value: `$${metrics.revenue.toLocaleString()}`, icon: DollarSign, color: "text-amber-600 bg-amber-50/70 dark:bg-amber-950/20" },
     { name: "Certificates Issued", value: metrics.certificates, icon: Award, color: "text-rose-600 bg-rose-50/70 dark:bg-rose-950/20" },
     { name: "Live Classes", value: metrics.liveClasses, icon: Video, color: "text-indigo-600 bg-indigo-50/70 dark:bg-indigo-950/20" },
@@ -264,6 +316,10 @@ export default function AdminDashboardPage() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-left">
         {cardDetails.map((card, idx) => {
           const Icon = card.icon;
+          const isStudentsOnlineCard = card.name === "Students Online";
+          const isCardLoading = isStudentsOnlineCard ? presenceLoading : metricsLoading;
+          const isCardError = isStudentsOnlineCard ? presenceError : (metricsError && card.name === "Total Students");
+
           return (
             <div
               key={idx}
@@ -273,9 +329,9 @@ export default function AdminDashboardPage() {
                 <span className="text-[10px] font-bold text-slate-450 dark:text-slate-500 uppercase tracking-wider block">
                   {card.name}
                 </span>
-                {metricsLoading ? (
+                {isCardLoading ? (
                   <div className="h-7 w-16 bg-slate-100 dark:bg-slate-800 animate-pulse rounded-md" />
-                ) : metricsError && card.name === "Total Students" ? (
+                ) : isCardError ? (
                   <span className="text-xs font-bold text-rose-500 block">Sync Error</span>
                 ) : (
                   <span className="text-xl font-heading font-black text-slate-800 dark:text-white">

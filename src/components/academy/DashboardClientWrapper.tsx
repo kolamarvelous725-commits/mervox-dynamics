@@ -54,11 +54,31 @@ export default function DashboardClientWrapper({ children }: { children: React.R
           .subscribe();
       });
 
-      // Cleanup subscriptions on unmount
+      // 3. Setup Supabase Realtime Presence to track authenticated active student
+      const presenceChannel = supabase.channel("mervox_academy_presence");
+
+      presenceChannel.subscribe(async (status) => {
+        if (status === "SUBSCRIBED") {
+          try {
+            await presenceChannel.track({
+              userId: student.id,
+              email: student.email,
+              role: "student",
+              onlineAt: new Date().toISOString(),
+            });
+          } catch (pErr) {
+            console.error("Presence tracking error:", pErr);
+          }
+        }
+      });
+
+      // Cleanup subscriptions on unmount / navigation
       return () => {
         channels.forEach((channel) => {
           supabase.removeChannel(channel);
         });
+        presenceChannel.untrack().catch(() => {});
+        supabase.removeChannel(presenceChannel);
       };
     }
   }, [student, loading, router]);
