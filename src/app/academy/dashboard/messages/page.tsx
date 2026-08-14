@@ -62,31 +62,7 @@ export default function MessagesPage() {
   const [showNewChatModal, setShowNewChatModal] = useState(false);
   const [newChatChannelId, setNewChatChannelId] = useState("helpdesk");
   const [newChatMessage, setNewChatMessage] = useState("");
-  const [messageCategory, setMessageCategory] = useState("General");
-  const [newChatCategory, setNewChatCategory] = useState("General");
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  // Sync category state with channel selection
-  useEffect(() => {
-    if (activeChannelId === "forex-mentor") {
-      setMessageCategory("FX");
-    } else if (activeChannelId === "ai-support") {
-      setMessageCategory("AI");
-    } else {
-      setMessageCategory("General");
-    }
-  }, [activeChannelId]);
-
-  // Sync modal channel selection with default category
-  useEffect(() => {
-    if (newChatChannelId === "forex-mentor") {
-      setNewChatCategory("FX");
-    } else if (newChatChannelId === "ai-support") {
-      setNewChatCategory("AI");
-    } else {
-      setNewChatCategory("General");
-    }
-  }, [newChatChannelId]);
 
   // Fetch messages and discover active channels for this student
   const fetchMessagesAndChannels = async () => {
@@ -245,7 +221,6 @@ export default function MessagesPage() {
         text: msgText,
         sender: "student",
         time: timestamp,
-        category: messageCategory,
       });
 
       if (error) {
@@ -278,7 +253,6 @@ export default function MessagesPage() {
           text: msgText,
           sender: "student",
           time: timestamp,
-          category: newChatCategory,
         });
 
         if (error) {
@@ -411,23 +385,7 @@ export default function MessagesPage() {
           </div>
 
           {/* Message input bar */}
-          <form onSubmit={handleSendMessage} className="p-4 border-t border-card-border/40 bg-slate-50/20 dark:bg-slate-900/10 space-y-2">
-            <div className="flex items-center gap-2">
-              <span className="text-[10px] font-bold text-slate-450 uppercase">Category:</span>
-              <select
-                value={messageCategory}
-                onChange={(e) => setMessageCategory(e.target.value)}
-                className="px-2.5 py-1 text-[11px] rounded-lg bg-slate-50 dark:bg-slate-900 border border-card-border text-slate-800 dark:text-slate-200 focus:outline-none"
-              >
-                <option value="General">General</option>
-                <option value="FX">FX</option>
-                <option value="AI">AI</option>
-                <option value="Web Design">Web Design</option>
-                <option value="Web Development">Web Development</option>
-                <option value="Digital Marketing">Digital Marketing</option>
-                <option value="YouTube Monetization">YouTube Monetization</option>
-              </select>
-            </div>
+          <form onSubmit={handleSendMessage} className="p-4 border-t border-card-border/40 bg-slate-50/20 dark:bg-slate-900/10">
             <div className="flex items-center gap-2 bg-white dark:bg-slate-900/60 border border-card-border/60 rounded-xl px-3 py-1.5 shadow-xs">
               <input
                 type="text"
@@ -477,23 +435,6 @@ export default function MessagesPage() {
                   <option value="helpdesk">General Helpdesk (Student Coordinator)</option>
                   <option value="forex-mentor">JPForex Mentor (Forex Technical Instructor)</option>
                   <option value="ai-support">AI Automation Support (Workflow Mentor)</option>
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-bold text-slate-450 uppercase tracking-wide block">Message Category / Service</label>
-                <select
-                  value={newChatCategory}
-                  onChange={(e) => setNewChatCategory(e.target.value)}
-                  className="w-full px-3 py-2 text-xs rounded-xl bg-slate-50 dark:bg-slate-900 border border-card-border text-slate-800 dark:text-slate-200 focus:outline-none"
-                >
-                  <option value="General">General</option>
-                  <option value="FX">FX</option>
-                  <option value="AI">AI</option>
-                  <option value="Web Design">Web Design</option>
-                  <option value="Web Development">Web Development</option>
-                  <option value="Digital Marketing">Digital Marketing</option>
-                  <option value="YouTube Monetization">YouTube Monetization</option>
                 </select>
               </div>
 

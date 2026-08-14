@@ -88,7 +88,7 @@ export function AdminSidebar({ isOpen, onClose }: AdminSidebarProps) {
       const { data: ticketsData } = await adminSupabase
         .from("support_tickets")
         .select("id")
-        .eq("status", "active");
+        .eq("status", "Open");
 
       if (ticketsData) {
         setOpenTicketCount(ticketsData.length);
