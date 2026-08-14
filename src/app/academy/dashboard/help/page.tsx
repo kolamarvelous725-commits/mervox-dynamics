@@ -77,7 +77,7 @@ export default function HelpPage() {
             subject: t.subject || "Support Inquiry",
             description: t.description || "",
             time: t.created_at ? new Date(t.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "Recently",
-            status: t.status || "Open",
+            status: t.status || "active",
           }))
         );
         return;
@@ -141,8 +141,12 @@ export default function HelpPage() {
           table: "support_tickets",
           filter: `user_id=eq.${userId}`,
         },
-        () => {
+        async (payload: any) => {
           loadMyTickets();
+          if (payload.eventType === "UPDATE" && payload.new && payload.new.status === "resolved") {
+            const ticketId = payload.new.id;
+            await AcademyDB.addNotification(userId, `Your support ticket #${ticketId} has been resolved.`);
+          }
         }
       )
       .subscribe();
@@ -188,10 +192,11 @@ export default function HelpPage() {
         await supabase.from("support_tickets").insert({
           id: ticketId,
           user_id: userId,
+          student_name: `${student?.firstName || ""} ${student?.lastName || ""}`.trim() || "Student Account",
           category: ticketCategory,
           subject: ticketSubject.trim(),
           description: ticketDescription.trim(),
-          status: "Open",
+          status: "active",
         });
       } catch (stErr) {
         console.warn("Notice: support_tickets table insert warning:", stErr);
@@ -270,8 +275,14 @@ export default function HelpPage() {
                       </div>
                       <h4 className="text-xs font-bold text-slate-800 dark:text-white truncate">{t.subject}</h4>
                     </div>
-                    <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 shrink-0">
-                      Active
+                    <span className={`text-[9px] font-black uppercase px-2 py-0.5 rounded-full shrink-0 ${
+                      t.status === "resolved"
+                        ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400"
+                        : t.status === "in_progress"
+                        ? "bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-400"
+                        : "bg-blue-50 text-[#0055ff] dark:bg-blue-950/40 dark:text-blue-400"
+                    }`}>
+                      {t.status === "in_progress" ? "In Progress" : t.status === "active" ? "Active" : t.status}
                     </span>
                   </div>
                 ))}
