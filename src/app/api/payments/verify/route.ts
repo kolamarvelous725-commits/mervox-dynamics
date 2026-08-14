@@ -54,55 +54,21 @@ export async function GET(req: Request) {
       return NextResponse.redirect(`${origin}/academy/dashboard/courses?payment=failed&reason=unsuccessful_charge`);
     }
 
-    // Transaction is successful! Check if already processed to ensure idempotency.
-    const { data: existingPayment } = await supabase
-      .from("payments")
-      .select("*")
-      .eq("transaction_id", reference)
-      .maybeSingle();
+    // Map USD price for courses
+    const usdPrice = courseId === "forex-trading" ? 299 : courseId === "ai-automation" ? 249 : 199;
 
-    if (existingPayment && (existingPayment.status === "success" || existingPayment.status === "Paid")) {
-      console.log(`Transaction ${reference} already processed as successful.`);
-      return NextResponse.redirect(`${origin}/academy/dashboard/courses?payment=success&course_id=${courseId}`);
-    }
-
-    // Update payment record in database to success
-    const { error: updateError } = await supabase
-      .from("payments")
-      .update({
-        status: "success",
-      })
-      .eq("transaction_id", reference);
-
-    if (updateError) {
-      console.error("Failed to update payment status in Supabase:", updateError);
-    }
-
-    // Insert student enrollment (idempotency ensured by UNIQUE constraint on user_id, course_id)
-    const { error: enrollError } = await supabase.from("enrollments").insert({
-      user_id: userId,
-      course_id: courseId,
-      status: "In Progress",
+    // Call database function securely to bypass RLS and complete enrollment
+    const { error: rpcError } = await supabase.rpc("complete_payment_and_enroll", {
+      p_reference: reference,
+      p_user_id: userId,
+      p_course_id: courseId,
+      p_amount: usdPrice,
+      p_secret_key: PAYSTACK_SECRET_KEY,
     });
 
-    if (enrollError) {
-      if (enrollError.message.includes("duplicate key")) {
-        console.log(`User ${userId} is already enrolled in course ${courseId}.`);
-      } else {
-        console.error("Failed to insert enrollment record in Supabase:", enrollError);
-      }
-    }
-
-    // Also auto-initialize progress record for complete learning flow setup
-    const { error: progressError } = await supabase.from("progress").insert({
-      user_id: userId,
-      course_id: courseId,
-      progress_percent: 0,
-      lessons_completed: [],
-    });
-
-    if (progressError && !progressError.message.includes("duplicate key")) {
-      console.error("Failed to create progress record:", progressError);
+    if (rpcError) {
+      console.error("RPC complete_payment_and_enroll execution failed:", rpcError);
+      return NextResponse.redirect(`${origin}/academy/dashboard/courses?payment=failed&reason=database_error`);
     }
 
     return NextResponse.redirect(`${origin}/academy/dashboard/courses?payment=success&course_id=${courseId}`);

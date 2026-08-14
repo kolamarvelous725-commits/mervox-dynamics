@@ -14,8 +14,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Unauthorized: Missing authentication token" }, { status: 401 });
     }
 
-    // Initialize Supabase Client on the server
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
+    // Initialize Supabase Client on the server with user auth headers to satisfy RLS checks
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      global: {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      }
+    });
 
     // Validate current user's session
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);

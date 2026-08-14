@@ -52,62 +52,24 @@ export async function POST(req: Request) {
 
       const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-      // Verify if transaction is already processed as paid
-      const { data: existingPayment } = await supabase
-        .from("payments")
-        .select("*")
-        .eq("transaction_id", reference)
-        .maybeSingle();
-
-      if (existingPayment && (existingPayment.status === "success" || existingPayment.status === "Paid")) {
-        console.log(`Paystack Webhook: Transaction ${reference} was already successfully processed.`);
-        return NextResponse.json({ status: "success", message: "Already processed" });
-      }
-
       // Determine price in USD using metadata or mapping by course
       let price = metadata?.usdPrice;
       if (!price || isNaN(price) || price <= 0) {
         price = courseId === "forex-trading" ? 299 : courseId === "ai-automation" ? 249 : 199;
       }
 
-      // Upsert payment status to success
-      if (existingPayment) {
-        await supabase
-          .from("payments")
-          .update({ status: "success" })
-          .eq("transaction_id", reference);
-      } else {
-        await supabase.from("payments").insert({
-          user_id: userId,
-          course_id: courseId,
-          amount: price,
-          status: "success",
-          payment_method: "paystack",
-          transaction_id: reference,
-        });
-      }
-
-      // Insert enrollment safely
-      const { error: enrollError } = await supabase.from("enrollments").insert({
-        user_id: userId,
-        course_id: courseId,
-        status: "In Progress",
+      // Call database function securely to bypass RLS and complete enrollment
+      const { error: rpcError } = await supabase.rpc("complete_payment_and_enroll", {
+        p_reference: reference,
+        p_user_id: userId,
+        p_course_id: courseId,
+        p_amount: price,
+        p_secret_key: PAYSTACK_SECRET_KEY,
       });
 
-      if (enrollError && !enrollError.message.includes("duplicate key")) {
-        console.error("Paystack Webhook: Failed to enroll student:", enrollError);
-      }
-
-      // Initialize progress safely
-      const { error: progressError } = await supabase.from("progress").insert({
-        user_id: userId,
-        course_id: courseId,
-        progress_percent: 0,
-        lessons_completed: [],
-      });
-
-      if (progressError && !progressError.message.includes("duplicate key")) {
-        console.error("Paystack Webhook: Failed to initialize progress:", progressError);
+      if (rpcError) {
+        console.error("Paystack Webhook: RPC complete_payment_and_enroll failed:", rpcError);
+        return NextResponse.json({ message: "Database execution failed" }, { status: 500 });
       }
 
       console.log(`Paystack Webhook: Successfully processed transaction ${reference} and enrolled user ${userId}`);
