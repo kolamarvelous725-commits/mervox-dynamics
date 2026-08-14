@@ -74,14 +74,18 @@ export default function DashboardPage() {
           announcementsRes,
           liveRes
         ] = await Promise.all([
-          supabase.from("enrollments").select("id, course_id, enrolled_at").eq("user_id", userId),
-          supabase.from("certificates").select("id, course_id, certificate_number, issued_at").eq("user_id", userId),
-          supabase.from("courses").select("id, title, slug, description, category, level, duration_hours, rating, review_count, instructor, image_url").eq("published", true),
-          supabase.from("course_lessons").select("id, course_id, title, duration, sort_order, video_url, pdf_url"),
-          supabase.from("lesson_progress").select("lesson_id, completed").eq("user_id", userId).eq("completed", true),
-          supabase.from("announcements").select("id, title, content, type, date, time").order("created_at", { ascending: false }).limit(5),
-          supabase.from("live_classes").select("id, course_id, title, instructor, date, time, link").order("created_at", { ascending: false }).limit(5)
+          supabase.from("enrollments").select("*").eq("user_id", userId),
+          supabase.from("certificates").select("*").eq("user_id", userId),
+          supabase.from("courses").select("*").eq("published", true),
+          supabase.from("course_lessons").select("*"),
+          supabase.from("lesson_progress").select("*").eq("user_id", userId).eq("completed", true),
+          supabase.from("announcements").select("*").order("created_at", { ascending: false }),
+          supabase.from("live_classes").select("*").order("created_at", { ascending: false })
         ]);
+
+        if (coursesRes.error) console.error("Courses fetch error:", coursesRes.error);
+        if (enrollmentsRes.error) console.error("Enrollments fetch error:", enrollmentsRes.error);
+        if (announcementsRes.error) console.error("Announcements fetch error:", announcementsRes.error);
 
         const enrollmentsData = enrollmentsRes.data;
         const certificatesData = certificatesRes.data;
