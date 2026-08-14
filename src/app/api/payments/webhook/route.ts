@@ -50,7 +50,11 @@ export async function POST(req: Request) {
         return NextResponse.json({ message: "Invalid metadata payload" }, { status: 400 });
       }
 
-      const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+      const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+      if (!supabaseServiceRoleKey) {
+        console.error("Server configuration error: SUPABASE_SERVICE_ROLE_KEY is missing in webhook route.");
+        return NextResponse.json({ message: "Server configuration error: Missing service role key" }, { status: 500 });
+      }
       const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
       // Determine price in USD using metadata or mapping by course

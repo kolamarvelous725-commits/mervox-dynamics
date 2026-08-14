@@ -16,7 +16,11 @@ export async function GET(req: Request) {
   }
 
   // Initialize server-scoped Supabase client with Service Role Key to execute secure server writes bypassing RLS
-  const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || "";
+  const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
+  if (!supabaseServiceRoleKey) {
+    console.error("Server configuration error: SUPABASE_SERVICE_ROLE_KEY is missing in verification route.");
+    return NextResponse.redirect(`${origin}/academy/dashboard/courses?payment=failed&reason=configuration_error`);
+  }
   const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
   try {
