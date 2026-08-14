@@ -50,7 +50,7 @@ export default function AdminPaymentsPage() {
 
         const { data: payData, error: payError } = await adminSupabase
           .from("payments")
-          .select("*, profiles(full_name, email)")
+          .select("*, profiles(full_name, email), courses(title)")
           .order("created_at", { ascending: false });
 
         if (payError) {
@@ -59,12 +59,17 @@ export default function AdminPaymentsPage() {
           let revenue = 0;
           const list: PaymentItem[] = payData.map((p: any) => {
             const amt = Number(p.amount) || 0;
-            revenue += amt;
+            const isPaid = (p.status || "").toLowerCase() === "success" || (p.status || "").toLowerCase() === "paid";
+            if (isPaid) {
+              revenue += amt;
+            }
 
-            let courseTitle = "Academy Course Fee";
-            if (amt === 299) courseTitle = "Forex Trading Masterclass Access";
-            else if (amt === 249) courseTitle = "AI & Business Automation Access";
-            else if (amt === 199) courseTitle = "Web & Software Development Access";
+            let courseTitle = p.courses?.title || "Academy Course Fee";
+            if (courseTitle === "Academy Course Fee") {
+              if (amt === 299) courseTitle = "Forex Trading Masterclass Access";
+              else if (amt === 249) courseTitle = "AI & Business Automation Access";
+              else if (amt === 199) courseTitle = "Web & Software Development Access";
+            }
 
             return {
               id: p.transaction_id || `TXN-${p.id.slice(0, 8).toUpperCase()}`,
@@ -181,7 +186,13 @@ export default function AdminPaymentsPage() {
                         {p.date}
                       </td>
                       <td className="px-6 py-4 text-right select-none">
-                        <span className="px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400">
+                        <span className={`px-2 py-0.5 rounded text-[8px] font-black uppercase tracking-wider ${
+                          (p.status || "").toLowerCase() === "success" || (p.status || "").toLowerCase() === "paid"
+                            ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400"
+                            : (p.status || "").toLowerCase() === "pending"
+                            ? "bg-amber-100 text-amber-700 dark:bg-amber-950/20 dark:text-amber-400"
+                            : "bg-red-100 text-red-700 dark:bg-red-950/20 dark:text-red-400"
+                        }`}>
                           {p.status}
                         </span>
                       </td>

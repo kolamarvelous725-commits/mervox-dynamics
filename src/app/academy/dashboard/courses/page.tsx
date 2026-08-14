@@ -216,6 +216,21 @@ export default function CoursesPage() {
   useEffect(() => {
     refreshData();
 
+    // Read query params for payment notifications
+    if (typeof window !== "undefined") {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("payment") === "success") {
+        alert("Thank you! Your payment was successful and you have been enrolled in the course program.");
+        const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+        window.history.replaceState({ path: cleanUrl }, "", cleanUrl);
+      } else if (params.get("payment") === "failed") {
+        const reason = params.get("reason") || "payment abandoned";
+        alert(`Payment checkout failed or was cancelled. Reason: ${reason.replace(/_/g, " ")}`);
+        const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
+        window.history.replaceState({ path: cleanUrl }, "", cleanUrl);
+      }
+    }
+
     if (isSupabaseConfigured && userId) {
       const channel = supabase
         .channel("student_courses_sync_" + userId)
@@ -269,47 +284,52 @@ export default function CoursesPage() {
         return;
       }
 
-      const { data: existingEnroll, error: checkError } = await supabase
+      // Read existing enrollment first
+      const { data: existingEnroll } = await supabase
         .from("enrollments")
         .select("*")
         .eq("user_id", userId)
         .eq("course_id", courseId)
         .maybeSingle();
 
-      if (checkError) {
-        console.error("Error checking existing enrollment:", checkError);
-      }
-
       if (existingEnroll) {
+        alert("You are already enrolled in this course program!");
         refreshData();
         return;
       }
 
-      const enrollmentPayload = {
-        user_id: userId,
-        course_id: courseId,
-        status: "In Progress",
-      };
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
 
-      const { error: enrollError } = await supabase
-        .from("enrollments")
-        .insert(enrollmentPayload);
-
-      if (enrollError) {
-        if (enrollError.message.includes("duplicate key")) {
-          refreshData();
-          return;
-        }
-        console.error("Supabase enrollments table INSERT error:", enrollError);
-        alert(`Failed to enroll: ${enrollError.message}`);
+      if (!token) {
+        alert("Authentication session expired. Please log in again.");
         return;
       }
 
-      alert("Enrolled successfully in the course program!");
-      refreshData();
-    } catch (err) {
+      // Initialize Paystack payment securely from the server
+      const response = await fetch("/api/payments/initialize", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`
+        },
+        body: JSON.stringify({ courseId }),
+      });
+
+      if (!response.ok) {
+        const errData = await response.json();
+        throw new Error(errData.message || "Failed to initialize payment.");
+      }
+
+      const { authorizationUrl } = await response.json();
+      if (authorizationUrl) {
+        window.location.href = authorizationUrl;
+      } else {
+        throw new Error("No checkout URL returned from payment server.");
+      }
+    } catch (err: any) {
       console.error("Exception during course enrollment flow:", err);
-      alert(`Enrollment operation exception: ${err}`);
+      alert(`Checkout failed: ${err.message || err}`);
     }
   };
 
