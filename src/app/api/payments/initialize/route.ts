@@ -29,11 +29,14 @@ export async function POST(req: Request) {
     }
 
     // Determine the price of the course (in USD)
-    let price = 199;
-    if (courseId === "forex-trading") price = 299;
-    else if (courseId === "ai-automation") price = 249;
+    let usdPrice = 199;
+    if (courseId === "forex-trading") usdPrice = 299;
+    else if (courseId === "ai-automation") usdPrice = 249;
 
-    const amountInCents = price * 100;
+    // Convert USD to NGN using standard conversion rate to support merchant account currency configuration
+    const conversionRate = 1600; // 1 USD = 1600 NGN
+    const priceInNgn = usdPrice * conversionRate;
+    const amountInCents = priceInNgn * 100; // Paystack expects amount in cents/kobo
 
     // Generate unique payment reference
     const uniqueRef = `MS_${Date.now()}_${Math.random().toString(36).substring(2, 11).toUpperCase()}`;
@@ -58,12 +61,13 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         email: user.email,
         amount: amountInCents,
-        currency: "USD",
+        currency: "NGN",
         reference: uniqueRef,
         callback_url: callbackUrl,
         metadata: {
           userId: user.id,
           courseId: courseId,
+          usdPrice: usdPrice,
         },
       }),
     });
@@ -81,7 +85,7 @@ export async function POST(req: Request) {
     const { error: insertError } = await supabase.from("payments").insert({
       user_id: user.id,
       course_id: courseId,
-      amount: price,
+      amount: usdPrice, // save USD value to align with Admin Dashboard currency displays
       status: "pending",
       payment_method: "paystack",
       transaction_id: uniqueRef,

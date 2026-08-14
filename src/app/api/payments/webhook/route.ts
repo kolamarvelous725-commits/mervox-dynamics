@@ -64,9 +64,9 @@ export async function POST(req: Request) {
         return NextResponse.json({ status: "success", message: "Already processed" });
       }
 
-      // Determine price in USD (converting from cents if needed, or mapping by course)
-      let price = amountInCents / 100;
-      if (isNaN(price) || price <= 0) {
+      // Determine price in USD using metadata or mapping by course
+      let price = metadata?.usdPrice;
+      if (!price || isNaN(price) || price <= 0) {
         price = courseId === "forex-trading" ? 299 : courseId === "ai-automation" ? 249 : 199;
       }
 
