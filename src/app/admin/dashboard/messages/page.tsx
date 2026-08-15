@@ -35,7 +35,7 @@ interface SupportTicket {
   category: string;
   subject: string;
   description: string;
-  status: "Open" | "In Progress" | "Resolved";
+  status: "active" | "in_progress" | "resolved";
   time: string;
 }
 
@@ -53,6 +53,8 @@ export default function AdminMessagesPage() {
 
   // Tickets state
   const [tickets, setTickets] = useState<SupportTicket[]>([]);
+  const [ticketSubTab, setTicketSubTab] = useState<"active" | "in_progress" | "resolved">("active");
+  const [selectedChannelFilter, setSelectedChannelFilter] = useState<"all" | "forex-mentor" | "ai-support" | "helpdesk">("all");
 
   const loadData = async () => {
     try {
@@ -141,7 +143,7 @@ export default function AdminMessagesPage() {
             category: t.category || "General",
             subject: t.subject || "Support Inquiry",
             description: t.description || "",
-            status: t.status as "Open" | "In Progress" | "Resolved",
+            status: (t.status || "active") as "active" | "in_progress" | "resolved",
             time: t.created_at ? new Date(t.created_at).toLocaleDateString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "Recently",
           });
         });
@@ -167,7 +169,7 @@ export default function AdminMessagesPage() {
               category,
               subject,
               description: m.text,
-              status: "Open",
+              status: "active",
               time: m.time || "Recently",
             });
           }
@@ -197,16 +199,75 @@ export default function AdminMessagesPage() {
     };
   }, [selectedThreadIndex]);
 
-  const handleUpdateTicketStatus = async (ticketId: string, newStatus: "Open" | "In Progress" | "Resolved") => {
+  const handleUpdateTicketStatus = async (ticketId: string, newStatus: "active" | "in_progress" | "resolved") => {
     try {
+      const ticketToUpdate = tickets.find((t) => t.id === ticketId);
+      if (!ticketToUpdate) return;
+
       if (isSupabaseConfigured) {
+        const updatePayload: any = {
+          status: newStatus,
+          updated_at: new Date().toISOString()
+        };
+
+        if (newStatus === "resolved") {
+          updatePayload.resolved_at = new Date().toISOString();
+        }
+
+        console.log(`Updating ticket ${ticketId} status to: ${newStatus}...`);
         const { error } = await adminSupabase
           .from("support_tickets")
-          .update({ status: newStatus, updated_at: new Date().toISOString() })
+          .update(updatePayload)
           .eq("id", ticketId);
 
         if (error) {
-          console.error("Error updating ticket status in Supabase:", error);
+          console.error("Supabase support_tickets UPDATE failed payload:", updatePayload, "Error details:", error);
+          alert(`Failed to update ticket status in database: ${error.message}`);
+          return; // STOP: Do not update React state on database failure!
+        }
+
+        // If ticket is resolved, push notification to student profile
+        if (newStatus === "resolved" && ticketToUpdate.userId) {
+          try {
+            console.log(`Sending resolution notification to student profile ${ticketToUpdate.userId}...`);
+            const { data: profile, error: profileErr } = await adminSupabase
+              .from("profiles")
+              .select("notifications")
+              .eq("id", ticketToUpdate.userId)
+              .single();
+
+            if (profileErr) {
+              console.error("Failed to fetch student profile for resolution notification:", profileErr);
+            } else {
+              const currentNotifs = profile?.notifications 
+                ? (Array.isArray(profile.notifications) 
+                    ? profile.notifications 
+                    : JSON.parse(profile.notifications as any)) 
+                : [];
+              
+              const newNotif = {
+                id: Math.random().toString(36).substring(2, 9),
+                title: `Your support ticket '${ticketToUpdate.subject}' has been resolved.`,
+                time: new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" }) + " (UTC)",
+                unread: true,
+              };
+
+              const updatedNotifs = [newNotif, ...currentNotifs].slice(0, 30);
+
+              const { error: notifUpdateErr } = await adminSupabase
+                .from("profiles")
+                .update({ notifications: updatedNotifs })
+                .eq("id", ticketToUpdate.userId);
+
+              if (notifUpdateErr) {
+                console.error("Failed to push resolution notification to student profile:", notifUpdateErr);
+              } else {
+                console.log(`Resolution notification pushed successfully to student ${ticketToUpdate.userId}`);
+              }
+            }
+          } catch (notifErr) {
+            console.error("Exception handling student notification:", notifErr);
+          }
         }
       }
 
@@ -294,12 +355,13 @@ export default function AdminMessagesPage() {
 
   const filteredThreads = threads.filter(
     (th) =>
-      th.studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      th.studentEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      th.lastMessage.toLowerCase().includes(searchQuery.toLowerCase())
+      (selectedChannelFilter === "all" || th.channelId === selectedChannelFilter) &&
+      (th.studentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        th.studentEmail.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        th.lastMessage.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-  const activeThread = selectedThreadIndex !== null ? threads[selectedThreadIndex] : null;
+  const activeThread = selectedThreadIndex !== null ? filteredThreads[selectedThreadIndex] : null;
 
   return (
     <div className="space-y-6">
@@ -372,6 +434,29 @@ export default function AdminMessagesPage() {
                   className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg bg-slate-100 dark:bg-slate-900 border border-card-border text-slate-800 dark:text-slate-200 focus:outline-none"
                 />
               </div>
+            </div>
+
+            {/* Category Filter for Direct Message Managers */}
+            <div className="flex gap-1 p-2 bg-slate-50 dark:bg-slate-900 border-b border-card-border/30 select-none">
+              {(["all", "forex-mentor", "ai-support", "helpdesk"] as const).map((filter) => {
+                const count = threads.filter((th) => filter === "all" || th.channelId === filter).length;
+                return (
+                  <button
+                    key={filter}
+                    onClick={() => {
+                      setSelectedChannelFilter(filter);
+                      setSelectedThreadIndex(null); // Reset selection
+                    }}
+                    className={`flex-1 py-1.5 px-1 text-[8px] font-black uppercase tracking-wider rounded-lg transition-all cursor-pointer truncate ${
+                      selectedChannelFilter === filter
+                        ? "bg-[#0055ff] text-white"
+                        : "text-slate-500 hover:text-slate-700 dark:hover:text-slate-350 bg-white dark:bg-slate-800 border border-card-border/40"
+                    }`}
+                  >
+                    {filter === "all" ? `All (${count})` : filter === "forex-mentor" ? `Forex (${count})` : filter === "ai-support" ? `AI (${count})` : `Help (${count})`}
+                  </button>
+                );
+              })}
             </div>
 
             <div className="flex-1 overflow-y-auto divide-y divide-card-border/30 scrollbar-thin text-left">
@@ -497,8 +582,7 @@ export default function AdminMessagesPage() {
           </div>
 
         </div>
-      ) : (
-        /* Support Tickets Desk */
+      ) : (        /* Support Tickets Desk */
         <div className="rounded-2xl border border-card-border bg-white dark:bg-[#18181c] shadow-xs p-6 space-y-4 text-left">
           <div className="flex items-center justify-between pb-3 border-b border-card-border/40">
             <h3 className="text-sm font-bold text-slate-800 dark:text-white uppercase tracking-wider">
@@ -506,58 +590,79 @@ export default function AdminMessagesPage() {
             </h3>
             <span className="text-xs text-slate-400 font-semibold">{tickets.length} total tickets logged</span>
           </div>
+          {/* Sub-tabs for support tickets sorting */}
+          <div className="flex flex-wrap gap-2 border-b border-card-border/30 pb-3 select-none">
+            {(["active", "in_progress", "resolved"] as const).map((tab) => {
+              const count = tickets.filter((t) => t.status === tab).length;
+              return (
+                <button
+                  key={tab}
+                  onClick={() => setTicketSubTab(tab)}
+                  className={`px-3 py-1.5 text-[10px] font-black uppercase tracking-wider rounded-xl transition-all cursor-pointer ${
+                    ticketSubTab === tab
+                      ? "bg-[#0055ff] text-white"
+                      : "bg-slate-50 dark:bg-slate-900/40 text-slate-500 hover:text-slate-700 dark:hover:text-slate-355"
+                  }`}
+                >
+                  {tab === "active" ? "Active" : tab === "in_progress" ? "In Progress" : "Resolved"} ({count})
+                </button>
+              );
+            })}
+          </div>
 
-          {tickets.length === 0 ? (
+          {tickets.filter((t) => t.status === ticketSubTab).length === 0 ? (
             <div className="p-12 text-center text-slate-400 space-y-2">
               <CheckCircle2 className="w-8 h-8 mx-auto text-emerald-400" />
-              <p className="text-xs font-semibold">All support inquiries have been reviewed and resolved.</p>
+              <p className="text-xs font-semibold">No tickets found in this section.</p>
             </div>
           ) : (
             <div className="divide-y divide-card-border/30 space-y-3">
-              {tickets.map((t) => (
-                <div key={t.id} className="pt-3 first:pt-0 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="space-y-1.5 min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-blue-50 text-[#0055ff] dark:bg-blue-950/40 dark:text-blue-400">
-                        {t.id}
-                      </span>
-                      <span className="text-[10px] font-bold text-slate-500 uppercase">{t.category}</span>
-                      <span className="text-[10px] text-slate-400">• {t.time}</span>
+              {tickets
+                .filter((t) => t.status === ticketSubTab)
+                .map((t) => (
+                  <div key={t.id} className="pt-3 first:pt-0 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div className="space-y-1.5 min-w-0 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded bg-blue-50 text-[#0055ff] dark:bg-blue-950/40 dark:text-blue-400">
+                          {t.id}
+                        </span>
+                        <span className="text-[10px] font-bold text-slate-500 uppercase">{t.category}</span>
+                        <span className="text-[10px] text-slate-400">• {t.time}</span>
+                      </div>
+                      <h4 className="text-xs font-black text-slate-800 dark:text-white truncate">{t.subject}</h4>
+                      <p className="text-[11px] text-slate-500 line-clamp-2">{t.description}</p>
+                      <div className="text-[10px] text-slate-400 font-medium">
+                        Student: <span className="font-bold text-slate-700 dark:text-slate-300">{t.studentName}</span> ({t.studentEmail})
+                      </div>
                     </div>
-                    <h4 className="text-xs font-black text-slate-800 dark:text-white truncate">{t.subject}</h4>
-                    <p className="text-[11px] text-slate-500 line-clamp-2">{t.description}</p>
-                    <div className="text-[10px] text-slate-400 font-medium">
-                      Student: <span className="font-bold text-slate-700 dark:text-slate-300">{t.studentName}</span> ({t.studentEmail})
+
+                    <div className="flex flex-wrap items-center gap-2 shrink-0">
+                      <select
+                        value={t.status}
+                        onChange={(e) => handleUpdateTicketStatus(t.id, e.target.value as any)}
+                        className={`text-[10px] font-bold px-2.5 py-1.5 rounded-xl border cursor-pointer focus:outline-none ${
+                          t.status === "resolved"
+                            ? "bg-slate-100 dark:bg-slate-800/40 text-slate-600 border-slate-200 dark:border-slate-800/40"
+                            : t.status === "in_progress"
+                            ? "bg-blue-50 dark:bg-blue-950/30 text-blue-600 border-blue-200 dark:border-blue-900/30"
+                            : "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 border-emerald-200 dark:border-emerald-900/30"
+                        }`}
+                      >
+                        <option value="active">Active</option>
+                        <option value="in_progress">In Progress</option>
+                        <option value="resolved">Resolved</option>
+                      </select>
+
+                      <button
+                        onClick={() => handleOpenTicketInChat(t.userId)}
+                        className="px-3 py-1.5 bg-[#0055ff] hover:bg-[#0044dd] text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5"
+                      >
+                        <MessageSquare className="w-3.5 h-3.5" />
+                        <span>Reply in Chat</span>
+                      </button>
                     </div>
                   </div>
-
-                  <div className="flex flex-wrap items-center gap-2 shrink-0">
-                    <select
-                      value={t.status}
-                      onChange={(e) => handleUpdateTicketStatus(t.id, e.target.value as any)}
-                      className={`text-[10px] font-bold px-2.5 py-1.5 rounded-xl border cursor-pointer focus:outline-none ${
-                        t.status === "Resolved"
-                          ? "bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 border-emerald-200 dark:border-emerald-900/30"
-                          : t.status === "In Progress"
-                          ? "bg-amber-50 dark:bg-amber-950/30 text-amber-600 border-amber-200 dark:border-amber-900/30"
-                          : "bg-blue-50 dark:bg-blue-950/30 text-[#0055ff] border-blue-200 dark:border-blue-900/30"
-                      }`}
-                    >
-                      <option value="Open">Open</option>
-                      <option value="In Progress">In Progress</option>
-                      <option value="Resolved">Resolved</option>
-                    </select>
-
-                    <button
-                      onClick={() => handleOpenTicketInChat(t.userId)}
-                      className="px-3 py-1.5 bg-[#0055ff] hover:bg-[#0044dd] text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer flex items-center gap-1.5"
-                    >
-                      <MessageSquare className="w-3.5 h-3.5" />
-                      <span>Reply in Chat</span>
-                    </button>
-                  </div>
-                </div>
-              ))}
+                ))}
             </div>
           )}
         </div>

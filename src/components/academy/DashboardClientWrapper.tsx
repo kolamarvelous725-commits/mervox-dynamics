@@ -34,7 +34,7 @@ export default function DashboardClientWrapper({ children }: { children: React.R
       runSync();
 
       // 2. Setup Realtime subscriptions to refresh layout on database updates
-      const tablesToListen = ["announcements", "live_classes", "courses", "assignments", "progress", "payments", "certificates"];
+      const tablesToListen = ["announcements", "live_classes", "courses", "assignments", "progress", "payments", "certificates", "profiles", "support_tickets"];
       const channels = tablesToListen.map((table) => {
         return supabase
           .channel(`public:${table}-changes`)

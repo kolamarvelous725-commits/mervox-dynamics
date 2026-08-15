@@ -169,7 +169,7 @@ export default function HelpPage() {
           subject: ticketSubject.trim(),
           description: ticketDescription.trim(),
           time: timestamp,
-          status: "Open",
+          status: "active",
         };
         const updated = [newTicket, ...myTickets];
         setMyTickets(updated);
@@ -191,7 +191,7 @@ export default function HelpPage() {
           category: ticketCategory,
           subject: ticketSubject.trim(),
           description: ticketDescription.trim(),
-          status: "Open",
+          status: "active",
         });
       } catch (stErr) {
         console.warn("Notice: support_tickets table insert warning:", stErr);
@@ -270,9 +270,19 @@ export default function HelpPage() {
                       </div>
                       <h4 className="text-xs font-bold text-slate-800 dark:text-white truncate">{t.subject}</h4>
                     </div>
+                  {t.status === "resolved" ? (
+                    <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 dark:bg-slate-800/40 dark:text-slate-400 shrink-0">
+                      Resolved
+                    </span>
+                  ) : t.status === "in_progress" ? (
+                    <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-400 shrink-0">
+                      In Progress
+                    </span>
+                  ) : (
                     <span className="text-[9px] font-black uppercase px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400 shrink-0">
                       Active
                     </span>
+                  )}
                   </div>
                 ))}
               </div>
