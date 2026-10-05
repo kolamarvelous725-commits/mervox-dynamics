@@ -18,13 +18,9 @@ export async function GET(req: Request) {
     return NextResponse.redirect(`${origin}/academy/dashboard/courses?payment=failed&reason=no_reference`);
   }
 
-  // Initialize server-scoped Supabase client with Service Role Key to execute secure server writes bypassing RLS
-  const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
-  if (!supabaseServiceRoleKey) {
-    console.error("Server configuration error: SUPABASE_SERVICE_ROLE_KEY is missing in verification route.");
-    return NextResponse.redirect(`${origin}/academy/dashboard/courses?payment=failed&reason=configuration_error`);
-  }
-  const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
+  // Use Service Role Key if available, or fall back to Anon Key
+  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || supabaseAnonKey;
+  const supabase = createClient(supabaseUrl, supabaseKey);
 
   try {
     if (!PAYSTACK_SECRET_KEY) {
@@ -48,8 +44,22 @@ export async function GET(req: Request) {
     }
 
     const { status, metadata } = verifyData.data;
-    const userId = metadata?.userId;
-    const courseId = metadata?.courseId;
+    let userId = metadata?.userId;
+    let courseId = metadata?.courseId;
+
+    // Fallback: If metadata lacks details, look up pending payment record from Supabase by reference
+    if (!userId || !courseId) {
+      const { data: pendingPayment } = await supabase
+        .from("payments")
+        .select("*")
+        .eq("transaction_id", reference)
+        .maybeSingle();
+
+      if (pendingPayment) {
+        userId = userId || pendingPayment.user_id;
+        courseId = courseId || pendingPayment.course_id;
+      }
+    }
 
     if (status !== "success" || !userId || !courseId) {
       console.error("Verification checks failed:", { status, userId, courseId });
@@ -80,7 +90,7 @@ export async function GET(req: Request) {
     // Update payment record in database to success
     const { error: updateError } = await supabase
       .from("payments")
-      .update({ status: "success" })
+      .update({ status: "success", amount: coursePrice })
       .eq("transaction_id", reference);
 
     if (updateError) {
