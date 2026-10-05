@@ -26,11 +26,8 @@ export default function AdminPaymentsPage() {
         if (!isSupabaseConfigured) {
           const students = AcademyDB.getStudents();
           const list = students.map((s, idx) => {
-            const amount = [299, 249, 199][idx % 3];
-            let courseTitle = "Academy Course Fee";
-            if (amount === 299) courseTitle = "Forex Trading Masterclass Access";
-            else if (amount === 249) courseTitle = "AI & Business Automation Access";
-            else if (amount === 199) courseTitle = "Web & Software Development Access";
+            const amount = 100;
+            let courseTitle = "Academy Course Access Fee";
 
             return {
               id: `TXN-OFFLINE-${s.id.toUpperCase()}`,

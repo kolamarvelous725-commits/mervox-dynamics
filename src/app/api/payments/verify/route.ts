@@ -1,3 +1,6 @@
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
@@ -59,8 +62,8 @@ export async function GET(req: Request) {
       return NextResponse.redirect(`${origin}/academy/dashboard/courses?payment=failed&reason=unsuccessful_charge`);
     }
 
-    // Map USD price for courses
-    const usdPrice = courseId === "forex-trading" ? 299 : courseId === "ai-automation" ? 249 : 199;
+    // Enrollment price of ₦100 NGN for all courses
+    const coursePrice = 100;
 
     // Check if already processed to ensure idempotency
     const { data: existingPayment } = await supabase

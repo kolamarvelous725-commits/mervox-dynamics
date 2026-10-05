@@ -35,11 +35,11 @@ export default function WalletPage() {
           if (!isSupabaseConfigured) {
             const list = progress.map((p, idx) => {
               const course = AcademyDB.getCourses().find((c) => c.id === p.courseId);
-              const amount = [299, 249, 199][idx % 3];
+              const amount = 100;
               return {
                 id: `INV-OFFLINE-${p.courseId.toUpperCase()}-${userId.substring(0, 5).toUpperCase()}`,
                 courseTitle: course?.title || "Academy Program Fee",
-                amount: `$${amount}.00`,
+                amount: `₦${amount}.00`,
                 status: "Paid" as const,
                 date: "July 2026",
               };

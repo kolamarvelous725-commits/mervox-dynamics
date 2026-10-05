@@ -1,3 +1,6 @@
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 import { NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
@@ -34,15 +37,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Bad Request: Missing courseId" }, { status: 400 });
     }
 
-    // Determine the price of the course (in USD)
-    let usdPrice = 199;
-    if (courseId === "forex-trading") usdPrice = 299;
-    else if (courseId === "ai-automation") usdPrice = 249;
-
-    // Convert USD to NGN using standard conversion rate to support merchant account currency configuration
-    const conversionRate = 1600; // 1 USD = 1600 NGN
-    const priceInNgn = usdPrice * conversionRate;
-    const amountInCents = priceInNgn * 100; // Paystack expects amount in cents/kobo
+    // Enrollment price of all courses set to ₦100 NGN
+    const priceInNgn = 100;
+    const amountInCents = priceInNgn * 100; // Paystack expects amount in cents/kobo (10,000 kobo = ₦100)
 
     // Generate unique payment reference
     const uniqueRef = `MS_${Date.now()}_${Math.random().toString(36).substring(2, 11).toUpperCase()}`;
@@ -73,7 +70,7 @@ export async function POST(req: Request) {
         metadata: {
           userId: user.id,
           courseId: courseId,
-          usdPrice: usdPrice,
+          priceInNgn: priceInNgn,
         },
       }),
     });
@@ -91,7 +88,7 @@ export async function POST(req: Request) {
     const { error: insertError } = await supabase.from("payments").insert({
       user_id: user.id,
       course_id: courseId,
-      amount: usdPrice, // save USD value to align with Admin Dashboard currency displays
+      amount: priceInNgn,
       status: "pending",
       payment_method: "paystack",
       transaction_id: uniqueRef,

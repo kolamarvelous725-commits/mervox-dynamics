@@ -1,3 +1,6 @@
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import { createClient } from "@supabase/supabase-js";
@@ -57,10 +60,10 @@ export async function POST(req: Request) {
       }
       const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-      // Determine price in USD using metadata or mapping by course
-      let price = metadata?.usdPrice;
+      // Enrollment price of ₦100 NGN for all courses
+      let price = metadata?.priceInNgn;
       if (!price || isNaN(price) || price <= 0) {
-        price = courseId === "forex-trading" ? 299 : courseId === "ai-automation" ? 249 : 199;
+        price = 100;
       }
 
       // Check if already processed to ensure idempotency

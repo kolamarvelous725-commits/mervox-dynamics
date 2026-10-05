@@ -140,9 +140,7 @@ export default function AdminDashboardPage() {
         totalRevenue = payRes.data.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
       } else if (enrollmentsList.length > 0) {
         enrollmentsList.forEach((e: any) => {
-          let price = 199;
-          if (e.course_id === "forex-trading") price = 299;
-          if (e.course_id === "ai-automation") price = 249;
+          let price = 100;
           totalRevenue += price;
         });
       }

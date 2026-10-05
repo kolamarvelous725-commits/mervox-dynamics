@@ -548,11 +548,16 @@ export default function CoursesPage() {
                 {/* Info and Progress Column */}
                 <div className="md:col-span-6 space-y-3">
                   <div className="space-y-1">
-                    <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
-                      isEnrolled ? "bg-blue-100 text-[#0055ff] dark:bg-blue-950/30 dark:text-blue-400" : "bg-slate-100 text-slate-400 dark:bg-slate-900 dark:text-slate-500"
-                    }`}>
-                      {course.status}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${
+                        isEnrolled ? "bg-blue-100 text-[#0055ff] dark:bg-blue-950/30 dark:text-blue-400" : "bg-slate-100 text-slate-400 dark:bg-slate-900 dark:text-slate-500"
+                      }`}>
+                        {course.status}
+                      </span>
+                      <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
+                        ₦100
+                      </span>
+                    </div>
                     <h3 className="text-base font-heading font-black text-slate-800 dark:text-white leading-tight">
                       {course.title}
                     </h3>
@@ -585,7 +590,7 @@ export default function CoursesPage() {
                       onClick={() => handleEnroll(course.id, course.title)}
                       className="px-6 py-3 w-full text-center text-xs font-bold text-white bg-[#0055ff] hover:bg-[#0044dd] rounded-xl shadow-xs hover:shadow-md cursor-pointer transition-all hover:-translate-y-[1px]"
                     >
-                      Enroll Now
+                      Enroll Now • ₦100
                     </button>
                   ) : (
                     <>

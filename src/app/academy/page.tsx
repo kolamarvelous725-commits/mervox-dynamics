@@ -372,9 +372,14 @@ export default function AcademyPage() {
                         <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${course.color.split(" ")[0]} ${course.color.split(" ")[1]}`}>
                           <CourseIcon className="w-5.5 h-5.5" />
                         </div>
-                        <span className="text-[10px] font-bold text-black dark:text-slate-200 bg-card border border-card-border px-3 py-1 rounded-full uppercase tracking-wider">
-                          {course.badge}
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <span className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-500/20 px-3 py-1 rounded-full uppercase tracking-wider">
+                            ₦100
+                          </span>
+                          <span className="text-[10px] font-bold text-black dark:text-slate-200 bg-card border border-card-border px-3 py-1 rounded-full uppercase tracking-wider">
+                            {course.badge}
+                          </span>
+                        </div>
                       </div>
 
                       {/* Title & Description */}
@@ -403,7 +408,7 @@ export default function AcademyPage() {
                         href="/academy/signup"
                         className="inline-flex items-center gap-2 text-xs font-bold text-[#0055ff] dark:text-blue-400 hover:gap-3 transition-all duration-200"
                       >
-                        <span>Enroll in Program</span>
+                        <span>Enroll in Program • ₦100</span>
                         <ChevronRight className="w-4 h-4 text-[#0055ff] dark:text-blue-400" />
                       </Link>
                     </div>

@@ -65,9 +65,7 @@ export default function AdminReportsPage() {
             }
           });
 
-          let price = 199;
-          if (c.id === "forex-trading") price = 299;
-          if (c.id === "ai-automation") price = 249;
+          let price = 100;
           const cRev = cEnrolled * price;
           totalRevenue += cRev;
 
@@ -178,9 +176,7 @@ export default function AdminReportsPage() {
         totalRevenue = paymentsData.reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
       } else {
         enrollments.forEach((e: any) => {
-          let price = 199;
-          if (e.course_id === "forex-trading") price = 299;
-          if (e.course_id === "ai-automation") price = 249;
+          let price = 100;
           totalRevenue += price;
         });
       }
@@ -190,9 +186,7 @@ export default function AdminReportsPage() {
         const cProgress = studentProgressListMapped.filter((sp) => sp.courseTitle === c.title);
         const cCompletions = cProgress.filter((sp) => sp.progressPercent === 100).length;
 
-        let price = 199;
-        if (c.id === "forex-trading") price = 299;
-        if (c.id === "ai-automation") price = 249;
+        let price = 100;
 
         return {
           title: c.title,
