@@ -96,7 +96,7 @@ export function Footer() {
           <div className="flex gap-3">
             {/* Email */}
             <a
-              href="mailto:mervoxdynamics@gmail.com"
+              href="mailto:mervoxdynamic@gmail.com"
               className="w-8 h-8 rounded-lg border border-card-border/60 hover:border-accent/40 bg-card/20 hover:bg-accent hover:text-white flex items-center justify-center text-muted-foreground transition-all duration-300"
               aria-label="Email"
             >

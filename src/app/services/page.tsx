@@ -381,9 +381,7 @@ export default function ServicesPage() {
 
             <div className="flex flex-col sm:flex-row items-center gap-4">
               <a
-                href="https://wa.me/2348112769033"
-                target="_blank"
-                rel="noopener noreferrer"
+                href="tel:+2348112769033"
                 className="px-8 py-4 bg-accent text-white font-bold rounded-[14px] hover:bg-accent-hover transition-all duration-300 shadow-md hover:-translate-y-0.5 inline-flex items-center gap-2"
               >
                 <span>Book a Free Call</span>

@@ -101,9 +101,7 @@ export default async function ServiceDetailPage({ params }: Props) {
             {/* CTA Buttons Header */}
             <div className="flex flex-wrap gap-4 items-center">
               <a
-                href="https://wa.me/2348112769033"
-                target="_blank"
-                rel="noopener noreferrer"
+                href="tel:+2348112769033"
                 className="inline-flex items-center justify-center gap-2.5 px-7 py-3.5 font-semibold text-white bg-accent hover:bg-accent-hover rounded-[14px] shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-[2px]"
               >
                 <span>Book a Free Call</span>
@@ -278,9 +276,7 @@ export default async function ServiceDetailPage({ params }: Props) {
 
             <div className="flex flex-col sm:flex-row gap-4 items-center justify-center pt-4">
               <a
-                href="https://wa.me/2348112769033"
-                target="_blank"
-                rel="noopener noreferrer"
+                href="tel:+2348112769033"
                 className="w-full sm:w-auto px-8 py-4 bg-accent hover:bg-accent-hover text-white font-bold rounded-[14px] shadow-md hover:-translate-y-0.5 transition-all duration-300 flex items-center justify-center gap-2 cursor-pointer"
               >
                 <span>Book a Free Call</span>

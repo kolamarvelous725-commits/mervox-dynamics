@@ -778,9 +778,7 @@ export default function AboutPage() {
             
             <div className="flex flex-col sm:flex-row items-center gap-4">
               <a
-                href="https://wa.me/2348112769033"
-                target="_blank"
-                rel="noopener noreferrer"
+                href="tel:+2348112769033"
                 className="px-8 py-4 bg-accent text-white font-bold rounded-full hover:bg-accent-hover transition-all duration-300 shadow-lg hover:shadow-accent/25 hover:-translate-y-0.5 inline-flex items-center gap-2 relative group"
               >
                 <span className="relative flex h-2 w-2">

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Mail, MessageCircle, Share2, Send, Check } from "lucide-react";
+import { Mail, MessageCircle, Share2, Send, Check, Phone } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export function Contact() {
@@ -33,8 +33,7 @@ export function Contact() {
     setTimeout(() => setIsSubmitted(false), 5000);
   };
 
-  const whatsappNumber = "1234567890";
-  const whatsappUrl = `https://wa.me/${whatsappNumber}?text=Hi%20Mervox%20Dynamics,%20I'd%20like%20to%20discuss%20a%20project.`;
+  const whatsappUrl = "https://wa.me/2348112769033";
 
   return (
     <section id="contact" className="py-24 bg-background relative border-t border-card-border/50">
@@ -53,14 +52,14 @@ export function Contact() {
                 <div className="h-1 w-10 bg-accent/20 rounded-full mt-4" />
               </div>
               <p className="text-sm text-muted-foreground leading-relaxed max-w-sm">
-                Have an idea or a project you want to discuss? Contact us via the form, email, or WhatsApp, and let's bring it to life.
+                Have an idea or a project you want to discuss? Contact us via the form, email, call, or WhatsApp, and let's bring it to life.
               </p>
 
               {/* Info Items */}
               <div className="space-y-4 pt-6">
                 {/* Email */}
                 <a
-                  href="mailto:mervoxdynamics@gmail.com"
+                  href="mailto:mervoxdynamic@gmail.com"
                   className="flex items-center gap-4 p-4 rounded-2xl border border-card-border bg-card/25 hover:bg-card hover:border-accent/15 transition-all duration-300 group"
                 >
                   <div className="w-10 h-10 rounded-xl bg-accent/5 text-accent flex items-center justify-center shrink-0 group-hover:bg-accent group-hover:text-white transition-colors duration-300">
@@ -71,7 +70,25 @@ export function Contact() {
                       Email Us
                     </span>
                     <span className="text-sm font-semibold text-foreground">
-                      mervoxdynamics@gmail.com
+                      mervoxdynamic@gmail.com
+                    </span>
+                  </div>
+                </a>
+
+                {/* Call */}
+                <a
+                  href="tel:+2348112769033"
+                  className="flex items-center gap-4 p-4 rounded-2xl border border-card-border bg-card/25 hover:bg-card hover:border-accent/15 transition-all duration-300 group"
+                >
+                  <div className="w-10 h-10 rounded-xl bg-accent/5 text-accent flex items-center justify-center shrink-0 group-hover:bg-accent group-hover:text-white transition-colors duration-300">
+                    <Phone className="w-5 h-5" />
+                  </div>
+                  <div className="text-left">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
+                      Call Us
+                    </span>
+                    <span className="text-sm font-semibold text-foreground">
+                      +2348112769033
                     </span>
                   </div>
                 </a>

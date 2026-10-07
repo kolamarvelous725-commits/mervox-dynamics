@@ -164,7 +164,7 @@ export function Navbar() {
                 transition={{ delay: navLinks.length * 0.05 }}
               >
                 <Link
-                  href="#contact"
+                  href="tel:+2348112769033"
                   onClick={() => setMobileMenuOpen(false)}
                   className="w-full flex items-center justify-center gap-2.5 py-4 bg-[#0055ff] hover:bg-[#0044dd] text-white font-semibold rounded-[20px] shadow-[0_4px_20px_rgba(0,85,255,0.25)] hover:shadow-[0_6px_25px_rgba(0,85,255,0.4)] active:scale-[0.98] transition-all duration-300 cursor-pointer"
                 >

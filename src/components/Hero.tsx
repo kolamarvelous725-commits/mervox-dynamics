@@ -98,7 +98,7 @@ export function Hero() {
               {/* Primary Call to Action */}
               <div className="flex flex-col w-full sm:w-auto">
                 <Link
-                  href="#contact"
+                  href="tel:+2348112769033"
                   className="group flex items-center justify-center gap-3 px-7 py-3.5 font-semibold text-white bg-[#0a192f] dark:bg-[#1e3a8a] hover:bg-[#0c1e3b] dark:hover:bg-[#1d4ed8] rounded-[14px] shadow-[0_0_15px_rgba(10,25,47,0.1)] dark:shadow-[0_0_15px_rgba(30,58,138,0.18)] hover:shadow-[0_0_25px_rgba(10,25,47,0.2)] dark:hover:shadow-[0_0_25px_rgba(30,58,138,0.3)] transition-all duration-300 animate-soft-blink hover:-translate-y-[2px]"
                 >
                   <Phone className="w-4 h-4 shrink-0 transition-transform duration-300 group-hover:scale-110" />

@@ -366,7 +366,7 @@ export default function PortfolioPage() {
             </p>
             <div className="pt-4">
               <Link
-                href="/#contact"
+                href="tel:+2348112769033"
                 className="inline-flex items-center justify-center gap-2.5 px-8 py-4 bg-[#0055ff] hover:bg-[#0044dd] text-white font-bold text-xs rounded-2xl shadow-[0_4px_18px_rgba(0,85,255,0.2)] hover:shadow-[0_6px_22px_rgba(0,85,255,0.3)] transition-all duration-300 cursor-pointer hover:-translate-y-[2px]"
               >
                 <span>Book a Free Call</span>

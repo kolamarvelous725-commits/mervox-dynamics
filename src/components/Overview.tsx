@@ -202,7 +202,7 @@ export function Overview() {
               </Link>
               
               <Link
-                href="#contact"
+                href="tel:+2348112769033"
                 className="group flex items-center justify-center gap-3 px-7 py-3.5 font-semibold text-foreground border border-card-border bg-card hover:bg-white dark:hover:bg-slate-900 rounded-[14px] shadow-xs transition-all duration-300 hover:-translate-y-[2px]"
               >
                 <span>Book a Free Call</span>
