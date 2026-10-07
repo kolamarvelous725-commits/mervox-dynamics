@@ -13,24 +13,40 @@ export function Contact() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setErrorMessage("");
 
-    // Simulate API request
-    await new Promise((resolve) => setTimeout(resolve, 1500));
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formState),
+      });
 
-    setIsSubmitting(false);
-    setIsSubmitted(true);
-    setFormState({
-      name: "",
-      email: "",
-      projectType: "Web Development",
-      message: "",
-    });
+      const data = await res.json();
 
-    setTimeout(() => setIsSubmitted(false), 5000);
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || "Failed to send message. Please try again.");
+      }
+
+      setIsSubmitted(true);
+      setFormState({
+        name: "",
+        email: "",
+        projectType: "Web Development",
+        message: "",
+      });
+
+      setTimeout(() => setIsSubmitted(false), 5000);
+    } catch (err: any) {
+      setErrorMessage(err.message || "Failed to send message. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const whatsappUrl = "https://wa.me/2348112769033";
@@ -207,6 +223,12 @@ export function Contact() {
                     className="w-full px-4 py-3 rounded-xl border border-card-border bg-background focus:outline-none focus:border-accent/40 text-sm transition-colors resize-none text-foreground"
                   />
                 </div>
+
+                {errorMessage && (
+                  <div className="p-3 text-xs font-medium text-red-500 dark:text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl text-left">
+                    {errorMessage}
+                  </div>
+                )}
 
                 <div className="pt-2">
                   <button
