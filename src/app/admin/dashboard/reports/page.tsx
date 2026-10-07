@@ -65,7 +65,7 @@ export default function AdminReportsPage() {
             }
           });
 
-          let price = 100;
+          let price = 120;
           const cRev = cEnrolled * price;
           totalRevenue += cRev;
 
@@ -176,7 +176,7 @@ export default function AdminReportsPage() {
         totalRevenue = paymentsData.reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
       } else {
         enrollments.forEach((e: any) => {
-          let price = 100;
+          let price = 120;
           totalRevenue += price;
         });
       }
@@ -186,7 +186,7 @@ export default function AdminReportsPage() {
         const cProgress = studentProgressListMapped.filter((sp) => sp.courseTitle === c.title);
         const cCompletions = cProgress.filter((sp) => sp.progressPercent === 100).length;
 
-        let price = 100;
+        let price = 120;
 
         return {
           title: c.title,

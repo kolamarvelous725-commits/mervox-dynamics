@@ -140,7 +140,7 @@ export default function AdminDashboardPage() {
         totalRevenue = payRes.data.reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
       } else if (enrollmentsList.length > 0) {
         enrollmentsList.forEach((e: any) => {
-          let price = 100;
+          let price = 120;
           totalRevenue += price;
         });
       }

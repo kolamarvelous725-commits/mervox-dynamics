@@ -598,7 +598,7 @@ export default function CoursesPage() {
                         {course.status}
                       </span>
                       <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
-                        ₦100
+                        $120 USD
                       </span>
                     </div>
                     <h3 className="text-base font-heading font-black text-slate-800 dark:text-white leading-tight">
@@ -633,7 +633,7 @@ export default function CoursesPage() {
                       onClick={() => handleEnroll(course.id, course.title)}
                       className="px-6 py-3 w-full text-center text-xs font-bold text-white bg-[#0055ff] hover:bg-[#0044dd] rounded-xl shadow-xs hover:shadow-md cursor-pointer transition-all hover:-translate-y-[1px]"
                     >
-                      Enroll Now • ₦100
+                      Enroll Now • $120 USD
                     </button>
                   ) : (
                     <>

@@ -37,9 +37,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Bad Request: Missing courseId" }, { status: 400 });
     }
 
-    // Enrollment price of all courses set to ₦100 NGN
-    const priceInNgn = 100;
-    const amountInCents = priceInNgn * 100; // Paystack expects amount in cents/kobo (10,000 kobo = ₦100)
+    // Enrollment price of all courses set to $120 USD
+    const priceInUsd = 120;
+    const amountInCents = priceInUsd * 100; // Paystack expects amount in cents ($120 USD = 12,000 cents)
 
     // Generate unique payment reference
     const uniqueRef = `MS_${Date.now()}_${Math.random().toString(36).substring(2, 11).toUpperCase()}`;
@@ -64,13 +64,13 @@ export async function POST(req: Request) {
       body: JSON.stringify({
         email: user.email,
         amount: amountInCents,
-        currency: "NGN",
+        currency: "USD",
         reference: uniqueRef,
         callback_url: callbackUrl,
         metadata: {
           userId: user.id,
           courseId: courseId,
-          priceInNgn: priceInNgn,
+          priceInUsd: priceInUsd,
         },
       }),
     });
@@ -88,7 +88,7 @@ export async function POST(req: Request) {
     const { error: insertError } = await supabase.from("payments").insert({
       user_id: user.id,
       course_id: courseId,
-      amount: priceInNgn,
+      amount: priceInUsd,
       status: "pending",
       payment_method: "paystack",
       transaction_id: uniqueRef,
