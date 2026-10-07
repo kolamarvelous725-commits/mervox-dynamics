@@ -19,7 +19,7 @@ export async function POST(req: Request) {
     }
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email.trim())) {
+    if (!emailRegex.test(String(email).trim())) {
       return NextResponse.json(
         { success: false, error: "Please enter a valid email address." },
         { status: 400 }
@@ -27,16 +27,19 @@ export async function POST(req: Request) {
     }
 
     const recipientEmail = "mervoxdynamic@gmail.com";
+    const cleanName = String(name).trim();
+    const cleanEmail = String(email).trim();
+    const cleanMessage = String(message).trim();
 
     // 1. Log submission to Supabase contact_messages table if available
     if (supabase) {
       try {
         await supabase.from("contact_messages").insert([
           {
-            name: name.trim(),
-            email: email.trim(),
+            name: cleanName,
+            email: cleanEmail,
             project_type: projectType,
-            message: message.trim(),
+            message: cleanMessage,
             created_at: new Date().toISOString(),
           },
         ]);
@@ -45,12 +48,76 @@ export async function POST(req: Request) {
       }
     }
 
-    const smtpHost = process.env.SMTP_HOST || "smtp.gmail.com";
-    const smtpPort = parseInt(process.env.SMTP_PORT || "465", 10);
-    const smtpUser = process.env.SMTP_USER || process.env.GMAIL_USER || recipientEmail;
+    const resendApiKey = process.env.RESEND_API_KEY ? process.env.RESEND_API_KEY.trim() : "";
     const smtpPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD;
+    const smtpUser = process.env.SMTP_USER || process.env.GMAIL_USER || recipientEmail;
 
+    console.log(`[Contact API] Form submission received from ${cleanEmail}. Checking email configuration...`);
+    console.log(`[Contact API] RESEND_API_KEY configured: ${Boolean(resendApiKey)}`);
+    console.log(`[Contact API] SMTP_PASS / GMAIL_APP_PASSWORD configured: ${Boolean(smtpPass)}`);
+
+    // Priority 1: Resend API if RESEND_API_KEY is configured
+    if (resendApiKey) {
+      const fromEmail = process.env.RESEND_FROM_EMAIL || "Mervox Contact <onboarding@resend.dev>";
+      
+      console.log(`[Contact API] Dispatching email via Resend API to ${recipientEmail} from ${fromEmail}...`);
+
+      const resendPayload = {
+        from: fromEmail,
+        to: [recipientEmail],
+        reply_to: cleanEmail,
+        subject: `New Project Inquiry: ${projectType} from ${cleanName}`,
+        html: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; padding: 24px; border: 1px solid #e5e7eb; border-radius: 12px; background-color: #ffffff;">
+            <h2 style="color: #0055ff; margin-top: 0; margin-bottom: 16px;">New Project Inquiry</h2>
+            <p style="margin: 6px 0; font-size: 14px; color: #374151;"><strong>Visitor's Name:</strong> ${cleanName}</p>
+            <p style="margin: 6px 0; font-size: 14px; color: #374151;"><strong>Visitor's Email:</strong> <a href="mailto:${cleanEmail}" style="color: #0055ff;">${cleanEmail}</a></p>
+            <p style="margin: 6px 0; font-size: 14px; color: #374151;"><strong>Selected Project Type:</strong> ${projectType}</p>
+            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
+            <h3 style="color: #1f2937; margin-bottom: 8px; font-size: 15px;">Project Details / Message:</h3>
+            <p style="white-space: pre-wrap; background-color: #f9fafb; padding: 16px; border-radius: 8px; color: #1f2937; font-size: 14px; line-height: 1.5; border: 1px solid #f3f4f6;">${cleanMessage}</p>
+            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
+            <p style="font-size: 12px; color: #6b7280; margin-bottom: 0;">You can reply directly to this email to contact ${cleanName} (${cleanEmail}).</p>
+          </div>
+        `,
+      };
+
+      const resendRes = await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${resendApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(resendPayload),
+      });
+
+      const resendData = await resendRes.json();
+      console.log(`[Contact API] Resend response status: ${resendRes.status}`, resendData);
+
+      if (!resendRes.ok) {
+        const errorDetail = resendData.message || resendData.name || JSON.stringify(resendData);
+        console.error(`[Contact API Error] Resend API failed: ${errorDetail}`);
+        return NextResponse.json(
+          {
+            success: false,
+            error: `Resend Email Delivery Error (${resendRes.status}): ${errorDetail}`,
+          },
+          { status: resendRes.status || 500 }
+        );
+      }
+
+      return NextResponse.json({
+        success: true,
+        message: "Your message has been sent successfully!",
+        id: resendData.id,
+      });
+    }
+
+    // Priority 2: SMTP / Nodemailer if SMTP_PASS or GMAIL_APP_PASSWORD is set
     if (smtpPass) {
+      const smtpHost = process.env.SMTP_HOST || "smtp.gmail.com";
+      const smtpPort = parseInt(process.env.SMTP_PORT || "465", 10);
+
       const transporter = nodemailer.createTransport({
         host: smtpHost,
         port: smtpPort,
@@ -64,75 +131,41 @@ export async function POST(req: Request) {
       const mailOptions = {
         from: `"Mervox Dynamics Contact Form" <${smtpUser}>`,
         to: recipientEmail,
-        replyTo: `"${name.trim()}" <${email.trim()}>`,
-        subject: `New Project Inquiry: ${projectType} from ${name.trim()}`,
-        text: `You received a new inquiry from the website contact form:
-
-Name: ${name.trim()}
-Email: ${email.trim()}
-Project Type: ${projectType}
-
-Project Details:
-${message.trim()}
-`,
+        replyTo: `"${cleanName}" <${cleanEmail}>`,
+        subject: `New Project Inquiry: ${projectType} from ${cleanName}`,
+        text: `You received a new inquiry from the website contact form:\n\nName: ${cleanName}\nEmail: ${cleanEmail}\nProject Type: ${projectType}\n\nProject Details:\n${cleanMessage}\n`,
         html: `
           <div style="font-family: Arial, sans-serif; max-width: 600px; padding: 24px; border: 1px solid #e5e7eb; border-radius: 12px; background-color: #ffffff;">
             <h2 style="color: #0055ff; margin-top: 0; margin-bottom: 16px;">New Project Inquiry</h2>
-            <p style="margin: 6px 0; font-size: 14px; color: #374151;"><strong>Visitor's Name:</strong> ${name.trim()}</p>
-            <p style="margin: 6px 0; font-size: 14px; color: #374151;"><strong>Visitor's Email:</strong> <a href="mailto:${email.trim()}" style="color: #0055ff;">${email.trim()}</a></p>
+            <p style="margin: 6px 0; font-size: 14px; color: #374151;"><strong>Visitor's Name:</strong> ${cleanName}</p>
+            <p style="margin: 6px 0; font-size: 14px; color: #374151;"><strong>Visitor's Email:</strong> <a href="mailto:${cleanEmail}" style="color: #0055ff;">${cleanEmail}</a></p>
             <p style="margin: 6px 0; font-size: 14px; color: #374151;"><strong>Selected Project Type:</strong> ${projectType}</p>
             <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
             <h3 style="color: #1f2937; margin-bottom: 8px; font-size: 15px;">Project Details / Message:</h3>
-            <p style="white-space: pre-wrap; background-color: #f9fafb; padding: 16px; border-radius: 8px; color: #1f2937; font-size: 14px; line-height: 1.5; border: 1px solid #f3f4f6;">${message.trim()}</p>
+            <p style="white-space: pre-wrap; background-color: #f9fafb; padding: 16px; border-radius: 8px; color: #1f2937; font-size: 14px; line-height: 1.5; border: 1px solid #f3f4f6;">${cleanMessage}</p>
             <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
-            <p style="font-size: 12px; color: #6b7280; margin-bottom: 0;">You can reply directly to this email to contact ${name.trim()} (${email.trim()}).</p>
+            <p style="font-size: 12px; color: #6b7280; margin-bottom: 0;">You can reply directly to this email to contact ${cleanName} (${cleanEmail}).</p>
           </div>
         `,
       };
 
       await transporter.sendMail(mailOptions);
-    } else if (process.env.RESEND_API_KEY) {
-      const resendRes = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${process.env.RESEND_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          from: "Mervox Contact <onboarding@resend.dev>",
-          to: recipientEmail,
-          reply_to: email.trim(),
-          subject: `New Project Inquiry: ${projectType} from ${name.trim()}`,
-          html: `
-            <div style="font-family: Arial, sans-serif; max-width: 600px; padding: 24px; border: 1px solid #e5e7eb; border-radius: 12px;">
-              <h2 style="color: #0055ff; margin-top: 0; margin-bottom: 16px;">New Project Inquiry</h2>
-              <p><strong>Visitor's Name:</strong> ${name.trim()}</p>
-              <p><strong>Visitor's Email:</strong> <a href="mailto:${email.trim()}">${email.trim()}</a></p>
-              <p><strong>Selected Project Type:</strong> ${projectType}</p>
-              <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 20px 0;" />
-              <h3 style="color: #1f2937; margin-bottom: 8px;">Project Details / Message:</h3>
-              <p style="white-space: pre-wrap; background-color: #f9fafb; padding: 16px; border-radius: 8px;">${message.trim()}</p>
-            </div>
-          `,
-        }),
-      });
 
-      if (!resendRes.ok) {
-        const errJson = await resendRes.json();
-        throw new Error(errJson.message || "Failed to send email via Resend.");
-      }
-    } else {
-      console.log(`[Contact Form Submission Received]
-Recipient: ${recipientEmail}
-From: ${name.trim()} <${email.trim()}>
-Project Type: ${projectType}
-Message: ${message.trim()}`);
+      return NextResponse.json({
+        success: true,
+        message: "Your message has been sent successfully!",
+      });
     }
 
-    return NextResponse.json({
-      success: true,
-      message: "Your message has been sent successfully!",
-    });
+    // Priority 3: Neither key is present
+    console.error("[Contact API Error] No email provider configured. RESEND_API_KEY and GMAIL_APP_PASSWORD are both missing.");
+    return NextResponse.json(
+      {
+        success: false,
+        error: "Server configuration missing: RESEND_API_KEY environment variable is not set or not active on Vercel.",
+      },
+      { status: 500 }
+    );
   } catch (err: any) {
     console.error("Error processing contact form submission:", err);
     return NextResponse.json(
