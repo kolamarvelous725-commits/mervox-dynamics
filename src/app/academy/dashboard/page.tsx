@@ -72,7 +72,8 @@ export default function DashboardPage() {
           lessonsRes,
           progressRes,
           announcementsRes,
-          liveRes
+          liveRes,
+          paymentsRes
         ] = await Promise.all([
           supabase.from("enrollments").select("*").eq("user_id", userId),
           supabase.from("certificates").select("*").eq("user_id", userId),
@@ -80,7 +81,8 @@ export default function DashboardPage() {
           supabase.from("course_lessons").select("*"),
           supabase.from("lesson_progress").select("*").eq("user_id", userId).eq("completed", true),
           supabase.from("announcements").select("*").order("created_at", { ascending: false }),
-          supabase.from("live_classes").select("*").order("created_at", { ascending: false })
+          supabase.from("live_classes").select("*").order("created_at", { ascending: false }),
+          supabase.from("payments").select("*").eq("user_id", userId)
         ]);
 
         if (coursesRes.error) console.error("Courses fetch error:", coursesRes.error);
@@ -94,9 +96,10 @@ export default function DashboardPage() {
         const progressData = progressRes.data;
         const announcementsData = announcementsRes.data;
         const liveData = liveRes.data;
+        const paymentsData = paymentsRes.data;
 
         // Resilient arrays
-        const coursesArr = courseData || [];
+        const coursesArr = (courseData && courseData.length > 0) ? courseData : AcademyDB.getCourses();
         const enrollsArr = enrollmentsData || [];
         const rawLessons = lessonsData && lessonsData.length > 0 ? lessonsData : [
           ...AcademyDB.getCourses().reduce((acc: any[], course: any) => {
@@ -136,8 +139,16 @@ export default function DashboardPage() {
         });
 
         const progressArr = progressData || [];
+        const successfulPayments = (paymentsData || []).filter(
+          (p: any) => (p.status || "").toLowerCase() === "success" || (p.status || "").toLowerCase() === "paid"
+        );
+        const localProgressList = AcademyDB.getProgress(userId);
 
-        const enrolledCourseIds = new Set(enrollsArr.map((e: any) => e.course_id));
+        const enrolledCourseIds = new Set([
+          ...enrollsArr.map((e: any) => e.course_id),
+          ...successfulPayments.map((p: any) => p.course_id),
+          ...localProgressList.map((lp: any) => lp.courseId),
+        ]);
         const completedLessonIds = new Set(progressArr.map((p: any) => p.lesson_id));
 
         const computedProgress: UserCourseProgress[] = coursesArr.map((c: any) => {

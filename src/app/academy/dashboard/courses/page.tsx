@@ -90,6 +90,11 @@ export default function CoursesPage() {
         .select("*")
         .eq("user_id", userId);
 
+      const { data: paymentsData } = await supabase
+        .from("payments")
+        .select("*")
+        .eq("user_id", userId);
+
       const { data: quizzes } = await supabase
         .from("quizzes")
         .select("*")
@@ -155,9 +160,8 @@ export default function CoursesPage() {
 
       setLessons(mappedLessons);
 
-      if (courseData) {
-        setCourses(courseData);
-      }
+      const coursesArr = (courseData && courseData.length > 0) ? courseData : AcademyDB.getCourses();
+      setCourses(coursesArr);
 
       if (quizzes) {
         setStudentQuizzes(
@@ -176,12 +180,38 @@ export default function CoursesPage() {
         setStudentCertificates(certificates.map((c: any) => c.course_id));
       }
 
-      const coursesArr = courseData || [];
       const enrollsArr = enrollmentsData || [];
       const lessonsArr = mappedLessons;
       const progressArr = progressData || [];
 
-      const enrolledCourseIds = new Set(enrollsArr.map((e: any) => e.course_id));
+      // Filter successful payments from payments table
+      const successfulPayments = (paymentsData || []).filter(
+        (p: any) => (p.status || "").toLowerCase() === "success" || (p.status || "").toLowerCase() === "paid"
+      );
+
+      // Fetch local storage fallback progress
+      const localProgressList = AcademyDB.getProgress(userId);
+
+      // Combine enrolled course IDs from enrollments table, successful payments table, and local progress
+      const enrolledCourseIds = new Set([
+        ...enrollsArr.map((e: any) => e.course_id),
+        ...successfulPayments.map((p: any) => p.course_id),
+        ...localProgressList.map((lp: any) => lp.courseId),
+      ]);
+
+      // Self-heal: ensure any course with successful payment is inserted into enrollments table
+      if (userId && successfulPayments.length > 0) {
+        successfulPayments.forEach((p: any) => {
+          if (p.course_id && !enrollsArr.some((e: any) => e.course_id === p.course_id)) {
+            supabase.from("enrollments").upsert({
+              user_id: userId,
+              course_id: p.course_id,
+              status: "In Progress"
+            }, { onConflict: "user_id,course_id" }).then();
+          }
+        });
+      }
+
       const completedLessonIds = new Set(progressArr.map((p: any) => p.lesson_id));
 
       const computedProgress: UserCourseProgress[] = coursesArr.map((c: any) => {
@@ -220,9 +250,22 @@ export default function CoursesPage() {
     if (typeof window !== "undefined") {
       const params = new URLSearchParams(window.location.search);
       if (params.get("payment") === "success") {
+        const paidCourseId = params.get("course_id");
+        if (paidCourseId && userId) {
+          const cObj = AcademyDB.getCourses().find((c) => c.id === paidCourseId);
+          AcademyDB.enroll(userId, paidCourseId, cObj?.title || "Academy Course");
+          if (isSupabaseConfigured) {
+            supabase.from("enrollments").upsert({
+              user_id: userId,
+              course_id: paidCourseId,
+              status: "In Progress"
+            }, { onConflict: "user_id,course_id" }).then(() => refreshData());
+          }
+        }
         alert("Thank you! Your payment was successful and you have been enrolled in the course program.");
         const cleanUrl = window.location.protocol + "//" + window.location.host + window.location.pathname;
         window.history.replaceState({ path: cleanUrl }, "", cleanUrl);
+        refreshData();
       } else if (params.get("payment") === "failed") {
         const reason = params.get("reason") || "payment abandoned";
         alert(`Payment checkout failed or was cancelled. Reason: ${reason.replace(/_/g, " ")}`);
