@@ -41,7 +41,37 @@ export function Hero() {
       id="home"
       className="relative min-h-screen lg:h-screen lg:max-h-screen flex flex-col justify-between pt-20 pb-4 overflow-hidden bg-background"
     >
-      {/* Subtle Background Glows */}
+      {/* ── Hero Background Video (GIF) ── */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none" aria-hidden="true">
+        {/* Cinematic city-to-office background — autoplays, loops, muted by nature */}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src="/hero-video.gif"
+          alt=""
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            inset: 0,
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            objectPosition: "center center",
+            pointerEvents: "none",
+            userSelect: "none",
+          }}
+        />
+        {/* Dark overlay for text readability */}
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: "linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.45) 60%, rgba(0,0,0,0.65) 100%)",
+            pointerEvents: "none",
+          }}
+        />
+      </div>
+
+      {/* Subtle Background Glows (preserved) */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute -top-[15%] -left-[10%] w-[45%] h-[45%] rounded-full bg-accent/5 dark:bg-accent/10 blur-[120px]" />
         <div className="absolute -bottom-[15%] -right-[10%] w-[45%] h-[45%] rounded-full bg-accent/5 dark:bg-accent/10 blur-[120px]" />
