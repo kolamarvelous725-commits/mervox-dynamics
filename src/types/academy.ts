@@ -22,6 +22,8 @@ export interface Course {
   title: string;
   description: string;
   thumbnail: string;
+  price?: string;      // display string e.g. "₦250,000"
+  priceValue?: number; // numeric NGN amount e.g. 250000
   progress: number; // 0 to 100
   status: 'Not Started' | 'In Progress' | 'Completed';
   lessonsCompleted: number;
