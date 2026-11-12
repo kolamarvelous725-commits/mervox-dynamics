@@ -87,6 +87,7 @@ export default function AcademyPage() {
       icon: TrendingUp,
       badge: "Partnered with JPForex",
       title: "Forex Trading",
+      price: "₦250,000",
       desc: "Master technical analysis, risk management, trading psychology, and live market strategies through our partnership with JPForex (HabbyForex Student)",
       features: ["Live Market Analysis", "Trading Psychology", "1-on-1 Mentoring", "JPForex Backing"],
       color: "text-emerald-600 bg-emerald-500/10 border-emerald-500/20",
@@ -96,6 +97,7 @@ export default function AcademyPage() {
       icon: Video,
       badge: "Video Creator Course",
       title: "YouTube Monetization",
+      price: "₦190,000",
       desc: "Master high-yield channel creation, algorithmic SEO growth, thumbnails design, audience analytics, and multi-tier revenue monetization.",
       features: ["Algorithm SEO Hacks", "Channel Automation", "Thumbnails & Editing", "Sponsorship Guides"],
       color: "text-red-600 bg-red-500/10 border-red-500/20",
@@ -105,6 +107,7 @@ export default function AcademyPage() {
       icon: Cpu,
       badge: "Artificial Intelligence",
       title: "AI Automation",
+      price: "₦200,000",
       desc: "Harness cutting-edge generative AI, ChatGPT prompt engineering, no-code automation funnels, and enterprise workflows to multiply business productivity.",
       features: ["Prompt Engineering", "Zapier/Make Automation", "No-code SaaS Building", "AI Business Integration"],
       color: "text-purple-600 bg-purple-500/10 border-purple-500/20",
@@ -114,6 +117,7 @@ export default function AcademyPage() {
       icon: Code2,
       badge: "Software Engineering",
       title: "Web & Software Dev",
+      price: "₦340,000",
       desc: "Master coding including Web Design, UI/UX, Frontend & Backend code, Mobile Apps development, and Vercel cloud deployment. Prepares you for freelancing and remote jobs.",
       features: ["React/Next.js/Node.js", "UI/UX Figma Design", "Mobile Apps (React Native)", "Database & Deployment"],
       color: "text-blue-600 bg-blue-500/10 border-blue-500/20",
@@ -374,7 +378,7 @@ export default function AcademyPage() {
                         </div>
                         <div className="flex items-center gap-2">
                           <span className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-500/20 px-3 py-1 rounded-full uppercase tracking-wider">
-                            ₦250,000
+                            {course.price}
                           </span>
                           <span className="text-[10px] font-bold text-black dark:text-slate-200 bg-card border border-card-border px-3 py-1 rounded-full uppercase tracking-wider">
                             {course.badge}
@@ -408,7 +412,7 @@ export default function AcademyPage() {
                         href="/academy/signup"
                         className="inline-flex items-center gap-2 text-xs font-bold text-[#0055ff] dark:text-blue-400 hover:gap-3 transition-all duration-200"
                       >
-                        <span>Enroll in Program • ₦250,000</span>
+                        <span>Enroll in Program • {course.price}</span>
                         <ChevronRight className="w-4 h-4 text-[#0055ff] dark:text-blue-400" />
                       </Link>
                     </div>

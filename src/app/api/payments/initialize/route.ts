@@ -37,9 +37,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ message: "Bad Request: Missing courseId" }, { status: 400 });
     }
 
-    // Enrollment price of all courses set to ₦250,000 NGN
-    const priceInNgn = 250000;
-    const amountInKobo = priceInNgn * 100; // Paystack expects amount in kobo (₦250,000 = 25,000,000 kobo)
+    // Per-course enrollment prices in NGN
+    const coursePriceMap: Record<string, number> = {
+      "forex-trading": 250000,
+      "youtube-monetization": 190000,
+      "web-dev": 340000,
+      "ai-automation": 200000,
+    };
+    const priceInNgn = coursePriceMap[courseId] ?? 250000; // fallback to ₦250,000 for unknown courses
+    const amountInKobo = priceInNgn * 100; // Paystack expects kobo
 
     // Generate unique payment reference
     const uniqueRef = `MS_${Date.now()}_${Math.random().toString(36).substring(2, 11).toUpperCase()}`;
