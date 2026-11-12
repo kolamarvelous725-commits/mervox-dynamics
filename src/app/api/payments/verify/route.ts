@@ -72,8 +72,8 @@ export async function GET(req: Request) {
       return NextResponse.redirect(`${origin}/academy/dashboard/courses?payment=failed&reason=unsuccessful_charge`);
     }
 
-    // Enrollment price of $120 USD for all courses
-    const coursePrice = 120;
+    // Enrollment price of ₦250,000 NGN for all courses
+    const coursePrice = 250000;
 
     // Check if already processed to ensure idempotency
     const { data: existingPayment } = await supabase

@@ -65,7 +65,7 @@ export default function AdminReportsPage() {
             }
           });
 
-          let price = 120;
+          let price = 250000;
           const cRev = cEnrolled * price;
           totalRevenue += cRev;
 
@@ -176,7 +176,7 @@ export default function AdminReportsPage() {
         totalRevenue = paymentsData.reduce((sum: number, p: any) => sum + (Number(p.amount) || 0), 0);
       } else {
         enrollments.forEach((e: any) => {
-          let price = 120;
+          let price = 250000;
           totalRevenue += price;
         });
       }

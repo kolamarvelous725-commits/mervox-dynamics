@@ -696,7 +696,7 @@ export const AcademyDB = {
           title: "Forex Trading Masterclass",
           description: "Learn price action, market structure, risk management, and trading psychology from scratch.",
           thumbnail: "/course-forex-v3.webp",
-          price: "$120 USD",
+          price: "₦250,000",
           progress: 0,
           status: "Not Started",
           lessonsCompleted: 0,
@@ -709,7 +709,7 @@ export const AcademyDB = {
           title: "AI & Business Automation",
           description: "Integrate LLMs, design bots, set workflow triggers, and automate client processes with Make.com.",
           thumbnail: "/course-ai-v3.webp",
-          price: "$120 USD",
+          price: "₦250,000",
           progress: 0,
           status: "Not Started",
           lessonsCompleted: 0,
@@ -722,7 +722,7 @@ export const AcademyDB = {
           title: "Web & Software Development",
           description: "Build interactive apps using React, Tailwind CSS, TypeScript, and modern frameworks.",
           thumbnail: "/course-webdev-v3.webp",
-          price: "$120 USD",
+          price: "₦250,000",
           progress: 0,
           status: "Not Started",
           lessonsCompleted: 0,
@@ -735,7 +735,7 @@ export const AcademyDB = {
           title: "YouTube Algorithm Monetization",
           description: "Master niche creation, scriptwriting, video editing pipelines, and CTR optimization.",
           thumbnail: "/course-youtube-v3.webp",
-          price: "$120 USD",
+          price: "₦250,000",
           progress: 0,
           status: "Not Started",
           lessonsCompleted: 0,
@@ -750,7 +750,7 @@ export const AcademyDB = {
     const parsed = JSON.parse(data);
     return parsed.map((c: any) => ({
       ...c,
-      price: c.price === "₦100" || c.price === "$100" ? "$120 USD" : (c.price || "$120 USD"),
+      price: c.price === "₦100" || c.price === "$100" ? "₦250,000" : (c.price || "₦250,000"),
     }));
   },
 

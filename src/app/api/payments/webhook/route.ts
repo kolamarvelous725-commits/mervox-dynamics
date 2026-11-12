@@ -60,10 +60,10 @@ export async function POST(req: Request) {
       }
       const supabase = createClient(supabaseUrl, supabaseServiceRoleKey);
 
-      // Enrollment price of $120 USD for all courses
-      let price = metadata?.priceInUsd || metadata?.priceInNgn;
+      // Enrollment price of ₦250,000 NGN for all courses
+      let price = metadata?.priceInNgn || metadata?.priceInUsd;
       if (!price || isNaN(price) || price <= 0) {
-        price = 120;
+        price = 250000;
       }
 
       // Check if already processed to ensure idempotency
