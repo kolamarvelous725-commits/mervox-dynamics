@@ -105,7 +105,7 @@ export function Footer() {
 
             {/* TikTok */}
             <a
-              href="https://www.tiktok.com/@marv_web"
+              href="https://www.tiktok.com/@mervoxdynamic?lang=en"
               target="_blank"
               rel="noopener noreferrer"
               className="w-8 h-8 rounded-lg border border-card-border/60 hover:border-accent/40 bg-card/20 hover:bg-accent hover:text-white flex items-center justify-center text-muted-foreground transition-all duration-300"

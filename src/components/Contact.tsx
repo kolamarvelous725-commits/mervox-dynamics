@@ -111,7 +111,7 @@ export function Contact() {
 
                 {/* TikTok */}
                 <a
-                  href="https://www.tiktok.com/@marv_web"
+                  href="https://www.tiktok.com/@mervoxdynamic?lang=en"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-4 p-4 rounded-2xl border border-card-border bg-card/25 hover:bg-card hover:border-accent/15 transition-all duration-300 group"
@@ -124,7 +124,7 @@ export function Contact() {
                       TikTok
                     </span>
                     <span className="text-sm font-semibold text-foreground">
-                      @marv_web
+                      @mervoxdynamic
                     </span>
                   </div>
                 </a>
