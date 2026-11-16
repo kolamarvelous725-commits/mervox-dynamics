@@ -70,7 +70,7 @@ export function Footer() {
         </div>
 
         {/* Column 3: Services */}
-        <div className="md:col-span-3 text-left space-y-4">
+        <div className="hidden md:block md:col-span-3 text-left space-y-4">
           <h4 className="text-xs font-heading font-bold text-foreground uppercase tracking-wider">
             Services
           </h4>
