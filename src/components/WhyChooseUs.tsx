@@ -3,11 +3,9 @@
 import { motion } from "framer-motion";
 import {
   Calendar,
-  Cpu,
   Search,
   Monitor,
   Zap,
-  LifeBuoy,
 } from "lucide-react";
 
 export function WhyChooseUs() {
@@ -17,12 +15,6 @@ export function WhyChooseUs() {
       title: "6+ Years Experience",
       description:
         "Years of refined practice delivering clean, modern digital products across various industries.",
-    },
-    {
-      icon: Cpu,
-      title: "Modern Technology",
-      description:
-        "Building with cutting-edge frameworks like Next.js, React, Tailwind, and Framer Motion for premium experiences.",
     },
     {
       icon: Search,
@@ -41,12 +33,6 @@ export function WhyChooseUs() {
       title: "Fast Delivery",
       description:
         "Efficient agile processes ensure rapid, reliable delivery times without ever compromising visual or code quality.",
-    },
-    {
-      icon: LifeBuoy,
-      title: "Long-term Support",
-      description:
-        "We stand by our clients post-launch, offering comprehensive maintenance, support, and consulting.",
     },
   ];
 
@@ -88,7 +74,7 @@ export function WhyChooseUs() {
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, margin: "-100px" }}
-          className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6"
         >
           {items.map((item) => {
             const Icon = item.icon;

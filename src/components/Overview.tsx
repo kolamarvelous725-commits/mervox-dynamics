@@ -6,13 +6,9 @@ import {
   Layout,
   Laptop,
   Layers,
-  Palette,
   Smartphone,
   ShoppingBag,
   Megaphone,
-  ShieldCheck,
-  FileText,
-  GraduationCap,
   ArrowRight
 } from "lucide-react";
 
@@ -40,13 +36,6 @@ export function Overview() {
       href: "/services/digital-products-design",
     },
     {
-      title: "Graphic Design",
-      desc: "We create logos, flyers, social media designs, brochures, and other visuals that help your brand stand out.",
-      icon: Palette,
-      color: "text-pink-500 bg-pink-500/10",
-      href: "/services/graphics-design",
-    },
-    {
       title: "Mobile App Development",
       desc: "We build mobile applications that help businesses connect with customers and simplify everyday tasks.",
       icon: Smartphone,
@@ -66,27 +55,6 @@ export function Overview() {
       icon: Megaphone,
       color: "text-indigo-500 bg-indigo-500/10",
       href: "/services/digital-marketing",
-    },
-    {
-      title: "Brand Identity",
-      desc: "We help businesses create a professional image people can trust and remember.",
-      icon: ShieldCheck,
-      color: "text-rose-500 bg-rose-500/10",
-      href: "/services/promotion",
-    },
-    {
-      title: "Business Brochure Design",
-      desc: "We design professional brochures, company profiles, and business documents that showcase your business.",
-      icon: FileText,
-      color: "text-teal-500 bg-teal-500/10",
-      href: "/services/business-brochure-design",
-    },
-    {
-      title: "Mervox Academy",
-      desc: "Learn practical digital skills through Mervox Academy and build a successful career or business.",
-      icon: GraduationCap,
-      color: "text-violet-500 bg-violet-500/10",
-      href: "/academy",
     },
   ];
 
@@ -176,6 +144,17 @@ export function Overview() {
                 </motion.div>
               );
             })}
+
+            {/* View All Services Button */}
+            <div className="sm:col-span-2 pt-2">
+              <Link
+                href="/services"
+                className="group w-full py-4 px-6 rounded-2xl border border-accent/20 bg-accent/5 hover:bg-accent text-accent hover:text-white flex items-center justify-center gap-2.5 text-xs sm:text-sm font-bold transition-all duration-300 shadow-xs hover:shadow-md hover:-translate-y-0.5"
+              >
+                <span>View All Services</span>
+                <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-1" />
+              </Link>
+            </div>
           </motion.div>
 
         </div>
@@ -194,10 +173,10 @@ export function Overview() {
             {/* CTA Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 items-center justify-center pt-6">
               <Link
-                href="#services"
+                href="/services"
                 className="group flex items-center justify-center gap-3 px-7 py-3.5 font-semibold text-white bg-[#0a192f] dark:bg-[#1e3a8a] hover:bg-[#0c1e3b] dark:hover:bg-[#1d4ed8] rounded-[14px] shadow-[0_2px_8px_rgba(10,25,47,0.15)] dark:shadow-[0_2px_8px_rgba(30,58,138,0.18)] hover:shadow-[0_4px_15px_rgba(10,25,47,0.25)] dark:hover:shadow-[0_4px_15px_rgba(30,58,138,0.3)] transition-all duration-300 hover:-translate-y-[2px]"
               >
-                <span>Explore Our Services</span>
+                <span>Explore All Services</span>
                 <ArrowRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-0.5" />
               </Link>
               
