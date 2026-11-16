@@ -376,11 +376,11 @@ export default function AcademyPage() {
                         <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${course.color.split(" ")[0]} ${course.color.split(" ")[1]}`}>
                           <CourseIcon className="w-5.5 h-5.5" />
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] font-extrabold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-500/20 px-3 py-1 rounded-full uppercase tracking-wider">
+                        <div className="flex flex-wrap items-center justify-end gap-2">
+                          <span className="text-[10px] sm:text-xs font-black text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-500/20 px-3 py-1 rounded-full uppercase tracking-wider shrink-0">
                             {course.price}
                           </span>
-                          <span className="text-[10px] font-bold text-black dark:text-slate-200 bg-card border border-card-border px-3 py-1 rounded-full uppercase tracking-wider">
+                          <span className="text-[10px] font-bold text-black dark:text-slate-200 bg-card border border-card-border px-3 py-1 rounded-full uppercase tracking-wider shrink-0">
                             {course.badge}
                           </span>
                         </div>
@@ -388,9 +388,14 @@ export default function AcademyPage() {
 
                       {/* Title & Description */}
                       <div className="space-y-3">
-                        <h3 className="text-lg sm:text-xl font-heading font-extrabold text-black dark:text-white">
-                          {course.title}
-                        </h3>
+                        <div className="flex items-center justify-between gap-3">
+                          <h3 className="text-lg sm:text-xl font-heading font-extrabold text-black dark:text-white">
+                            {course.title}
+                          </h3>
+                          <span className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400 shrink-0">
+                            {course.price}
+                          </span>
+                        </div>
                         <p className="text-xs sm:text-sm text-black dark:text-slate-200 leading-relaxed leading-normal">
                           {course.desc}
                         </p>

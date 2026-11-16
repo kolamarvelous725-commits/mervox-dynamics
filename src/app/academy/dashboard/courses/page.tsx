@@ -504,6 +504,25 @@ export default function CoursesPage() {
     alert(`Certificate Unlocked!\nStudent: ${student?.firstName} ${student?.lastName}\nCourse: ${courseTitle}\n\nThis would generate a downloadable PDF in production.`);
   };
 
+const coursePriceMap: Record<string, string> = {
+  "forex-trading": "₦250,000",
+  "youtube-monetization": "₦190,000",
+  "web-dev": "₦340,000",
+  "ai-automation": "₦200,000",
+};
+
+const getCoursePrice = (course: { id?: string; title?: string; price?: string }) => {
+  if (course.price && course.price.trim() !== "" && !course.price.includes("100") && !course.price.includes("120")) {
+    return course.price;
+  }
+  const idOrTitle = ((course.id || "") + " " + (course.title || "")).toLowerCase();
+  if (idOrTitle.includes("web") || idOrTitle.includes("software")) return "₦340,000";
+  if (idOrTitle.includes("youtube")) return "₦190,000";
+  if (idOrTitle.includes("ai") || idOrTitle.includes("automation")) return "₦200,000";
+  if (idOrTitle.includes("forex")) return "₦250,000";
+  return coursePriceMap[course.id || ""] || "₦250,000";
+};
+
   // Merge templates with user database progress using useMemo to optimize re-render performance
   const coursesList: ExtendedCourse[] = useMemo(() => {
     return courses.map((tpl) => {
@@ -512,9 +531,11 @@ export default function CoursesPage() {
       
       // Filter lessons belonging to this course from lessons state
       const courseLessons = lessons.filter((l: any) => l.course_id === tpl.id);
+      const price = getCoursePrice(tpl);
 
       return {
         ...tpl,
+        price,
         progress: progressData ? progressData.progress : 0,
         status: progressData ? progressData.status : "Not Started",
         lessonsCompleted: progressData ? progressData.lessonsCompleted : 0,
@@ -598,7 +619,7 @@ export default function CoursesPage() {
                         {course.status}
                       </span>
                       <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
-                        {course.price}
+                        {course.price || getCoursePrice(course)}
                       </span>
                     </div>
                     <h3 className="text-base font-heading font-black text-slate-800 dark:text-white leading-tight">
@@ -633,7 +654,7 @@ export default function CoursesPage() {
                       onClick={() => handleEnroll(course.id, course.title)}
                       className="px-6 py-3 w-full text-center text-xs font-bold text-white bg-[#0055ff] hover:bg-[#0044dd] rounded-xl shadow-xs hover:shadow-md cursor-pointer transition-all hover:-translate-y-[1px]"
                     >
-                      Enroll Now • {course.price}
+                      Enroll Now • {course.price || getCoursePrice(course)}
                     </button>
                   ) : (
                     <>

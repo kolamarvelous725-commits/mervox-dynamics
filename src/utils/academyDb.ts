@@ -752,11 +752,21 @@ export const AcademyDB = {
       return defaultCourses;
     }
     const parsed = JSON.parse(data);
-    return parsed.map((c: any) => ({
-      ...c,
-      price: c.price === "₦100" || c.price === "$100" ? "₦250,000" : (c.price || "₦250,000"),
-      priceValue: c.priceValue || 250000,
-    }));
+    const coursePriceMap: Record<string, { price: string; value: number }> = {
+      "forex-trading": { price: "₦250,000", value: 250000 },
+      "youtube-monetization": { price: "₦190,000", value: 190000 },
+      "web-dev": { price: "₦340,000", value: 340000 },
+      "ai-automation": { price: "₦200,000", value: 200000 },
+    };
+    return parsed.map((c: any) => {
+      const defaultInfo = coursePriceMap[c.id] || { price: "₦250,000", value: 250000 };
+      const isOutdated = !c.price || c.price.includes("100") || c.price.includes("120");
+      return {
+        ...c,
+        price: isOutdated ? defaultInfo.price : c.price,
+        priceValue: isOutdated ? defaultInfo.value : (c.priceValue || defaultInfo.value),
+      };
+    });
   },
 
   saveCourses(courses: any[]) {
