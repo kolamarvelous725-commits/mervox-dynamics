@@ -8,6 +8,7 @@ import dynamic from "next/dynamic";
 const WhyChooseUs = dynamic(() => import("@/components/WhyChooseUs").then((m) => m.WhyChooseUs), { ssr: true });
 const Portfolio = dynamic(() => import("@/components/Portfolio").then((m) => m.Portfolio), { ssr: true });
 const CTA = dynamic(() => import("@/components/CTA").then((m) => m.CTA), { ssr: true });
+const Contact = dynamic(() => import("@/components/Contact").then((m) => m.Contact), { ssr: true });
 const Footer = dynamic(() => import("@/components/Footer").then((m) => m.Footer), { ssr: true });
 
 export default function Home() {
@@ -21,6 +22,7 @@ export default function Home() {
         <WhyChooseUs />
         <Portfolio />
         <CTA />
+        <Contact />
       </main>
       <Footer />
     </>

@@ -1,282 +1,140 @@
 "use client";
 
-import { useState } from "react";
-import { Mail, MessageCircle, Share2, Send, Check, Phone } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { Mail, MessageCircle, Phone, ArrowUpRight } from "lucide-react";
 
 export function Contact() {
-  const [formState, setFormState] = useState({
-    name: "",
-    email: "",
-    projectType: "Web Development",
-    message: "",
-  });
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const [errorMessage, setErrorMessage] = useState("");
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsSubmitting(true);
-    setErrorMessage("");
-
-    try {
-      const res = await fetch("/api/contact", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formState),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok || !data.success) {
-        throw new Error(data.error || "Failed to send message. Please try again.");
-      }
-
-      setIsSubmitted(true);
-      setFormState({
-        name: "",
-        email: "",
-        projectType: "Web Development",
-        message: "",
-      });
-
-      setTimeout(() => setIsSubmitted(false), 5000);
-    } catch (err: any) {
-      setErrorMessage(err.message || "Failed to send message. Please try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const whatsappUrl = "https://wa.me/2348112769033";
+  const contactChannels = [
+    {
+      id: "whatsapp",
+      name: "WhatsApp",
+      handle: "+234 811 276 9033",
+      label: "Instant Chat & Inquiries",
+      action: "Message on WhatsApp",
+      href: "https://wa.me/2348112769033",
+      accentColor: "from-emerald-500/15 via-emerald-500/5 to-transparent",
+      badgeColor: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+      buttonColor: "bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-600/20",
+      iconColor: "text-emerald-600 dark:text-emerald-400 bg-emerald-500/10",
+      iconType: "whatsapp",
+    },
+    {
+      id: "gmail",
+      name: "Gmail / Email",
+      handle: "mervoxdynamic@gmail.com",
+      label: "Project Inquiries & Proposals",
+      action: "Send an Email",
+      href: "mailto:mervoxdynamic@gmail.com",
+      accentColor: "from-blue-500/15 via-blue-500/5 to-transparent",
+      badgeColor: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+      buttonColor: "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-600/20",
+      iconColor: "text-blue-600 dark:text-blue-400 bg-blue-500/10",
+      iconType: "mail",
+    },
+    {
+      id: "tiktok",
+      name: "TikTok",
+      handle: "@mervoxdynamic",
+      label: "Official Videos & Tech Insights",
+      action: "Visit TikTok Profile",
+      href: "https://www.tiktok.com/@mervoxdynamic?lang=en",
+      accentColor: "from-pink-500/15 via-purple-500/5 to-transparent",
+      badgeColor: "bg-pink-500/10 text-pink-600 dark:text-pink-400 border-pink-500/20",
+      buttonColor: "bg-slate-900 hover:bg-black dark:bg-white dark:hover:bg-slate-100 text-white dark:text-black shadow-slate-900/20",
+      iconColor: "text-pink-600 dark:text-pink-400 bg-pink-500/10",
+      iconType: "tiktok",
+    },
+  ];
 
   return (
-    <section id="contact" className="py-24 bg-background relative border-t border-card-border/50">
-      <div className="max-w-7xl mx-auto px-6 relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
-          {/* Left Column: Info & Details */}
-          <div className="lg:col-span-5 flex flex-col justify-between">
-            <div className="space-y-6">
-              <div>
-                <h2 className="text-[10px] font-bold uppercase tracking-wider text-accent mb-3">
-                  Let's Connect
-                </h2>
-                <h3 className="text-3xl sm:text-4xl font-heading font-extrabold tracking-tight text-foreground">
-                  Ready to Start Your Project?
-                </h3>
-                <div className="h-1 w-10 bg-accent/20 rounded-full mt-4" />
-              </div>
-              <p className="text-sm text-muted-foreground leading-relaxed max-w-sm">
-                Have an idea or a project you want to discuss? Contact us via the form, email, call, or WhatsApp, and let's bring it to life.
-              </p>
-
-              {/* Info Items */}
-              <div className="space-y-4 pt-6">
-                {/* Email */}
-                <a
-                  href="mailto:mervoxdynamic@gmail.com"
-                  className="flex items-center gap-4 p-4 rounded-2xl border border-card-border bg-card/25 hover:bg-card hover:border-accent/15 transition-all duration-300 group"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-accent/5 text-accent flex items-center justify-center shrink-0 group-hover:bg-accent group-hover:text-white transition-colors duration-300">
-                    <Mail className="w-5 h-5" />
-                  </div>
-                  <div className="text-left">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-                      Email Us
-                    </span>
-                    <span className="text-sm font-semibold text-foreground">
-                      mervoxdynamic@gmail.com
-                    </span>
-                  </div>
-                </a>
-
-                {/* Call */}
-                <a
-                  href="tel:+2348112769033"
-                  className="flex items-center gap-4 p-4 rounded-2xl border border-card-border bg-card/25 hover:bg-card hover:border-accent/15 transition-all duration-300 group"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-accent/5 text-accent flex items-center justify-center shrink-0 group-hover:bg-accent group-hover:text-white transition-colors duration-300">
-                    <Phone className="w-5 h-5" />
-                  </div>
-                  <div className="text-left">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-                      Call Us
-                    </span>
-                    <span className="text-sm font-semibold text-foreground">
-                      +2348112769033
-                    </span>
-                  </div>
-                </a>
-
-                {/* TikTok */}
-                <a
-                  href="https://www.tiktok.com/@mervoxdynamic?lang=en"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-4 p-4 rounded-2xl border border-card-border bg-card/25 hover:bg-card hover:border-accent/15 transition-all duration-300 group"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-accent/5 text-accent flex items-center justify-center shrink-0 group-hover:bg-accent group-hover:text-white transition-colors duration-300">
-                    <Share2 className="w-5 h-5" />
-                  </div>
-                  <div className="text-left">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block">
-                      TikTok
-                    </span>
-                    <span className="text-sm font-semibold text-foreground">
-                      @mervoxdynamic
-                    </span>
-                  </div>
-                </a>
-              </div>
-            </div>
-
-            {/* WhatsApp direct CTA */}
-            <div className="pt-8 lg:pt-0">
-              <a
-                href={whatsappUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center justify-center gap-2 w-full sm:w-auto px-6 py-3.5 font-semibold text-white bg-emerald-600 hover:bg-emerald-700 hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 rounded-[18px] shadow-sm hover:shadow-md cursor-pointer"
-              >
-                <MessageCircle className="w-5 h-5 fill-white/10" />
-                Message on WhatsApp
-              </a>
-            </div>
-          </div>
-
-          {/* Right Column: Clean Form Card */}
-          <div className="lg:col-span-7">
-            <div className="p-8 rounded-[24px] border border-card-border bg-card/45 backdrop-blur-sm shadow-sm relative overflow-hidden">
-              <h4 className="text-lg font-heading font-bold text-foreground mb-6 text-left">
-                Send Us a Message
-              </h4>
-
-              <form onSubmit={handleSubmit} className="space-y-5 text-left">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                  <div className="space-y-2">
-                    <label htmlFor="name" className="text-xs font-semibold text-muted-foreground">
-                      Your Name
-                    </label>
-                    <input
-                      type="text"
-                      id="name"
-                      required
-                      value={formState.name}
-                      onChange={(e) => setFormState({ ...formState, name: e.target.value })}
-                      placeholder="John Doe"
-                      className="w-full px-4 py-3 rounded-xl border border-card-border bg-background focus:outline-none focus:border-accent/40 text-sm transition-colors text-foreground"
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label htmlFor="email" className="text-xs font-semibold text-muted-foreground">
-                      Email Address
-                    </label>
-                    <input
-                      type="email"
-                      id="email"
-                      required
-                      value={formState.email}
-                      onChange={(e) => setFormState({ ...formState, email: e.target.value })}
-                      placeholder="john@example.com"
-                      className="w-full px-4 py-3 rounded-xl border border-card-border bg-background focus:outline-none focus:border-accent/40 text-sm transition-colors text-foreground"
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <label htmlFor="projectType" className="text-xs font-semibold text-muted-foreground">
-                    Project Type
-                  </label>
-                  <select
-                    id="projectType"
-                    value={formState.projectType}
-                    onChange={(e) => setFormState({ ...formState, projectType: e.target.value })}
-                    className="w-full px-4 py-3 rounded-xl border border-card-border bg-background focus:outline-none focus:border-accent/40 text-sm transition-colors text-foreground cursor-pointer appearance-none"
-                    style={{
-                      backgroundImage: `url("data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3E%3C/svg%3E")`,
-                      backgroundPosition: "right 1rem center",
-                      backgroundRepeat: "no-repeat",
-                      backgroundSize: "1.25em",
-                    }}
-                  >
-                    <option value="Web Design">Web Design</option>
-                    <option value="Web Development">Web Development</option>
-                    <option value="Store Creation">Store Creation</option>
-                    <option value="Digital Marketing">Digital Marketing</option>
-                    <option value="Brand Identity">Brand Identity</option>
-                    <option value="Full Stack App">Full Stack App</option>
-                  </select>
-                </div>
-
-                <div className="space-y-2">
-                  <label htmlFor="message" className="text-xs font-semibold text-muted-foreground">
-                    Project Details
-                  </label>
-                  <textarea
-                    id="message"
-                    required
-                    rows={4}
-                    value={formState.message}
-                    onChange={(e) => setFormState({ ...formState, message: e.target.value })}
-                    placeholder="Tell us about your project goals and budget..."
-                    className="w-full px-4 py-3 rounded-xl border border-card-border bg-background focus:outline-none focus:border-accent/40 text-sm transition-colors resize-none text-foreground"
-                  />
-                </div>
-
-                {errorMessage && (
-                  <div className="p-3 text-xs font-medium text-red-500 dark:text-red-400 bg-red-500/10 border border-red-500/20 rounded-xl text-left">
-                    {errorMessage}
-                  </div>
-                )}
-
-                <div className="pt-2">
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full flex items-center justify-center gap-2 px-6 py-3.5 font-semibold text-white bg-accent hover:bg-accent-hover active:scale-[0.98] transition-all duration-300 rounded-[18px] cursor-pointer disabled:opacity-50"
-                  >
-                    {isSubmitting ? (
-                      <span className="w-5 h-5 rounded-full border-2 border-white/20 border-t-white animate-spin" />
-                    ) : (
-                      <>
-                        Send Message
-                        <Send className="w-4 h-4" />
-                      </>
-                    )}
-                  </button>
-                </div>
-              </form>
-
-              {/* Success Overlay */}
-              <AnimatePresence>
-                {isSubmitted && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="absolute inset-0 bg-background/95 backdrop-blur-sm flex flex-col items-center justify-center p-6 text-center z-20"
-                  >
-                    <motion.div
-                      initial={{ scale: 0.8, rotate: -10 }}
-                      animate={{ scale: 1, rotate: 0 }}
-                      transition={{ type: "spring", stiffness: 200, damping: 15 }}
-                      className="w-16 h-16 rounded-full bg-emerald-100 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-4 border border-emerald-500/20"
-                    >
-                      <Check className="w-8 h-8 stroke-[2.5]" />
-                    </motion.div>
-                    <h5 className="text-lg font-heading font-bold text-foreground mb-2">
-                      Message Sent Successfully!
-                    </h5>
-                    <p className="text-sm text-muted-foreground max-w-xs">
-                      Thank you for reaching out. We will review your request and get back to you within 24 hours.
-                    </p>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          </div>
+    <section id="contact" className="py-20 bg-background relative border-t border-card-border/50">
+      <div className="max-w-6xl mx-auto px-6 relative z-10">
+        
+        {/* Section Header */}
+        <div className="text-center max-w-2xl mx-auto mb-14">
+          <span className="text-xs font-bold uppercase tracking-widest text-accent mb-3 block">
+            Let's Connect
+          </span>
+          <h2 className="text-3xl sm:text-4xl font-heading font-black tracking-tight text-foreground">
+            Connect With Mervox Dynamics
+          </h2>
+          <div className="h-1 w-12 bg-accent/30 rounded-full mx-auto mt-4" />
+          <p className="mt-4 text-sm sm:text-base text-muted-foreground leading-relaxed">
+            Reach out directly through any of our official channels. We are always ready to discuss your projects and collaborate.
+          </p>
         </div>
+
+        {/* Channels Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {contactChannels.map((channel) => (
+            <a
+              key={channel.id}
+              href={channel.href}
+              target={channel.href.startsWith("http") ? "_blank" : undefined}
+              rel={channel.href.startsWith("http") ? "noopener noreferrer" : undefined}
+              className="group relative rounded-[24px] border border-card-border/80 bg-card/60 hover:bg-card hover:border-accent/30 p-8 flex flex-col justify-between transition-all duration-300 hover:shadow-xl hover:-translate-y-1 overflow-hidden text-left"
+            >
+              {/* Background gradient on hover */}
+              <div
+                className={`absolute inset-0 bg-gradient-to-b ${channel.accentColor} opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none`}
+              />
+
+              <div className="relative z-10 space-y-5">
+                <div className="flex items-center justify-between">
+                  <div className={`w-14 h-14 rounded-2xl flex items-center justify-center ${channel.iconColor} transition-transform duration-300 group-hover:scale-110 shadow-xs`}>
+                    {channel.iconType === "whatsapp" && <MessageCircle className="w-7 h-7" />}
+                    {channel.iconType === "mail" && <Mail className="w-7 h-7" />}
+                    {channel.iconType === "tiktok" && (
+                      <svg className="w-7 h-7 fill-current" viewBox="0 0 24 24">
+                        <path d="M19.59 6.69a4.83 4.83 0 0 1-3.77-4.25V2h-3.45v13.67a2.89 2.89 0 0 1-5.2 1.74 2.89 2.89 0 0 1 2.31-4.64 2.93 2.93 0 0 1 .88.13V9.4a6.84 6.84 0 0 0-1-.05A6.33 6.33 0 0 0 5 20.1a6.34 6.34 0 0 0 10.86-4.43v-7a8.16 8.16 0 0 0 4.77 1.52v-3.4a4.85 4.85 0 0 1-1.04-.1z" />
+                      </svg>
+                    )}
+                  </div>
+                  <span className={`text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full border ${channel.badgeColor}`}>
+                    {channel.name}
+                  </span>
+                </div>
+
+                <div className="space-y-1.5 text-left">
+                  <p className="text-xs text-muted-foreground font-semibold">
+                    {channel.label}
+                  </p>
+                  <h3 className="text-lg sm:text-xl font-heading font-black text-foreground break-all tracking-tight group-hover:text-accent transition-colors">
+                    {channel.handle}
+                  </h3>
+                </div>
+              </div>
+
+              <div className="relative z-10 pt-8">
+                <div
+                  className={`w-full py-3.5 px-5 rounded-[16px] text-xs font-bold flex items-center justify-center gap-2 shadow-sm transition-all duration-300 group-hover:shadow-md ${channel.buttonColor}`}
+                >
+                  <span>{channel.action}</span>
+                  <ArrowUpRight className="w-4 h-4 transition-transform duration-300 group-hover:translate-x-0.5 group-hover:-translate-y-0.5" />
+                </div>
+              </div>
+            </a>
+          ))}
+        </div>
+
+        {/* Direct Phone Strip */}
+        <div className="mt-8 p-6 rounded-[22px] border border-card-border/60 bg-card/40 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
+          <div className="flex items-center gap-4">
+            <div className="w-11 h-11 rounded-xl bg-accent/10 text-accent flex items-center justify-center shrink-0">
+              <Phone className="w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground font-semibold">Prefer a direct voice phone call?</p>
+              <h4 className="text-base font-heading font-bold text-foreground">+234 811 276 9033</h4>
+            </div>
+          </div>
+          <a
+            href="tel:+2348112769033"
+            className="px-6 py-2.5 rounded-xl border border-card-border hover:border-accent/40 bg-background hover:bg-card text-xs font-bold text-foreground transition-all duration-200 cursor-pointer shadow-xs"
+          >
+            Call Now
+          </a>
+        </div>
+
       </div>
     </section>
   );
