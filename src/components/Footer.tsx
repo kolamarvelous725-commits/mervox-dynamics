@@ -51,7 +51,7 @@ export function Footer() {
         </div>
 
         {/* Column 2: Quick Links */}
-        <div className="md:col-span-3 text-left space-y-4">
+        <div className="hidden md:block md:col-span-3 text-left space-y-4">
           <h4 className="text-xs font-heading font-bold text-foreground uppercase tracking-wider">
             Quick Links
           </h4>
